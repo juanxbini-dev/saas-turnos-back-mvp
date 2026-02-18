@@ -10,5 +10,6 @@ export const config = {
     user: process.env.DB_USER || 'turnos_user',
     password: process.env.DB_PASSWORD || '',
     name: process.env.DB_NAME || 'turnos_db'
-  }
+  },
+  jwtSecret: process.env.JWT_SECRET || 'default_secret'
 };

@@ -16,7 +16,14 @@ export class RefreshController {
 
   async refresh(req: Request, res: Response): Promise<void> {
     try {
-      const { refreshToken } = req.body as RefreshRequest;
+      // Intentar obtener refresh token de la cookie primero
+      let refreshToken = req.cookies?.refreshToken;
+      
+      // Si no hay en cookie, intentar del body (para compatibilidad)
+      if (!refreshToken) {
+        const { refreshToken: bodyRefreshToken } = req.body as RefreshRequest;
+        refreshToken = bodyRefreshToken;
+      }
 
       if (!refreshToken) {
         res.status(400).json({
@@ -48,6 +55,7 @@ export class RefreshController {
         success: true,
         data: {
           accessToken: result.accessToken,
+          refreshToken: result.refreshToken, // También devolver en response para compatibilidad
           expiresIn: result.expiresIn,
           user: result.user
         }

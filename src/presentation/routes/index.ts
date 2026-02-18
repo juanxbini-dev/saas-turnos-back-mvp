@@ -6,6 +6,8 @@ import { GetHealthUseCase } from '../../application/use-cases/GetHealthUseCase';
 import { TestDatabaseUseCase } from '../../application/use-cases/TestDatabaseUseCase';
 import { PostgresDatabaseRepository } from '../../infrastructure/repositories/PostgresDatabaseRepository';
 import authRoutes from './auth.routes';
+import refreshRoutes from './refresh.routes';
+import logoutRoutes from './logout.routes';
 
 const router = Router();
 
@@ -26,5 +28,7 @@ router.get('/api/check-users', (req, res) => checkController.checkUsers(req, res
 
 // Auth routes
 router.use('/auth', authRoutes);
+router.use('/auth', refreshRoutes);
+router.use('/auth', logoutRoutes);
 
 export default router;

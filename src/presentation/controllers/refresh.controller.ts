@@ -1,34 +1,27 @@
 import { Request, Response } from 'express';
-import { LoginUseCase, LoginRequest } from '../../application/use-cases/LoginUseCase';
-import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
+import { RefreshUseCase, RefreshRequest } from '../../application/use-cases/RefreshUseCase';
 import { PostgresRefreshTokenRepository } from '../../infrastructure/repositories/PostgresRefreshTokenRepository';
-import { PasswordService } from '../../infrastructure/security/password.service';
 import { TokenService } from '../../infrastructure/security/token.service';
+import { IUserRepository } from '../../domain/repositories/IUserRepository';
+import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 
-export class AuthController {
-  private loginUseCase: LoginUseCase;
+export class RefreshController {
+  private refreshUseCase: RefreshUseCase;
 
   constructor() {
-    const userRepository = new PostgresUserRepository();
     const refreshTokenRepository = new PostgresRefreshTokenRepository();
-    const passwordService = new PasswordService();
-    
-    this.loginUseCase = new LoginUseCase(
-      userRepository,
-      refreshTokenRepository,
-      passwordService,
-      TokenService
-    );
+    const userRepository = new PostgresUserRepository();
+    this.refreshUseCase = new RefreshUseCase(refreshTokenRepository, userRepository, TokenService);
   }
 
-  async login(req: Request, res: Response): Promise<void> {
+  async refresh(req: Request, res: Response): Promise<void> {
     try {
-      const { email, password } = req.body as LoginRequest;
+      const { refreshToken } = req.body as RefreshRequest;
 
-      if (!email || !password) {
+      if (!refreshToken) {
         res.status(400).json({
           success: false,
-          message: 'Email y password son requeridos'
+          message: 'Refresh token es requerido'
         });
         return;
       }
@@ -36,13 +29,13 @@ export class AuthController {
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('User-Agent');
 
-      const result = await this.loginUseCase.execute(
-        { email, password },
+      const result = await this.refreshUseCase.execute(
+        { refreshToken },
         ipAddress,
         userAgent
       );
 
-      // Set refresh token in HttpOnly cookie
+      // Set new refresh token in HttpOnly cookie
       res.cookie('refreshToken', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -60,7 +53,7 @@ export class AuthController {
         }
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error de autenticación';
+      const message = error instanceof Error ? error.message : 'Error al refrescar token';
       
       res.status(401).json({
         success: false,

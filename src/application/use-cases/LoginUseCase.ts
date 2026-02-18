@@ -1,6 +1,7 @@
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
+import { IRefreshTokenRepository } from '../../domain/repositories/IRefreshTokenRepository';
 import { PasswordService } from '../../infrastructure/security/password.service';
-import { JwtService } from '../../infrastructure/security/jwt.service';
+import { TokenService } from '../../infrastructure/security/token.service';
 
 export interface LoginRequest {
   email: string;
@@ -9,6 +10,8 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
   user: {
     id: string;
     email: string;
@@ -20,11 +23,12 @@ export interface LoginResponse {
 export class LoginUseCase {
   constructor(
     private userRepository: IUserRepository,
+    private refreshTokenRepository: IRefreshTokenRepository,
     private passwordService: PasswordService,
-    private jwtService: JwtService
+    private tokenService: typeof TokenService
   ) {}
 
-  async execute(request: LoginRequest): Promise<LoginResponse> {
+  async execute(request: LoginRequest, ipAddress?: string, userAgent?: string): Promise<LoginResponse> {
     // Parse email como username@domain.com
     const emailParts = request.email.split('@');
     if (emailParts.length !== 2 || !emailParts[0] || !emailParts[1]) {
@@ -58,19 +62,43 @@ export class LoginUseCase {
       throw new Error('Credenciales inválidas');
     }
 
-    // 5. Generar JWT
-    const accessToken = this.jwtService.sign({
+    // 5. Generar access token
+    const accessToken = this.tokenService.generateAccessToken({
       userId: user.id,
       empresaId: user.empresa_id,
       roles: user.roles
     });
 
-    // 6. Actualizar last_login
+    // 6. Generar refresh token
+    const refreshTokenData = this.tokenService.generateRefreshToken();
+
+    // 7. Guardar refresh token en base de datos
+    await this.refreshTokenRepository.create({
+      userId: user.id,
+      tokenHash: refreshTokenData.hash,
+      expiresAt: refreshTokenData.expiresAt,
+      revokedAt: null,
+      lastUsedAt: new Date(),
+      ipAddress: ipAddress || null,
+      userAgent: userAgent || null,
+      isActive: true,
+      userInfo: {
+        id: user.id,
+        email: user.email,
+        roles: user.roles,
+        tenant: user.tenant || '',
+        empresaId: user.empresa_id
+      }
+    });
+
+    // 8. Actualizar last_login
     await this.userRepository.updateLastLogin(user.id);
 
-    // 7. Retornar respuesta
+    // 9. Retornar respuesta
     return {
       accessToken,
+      refreshToken: refreshTokenData.token,
+      expiresIn: this.tokenService.getAccessTokenExpiration(),
       user: {
         id: user.id,
         email: user.email,

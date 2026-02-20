@@ -8,6 +8,7 @@ import { PostgresDatabaseRepository } from '../../infrastructure/repositories/Po
 import authRoutes from './auth.routes';
 import refreshRoutes from './refresh.routes';
 import logoutRoutes from './logout.routes';
+import usuariosRoutes from './usuarios.routes';
 
 const router = Router();
 
@@ -30,5 +31,8 @@ router.get('/api/check-users', (req, res) => checkController.checkUsers(req, res
 router.use('/auth', authRoutes);
 router.use('/auth', refreshRoutes);
 router.use('/auth', logoutRoutes);
+
+// Usuarios routes
+router.use('/api/usuarios', usuariosRoutes);
 
 export default router;

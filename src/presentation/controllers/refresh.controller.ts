@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { RefreshUseCase, RefreshRequest } from '../../application/use-cases/RefreshUseCase';
 import { PostgresRefreshTokenRepository } from '../../infrastructure/repositories/PostgresRefreshTokenRepository';
 import { TokenService } from '../../infrastructure/security/token.service';
+import { CryptoService } from '../../infrastructure/security/crypto.service';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 
@@ -11,7 +12,8 @@ export class RefreshController {
   constructor() {
     const refreshTokenRepository = new PostgresRefreshTokenRepository();
     const userRepository = new PostgresUserRepository();
-    this.refreshUseCase = new RefreshUseCase(refreshTokenRepository, userRepository, TokenService);
+    const cryptoService = new CryptoService();
+    this.refreshUseCase = new RefreshUseCase(refreshTokenRepository, userRepository, TokenService, cryptoService);
   }
 
   async refresh(req: Request, res: Response): Promise<void> {

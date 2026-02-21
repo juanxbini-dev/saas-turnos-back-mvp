@@ -1,5 +1,5 @@
-import { IUsuarioRepository, UpdateDatosData } from '../../domain/repositories/IUsuarioRepository';
-import { UsuarioPublico } from '../../domain/entities/User';
+import { IUsuarioRepository, UpdateDatosData } from '../../../domain/repositories/IUsuarioRepository';
+import { UsuarioPublico } from '../../../domain/entities/User';
 
 export class UpdateUsuarioDatosUseCase {
   constructor(private usuarioRepository: IUsuarioRepository) {}

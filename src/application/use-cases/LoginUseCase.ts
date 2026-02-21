@@ -35,10 +35,10 @@ export class LoginUseCase {
       throw new Error('Formato de email inválido');
     }
 
-    const username = emailParts[0];
-    const domain = emailParts[1];
+    const username = emailParts[0];  // "test_admin"
+    const domain = emailParts[1];    // "testempresa.com"
 
-    // 1. Buscar usuario por username y dominio
+    // 1. Buscar usuario por username y dominio (como está guardado en BD)
     const user = await this.userRepository.findByUsernameAndDomain(username, domain);
     
     if (!user) {

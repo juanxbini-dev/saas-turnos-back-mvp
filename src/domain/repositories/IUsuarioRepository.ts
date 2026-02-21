@@ -1,7 +1,7 @@
 import { UsuarioPublico, User } from '../entities/User';
 
 export interface CreateUsuarioData {
-  id: string;
+  id?: string;
   nombre: string;
   username: string;
   password: string;

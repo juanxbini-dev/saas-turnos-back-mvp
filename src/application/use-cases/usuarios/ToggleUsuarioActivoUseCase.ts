@@ -1,5 +1,5 @@
-import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository';
-import { UsuarioPublico } from '../../domain/entities/User';
+import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
+import { UsuarioPublico } from '../../../domain/entities/User';
 
 export class ToggleUsuarioActivoUseCase {
   constructor(private usuarioRepository: IUsuarioRepository) {}

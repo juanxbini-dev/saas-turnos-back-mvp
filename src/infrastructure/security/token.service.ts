@@ -18,6 +18,7 @@ export interface TokenPair {
 export class TokenService {
   private static readonly ACCESS_TOKEN_EXPIRES_IN = 15 * 60; // 15 minutes
   private static readonly REFRESH_TOKEN_EXPIRES_IN = 7 * 24 * 60 * 60; // 7 days
+  private static cryptoService = new CryptoService();
 
   static generateAccessToken(payload: Omit<TokenPayload, 'type'>): string {
     const tokenPayload: TokenPayload = {
@@ -33,8 +34,8 @@ export class TokenService {
   }
 
   static generateRefreshToken(): { token: string; hash: string; expiresAt: Date } {
-    const token = CryptoService.generateSecureToken(64);
-    const hash = CryptoService.hashToken(token);
+    const token = this.cryptoService.generateSecureToken(64);
+    const hash = this.cryptoService.hashToken(token);
     const expiresAt = new Date(Date.now() + this.REFRESH_TOKEN_EXPIRES_IN * 1000);
 
     return { token, hash, expiresAt };

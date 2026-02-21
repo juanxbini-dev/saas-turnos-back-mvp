@@ -24,12 +24,13 @@ export class RefreshUseCase {
   constructor(
     private refreshTokenRepository: IRefreshTokenRepository,
     private userRepository: IUserRepository,
-    private tokenService: typeof TokenService
+    private tokenService: typeof TokenService,
+    private cryptoService: CryptoService
   ) {}
 
   async execute(request: RefreshRequest, ipAddress?: string, userAgent?: string): Promise<RefreshResponse> {
     // Hash the refresh token for lookup
-    const tokenHash = CryptoService.hashToken(request.refreshToken);
+    const tokenHash = this.cryptoService.hashToken(request.refreshToken);
 
     // Find the refresh token in database
     const storedToken = await this.refreshTokenRepository.findByTokenHash(tokenHash);

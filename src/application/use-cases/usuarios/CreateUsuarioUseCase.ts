@@ -1,7 +1,7 @@
-import { IUsuarioRepository, CreateUsuarioData } from '../../domain/repositories/IUsuarioRepository';
-import { UsuarioPublico } from '../../domain/entities/User';
-import { PasswordService } from '../../infrastructure/security/password.service';
-import { CryptoService } from '../../infrastructure/security/crypto.service';
+import { IUsuarioRepository, CreateUsuarioData } from '../../../domain/repositories/IUsuarioRepository';
+import { UsuarioPublico } from '../../../domain/entities/User';
+import { PasswordService } from '../../../infrastructure/security/password.service';
+import { CryptoService } from '../../../infrastructure/security/crypto.service';
 
 export class CreateUsuarioUseCase {
   constructor(

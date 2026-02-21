@@ -1,6 +1,5 @@
-import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository';
-import { User } from '../../domain/entities/User';
-import { PasswordService } from '../../infrastructure/security/password.service';
+import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
+import { PasswordService } from '../../../infrastructure/security/password.service'; 
 
 export class UpdateUsuarioPasswordUseCase {
   constructor(

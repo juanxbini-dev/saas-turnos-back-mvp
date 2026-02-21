@@ -9,6 +9,7 @@ import authRoutes from './auth.routes';
 import refreshRoutes from './refresh.routes';
 import logoutRoutes from './logout.routes';
 import usuariosRoutes from './usuarios.routes';
+import serviciosRoutes from './servicios.routes';
 
 const router = Router();
 
@@ -34,5 +35,8 @@ router.use('/auth', logoutRoutes);
 
 // Usuarios routes
 router.use('/api/usuarios', usuariosRoutes);
+
+// Servicios routes
+router.use('/api/servicios', serviciosRoutes);
 
 export default router;

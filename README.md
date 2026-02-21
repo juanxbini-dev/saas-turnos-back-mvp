@@ -1,6 +1,6 @@
-# Backend Boilerplate - Node.js + TypeScript + Clean Architecture
+# SaaS Turnos - Backend
 
-Backend Node.js con TypeScript siguiendo Clean Architecture, diseñado como boilerplate base para aplicaciones empresariales con autenticación JWT y soporte multitenant. Forma parte del boilerplate completo junto con el frontend React.
+Backend para sistema de gestión de turnos con **Clean Architecture** usando Node.js + Express + TypeScript + PostgreSQL. Sistema multitenant con autenticación JWT y gestión completa de clientes, servicios y turnos.
 
 ## Stack Tecnológico
 
@@ -10,66 +10,102 @@ Backend Node.js con TypeScript siguiendo Clean Architecture, diseñado como boil
 - **JWT + bcrypt** - Autenticación y hashing de passwords
 - **Clean Architecture** - Arquitectura por capas con separación de responsabilidades
 
-## Propósito del Boilerplate
+## 🎯 Propósito del Sistema
 
-Este backend está diseñado como el servidor de autenticación y API para el frontend React. Implementa un sistema de login completo con refresh tokens, soporte multitenant (usuario@empresa.com), y una arquitectura escalable que permite cambiar fácilmente la base de datos o el framework web sin afectar la lógica de negocio.
+Sistema completo de gestión de turnos para empresas de servicios. Implementa un sistema multitenant donde cada empresa tiene su propio catálogo de clientes, servicios y turnos, con aislamiento completo de datos y gestión centralizada de autenticación.
 
-## Estructura de Carpetas
+## 🏗️ Estado Actual del Sistema
+
+### ✅ Módulos Implementados
+
+- **🔐 Autenticación Completa**: Login, logout, refresh tokens con cookies HttpOnly
+- **👥 Gestión de Usuarios**: CRUD completo con roles y activación
+- **🏢 Empresas**: Sistema multitenant con dominios personalizados
+- **👤 Clientes**: Catálogo completo con búsqueda, filtrado y paginación
+- **🛠️ Servicios**: Gestión de servicios con duración y precios
+- **📅 Turnos**: Sistema completo de agendamiento con disponibilidad
+- **🔒 Seguridad**: JWT, bcrypt, CORS, validaciones
+
+### 🏗️ Arquitectura Implementada
 
 ```
 backend/
 ├── src/
-│   ├── app.ts                 # Configuración de Express y middlewares
-│   ├── server.ts              # Punto de entrada: conexión BD y start server
-│   ├── config/                # Configuración del proyecto
-│   │   └── env.ts            # Variables de entorno y configuración centralizada
-│   ├── domain/                # Capa más interna: lógica de negocio pura
-│   │   ├── entities/          # Entidades del dominio (sin dependencias externas)
-│   │   │   ├── Health.ts      # Entidad para health checks
-│   │   │   ├── RefreshToken.ts # Entidad de refresh tokens
-│   │   │   └── User.ts        # Entidad de usuario con campos multitenant
-│   │   └── repositories/      # Interfaces de repositorios (contratos puros)
-│   │       ├── IDatabaseRepository.ts # Interfaz para operaciones de BD
-│   │       ├── IRefreshTokenRepository.ts # Interfaz para refresh tokens
-│   │       └── IUserRepository.ts # Interfaz para operaciones de usuarios
-│   ├── application/           # Capa de casos de uso (orchestration)
+│   ├── domain/                 # Capa de Dominio
+│   │   ├── entities/
+│   │   │   ├── User.ts         # Entidad de usuario multitenant
+│   │   │   ├── RefreshToken.ts # Tokens de renovación
+│   │   │   ├── Health.ts       # Health checks
+│   │   │   ├── Empresa.ts      # Entidad de empresa
+│   │   │   ├── Cliente.ts      # Entidad de cliente
+│   │   │   ├── Servicio.ts     # Entidad de servicio
+│   │   │   └── Turno.ts        # Entidad de turno
+│   │   └── repositories/
+│   │       ├── IDatabaseRepository.ts
+│   │       ├── IUserRepository.ts
+│   │       ├── IRefreshTokenRepository.ts
+│   │       ├── IEmpresaRepository.ts
+│   │       ├── IClienteRepository.ts
+│   │       ├── IServicioRepository.ts
+│   │       └── ITurnoRepository.ts
+│   ├── application/           # Capa de Aplicación
 │   │   └── use-cases/
-│   │       ├── CheckUsersUseCase.ts # Verificar usuarios en BD
-│   │       ├── GetHealthUseCase.ts # Health check del sistema
-│   │       ├── LoginUseCase.ts # Flujo completo de login
-│   │       ├── LogoutUseCase.ts # Invalidación de refresh tokens
-│   │       ├── RefreshUseCase.ts # Renovación de access tokens
-│   │       └── TestDatabaseUseCase.ts # Prueba de conexión a BD
-│   ├── infrastructure/        # Capa externa: implementaciones concretas
-│   │   ├── database/          # Conexión y configuración de PostgreSQL
-│   │   │   └── postgres.connection.ts # Pool de conexiones a PostgreSQL
-│   │   ├── repositories/      # Implementaciones de repositorios PostgreSQL
-│   │   │   ├── PostgresDatabaseRepository.ts # Queries genéricas de BD
-│   │   │   ├── PostgresRefreshTokenRepository.ts # CRUD refresh tokens
-│   │   │   └── PostgresUserRepository.ts # CRUD usuarios con JOIN empresas
-│   │   └── security/          # Servicios de seguridad (implementación)
-│   │       ├── crypto.service.ts # Utilidades criptográficas
-│   │       ├── jwt.service.ts # Generación/validación JWT simple
-│   │       ├── password.service.ts # Comparación de passwords con bcrypt
-│   │       └── token.service.ts # Manejo completo de tokens (access + refresh)
-│   └── presentation/          # Capa más externa: HTTP y routing
-│       ├── controllers/        # Controladores HTTP (inyección de dependencias)
-│       │   ├── auth.controller.ts # Login con cookies HttpOnly
-│       │   ├── check.controller.ts # Verificación de usuarios
-│       │   ├── health.controller.ts # Health check endpoint
-│       │   ├── logout.controller.ts # Logout con invalidación
-│       │   ├── refresh.controller.ts # Refresh token endpoint
-│       │   └── test.controller.ts # Test de conexión a BD
-│       ├── middlewares/        # Middlewares Express
-│       │   └── error.middleware.ts # Manejo centralizado de errores
-│       └── routes/            # Definición de rutas y dependencias
-│           ├── index.ts       # Router principal con inyección manual
-│           ├── auth.routes.ts  # Rutas de autenticación
-│           ├── logout.routes.ts # Rutas de logout
-│           └── refresh.routes.ts # Rutas de refresh
-├── docs/                      # Documentación adicional
-├── .env                       # Variables de entorno (no commitear)
-└── package.json              # Dependencias y scripts
+│   │       ├── auth/          # Casos de uso de autenticación
+│   │       │   ├── LoginUseCase.ts
+│   │       │   ├── LogoutUseCase.ts
+│   │       │   └── RefreshUseCase.ts
+│   │       ├── usuarios/      # Gestión de usuarios
+│   │       ├── empresas/      # Gestión de empresas
+│   │       ├── clientes/      # Gestión de clientes
+│   │       ├── servicios/     # Gestión de servicios
+│   │       ├── turnos/        # Gestión de turnos
+│   │       ├── GetHealthUseCase.ts
+│   │       └── TestDatabaseUseCase.ts
+│   ├── infrastructure/        # Capa de Infraestructura
+│   │   ├── database/
+│   │   │   └── postgres.connection.ts
+│   │   ├── repositories/
+│   │   │   ├── PostgresUserRepository.ts
+│   │   │   ├── PostgresRefreshTokenRepository.ts
+│   │   │   ├── PostgresEmpresaRepository.ts
+│   │   │   ├── PostgresClienteRepository.ts
+│   │   │   ├── PostgresServicioRepository.ts
+│   │   │   └── PostgresTurnoRepository.ts
+│   │   └── security/
+│   │       ├── crypto.service.ts
+│   │       ├── jwt.service.ts
+│   │       ├── password.service.ts
+│   │       └── token.service.ts
+│   ├── presentation/          # Capa de Presentación
+│   │   ├── controllers/
+│   │   │   ├── auth.controller.ts
+│   │   │   ├── usuarios.controller.ts
+│   │   │   ├── empresas.controller.ts
+│   │   │   ├── clientes.controller.ts
+│   │   │   ├── servicios.controller.ts
+│   │   │   ├── turnos.controller.ts
+│   │   │   ├── health.controller.ts
+│   │   │   └── test.controller.ts
+│   │   ├── middlewares/
+│   │   │   └── error.middleware.ts
+│   │   └── routes/
+│   │       ├── auth.routes.ts
+│   │       ├── usuarios.routes.ts
+│   │       ├── empresas.routes.ts
+│   │       ├── clientes.routes.ts
+│   │       ├── servicios.routes.ts
+│   │       ├── turnos.routes.ts
+│   │       └── index.ts
+│   ├── config/
+│   │   └── env.ts
+│   ├── app.ts
+│   └── server.ts
+├── docs/
+│   ├── database/
+│   │   ├── schema.sql
+│   │   └── seed.sql
+│   └── README.md
+└── package.json
 ```
 
 ## Clean Architecture - Modelo Mental
@@ -111,7 +147,148 @@ const loginUseCase = new LoginUseCase(
 );
 ```
 
-## Configuración y Variables de Entorno
+## 🚀 API Endpoints
+
+### 🔐 Autenticación
+| Método | Path | Descripción | Auth Requerida |
+|--------|------|-------------|----------------|
+| POST | `/auth/login` | Login de usuario | No |
+| POST | `/auth/refresh` | Renovar token | Cookie refreshToken |
+| POST | `/auth/logout` | Logout | Cookie refreshToken |
+
+### 👥 Usuarios
+| Método | Path | Descripción | Roles Permitidos |
+|--------|------|-------------|------------------|
+| GET | `/api/usuarios` | Listar usuarios | Admin |
+| POST | `/api/usuarios` | Crear usuario | Admin |
+| PUT | `/api/usuarios/:id` | Actualizar usuario | Admin, Propio |
+| DELETE | `/api/usuarios/:id` | Eliminar usuario | Admin |
+
+### 🏢 Empresas
+| Método | Path | Descripción | Roles Permitidos |
+|--------|------|-------------|------------------|
+| GET | `/api/empresas` | Listar empresas | Admin |
+| POST | `/api/empresas` | Crear empresa | Admin |
+| PUT | `/api/empresas/:id` | Actualizar empresa | Admin |
+| DELETE | `/api/empresas/:id` | Eliminar empresa | Admin |
+
+### 👤 Clientes
+| Método | Path | Descripción | Roles Permitidos |
+|--------|------|-------------|------------------|
+| GET | `/api/clientes` | Listar clientes (tenant) | Admin, Staff |
+| POST | `/api/clientes` | Crear cliente | Admin, Staff |
+| PUT | `/api/clientes/:id` | Actualizar cliente | Admin, Staff |
+| DELETE | `/api/clientes/:id` | Eliminar cliente | Admin |
+| PATCH | `/api/clientes/:id/toggle` | Activar/Desactivar | Admin, Staff |
+
+### 🛠️ Servicios
+| Método | Path | Descripción | Roles Permitidos |
+|--------|------|-------------|------------------|
+| GET | `/api/servicios` | Listar servicios (tenant) | Admin, Staff |
+| POST | `/api/servicios` | Crear servicio | Admin, Staff |
+| PUT | `/api/servicios/:id` | Actualizar servicio | Admin, Staff |
+| DELETE | `/api/servicios/:id` | Eliminar servicio | Admin |
+| PATCH | `/api/servicios/:id/toggle` | Activar/Desactivar | Admin, Staff |
+
+### 📅 Turnos
+| Método | Path | Descripción | Roles Permitidos |
+|--------|------|-------------|------------------|
+| GET | `/api/turnos` | Listar turnos (tenant) | Admin, Staff |
+| POST | `/api/turnos` | Crear turno | Admin, Staff |
+| PUT | `/api/turnos/:id` | Actualizar turno | Admin, Staff |
+| DELETE | `/api/turnos/:id` | Cancelar turno | Admin, Staff |
+| GET | `/api/turnos/disponibilidad` | Ver disponibilidad | Admin, Staff, Cliente |
+
+### 🏠 Health & System
+| Método | Path | Descripción | Auth Requerida |
+|--------|------|-------------|----------------|
+| GET | `/health` | Health check del sistema | No |
+| GET | `/api/test-db` | Test conexión a BD | No |
+
+## 🗄️ Base de Datos
+
+### Schema Principal
+
+```sql
+-- Empresas (Multitenant)
+CREATE TABLE empresas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre VARCHAR(255) NOT NULL,
+    dominio VARCHAR(255) UNIQUE NOT NULL,
+    activo BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Usuarios (con soporte multitenant)
+CREATE TABLE usuarios (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
+    empresa_id UUID REFERENCES empresas(id),
+    roles TEXT[] DEFAULT ARRAY['user'],
+    activo BOOLEAN DEFAULT true,
+    last_login TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Clientes (por empresa)
+CREATE TABLE clientes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    telefono VARCHAR(50),
+    empresa_id UUID REFERENCES empresas(id),
+    activo BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Servicios (por empresa)
+CREATE TABLE servicios (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    duracion INTEGER NOT NULL, -- minutos
+    precio DECIMAL(10,2),
+    empresa_id UUID REFERENCES empresas(id),
+    activo BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Turnos (por empresa)
+CREATE TABLE turnos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cliente_id UUID REFERENCES clientes(id),
+    servicio_id UUID REFERENCES servicios(id),
+    empresa_id UUID REFERENCES empresas(id),
+    fecha_inicio TIMESTAMP NOT NULL,
+    fecha_fin TIMESTAMP NOT NULL,
+    estado VARCHAR(20) DEFAULT 'pendiente', -- pendiente, confirmado, cancelado, completado
+    notas TEXT,
+    creado_por UUID REFERENCES usuarios(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Refresh Tokens
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES usuarios(id),
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    revoked_at TIMESTAMP,
+    last_used_at TIMESTAMP DEFAULT NOW(),
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## ⚙️ Configuración y Variables de Entorno
 
 ### Variables Necesarias
 
@@ -124,22 +301,37 @@ const loginUseCase = new LoginUseCase(
 | `DB_PASSWORD` | Password de BD | `turnos_pass` |
 | `DB_NAME` | Nombre de la BD | `turnos_db` |
 | `JWT_SECRET` | Secreto para access tokens | `super_secret_key` |
-| `REFRESH_TOKEN_SECRET` | Secreto para refresh tokens (opcional) | `super_refresh_secret` |
+| `REFRESH_TOKEN_SECRET` | Secreto para refresh tokens | `super_refresh_secret` |
 | `REFRESH_TOKEN_DAYS` | Duración de refresh tokens en días | `7` |
-| `NODE_ENV` | Ambiente (affecta cookies) | `development` |
+| `NODE_ENV` | Ambiente (afecta cookies) | `development` |
 
-### Configuración desde Cero
+### Instalación y Configuración
 
-1. **Crear base de datos PostgreSQL**:
+1. **Clonar repositorio**:
+   ```bash
+   git clone https://github.com/juanxbini/saas-turnos-back-mvp.git
+   cd saas-turnos-back-mvp
+   ```
+
+2. **Instalar dependencias**:
+   ```bash
+   npm install
+   ```
+
+3. **Crear base de datos PostgreSQL**:
    ```sql
    CREATE DATABASE turnos_db;
    CREATE USER turnos_user WITH PASSWORD 'turnos_pass';
    GRANT ALL PRIVILEGES ON DATABASE turnos_db TO turnos_user;
    ```
 
-2. **Crear tablas** (ver documentación en docs/):
+4. **Ejecutar schema y seed**:
+   ```bash
+   psql -h localhost -U turnos_user -d turnos_db -f docs/database/schema.sql
+   psql -h localhost -U turnos_user -d turnos_db -f docs/database/seed.sql
+   ```
 
-3. **Configurar .env**:
+5. **Configurar .env**:
    ```env
    PORT=4000
    DB_HOST=localhost
@@ -150,15 +342,15 @@ const loginUseCase = new LoginUseCase(
    JWT_SECRET=super_secret_key
    REFRESH_TOKEN_SECRET=super_refresh_secret
    REFRESH_TOKEN_DAYS=7
+   NODE_ENV=development
    ```
 
-4. **Instalar y correr**:
+6. **Ejecutar servidor**:
    ```bash
-   npm install
    npm run dev
    ```
 
-## Sistema de Autenticación
+## 🔐 Sistema de Autenticación
 
 ### Flujo Completo
 
@@ -171,651 +363,189 @@ POST /auth/login
 }
 ```
 
-**Flujo interno**:
-1. Controller recibe credenciales + IP + User-Agent
-2. LoginUseCase parsea email como username@domain (multitenant)
-3. Repository busca usuario por username y dominio con JOIN a empresas
-4. Validaciones: usuario activo, empresa activa, password correcto
-5. TokenService genera accessToken (JWT 15min) + refreshToken (token aleatorio)
-6. RefreshTokenRepository guarda hash del token con metadata
-7. UserRepository actualiza last_login
-8. Response: accessToken en body, refreshToken en cookie HttpOnly
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "random_token_string",
+    "expiresIn": 900,
+    "user": {
+      "id": "uuid",
+      "email": "usuario@empresa.com",
+      "roles": ["admin"],
+      "tenant": "empresa",
+      "empresaId": "uuid"
+    }
+  }
+}
+```
 
-#### 2. Refresh
+#### 2. Refresh Token
 ```
 POST /auth/refresh
-Cookie: refreshToken=token_http_only
+Cookie: refreshToken=random_token_string; HttpOnly; Secure
 ```
-
-**Flujo interno**:
-1. Controller lee cookie HttpOnly
-2. RefreshUseCase busca hash en BD, valida que no esté revocado
-3. TokenService genera nuevo accessToken con misma payload
-4. RefreshTokenRepository actualiza last_used_at
-5. Response: nuevo accessToken (refresh token sigue en cookie)
 
 #### 3. Logout
 ```
 POST /auth/logout
-Cookie: refreshToken=token_http_only
+Cookie: refreshToken=random_token_string; HttpOnly; Secure
 ```
 
-**Flujo interno**:
-1. Controller lee cookie HttpOnly
-2. LogoutUseCase busca refresh token en BD
-3. RefreshTokenRepository marca como revocado (revoked_at = NOW())
-4. Controller limpia cookie
-5. Response: éxito sin contenido
+### Características de Seguridad
 
-### Servicios de Seguridad
+- **🍪 Cookies HttpOnly**: Refresh tokens no accesibles desde JavaScript
+- **🔄 Rotación automática**: Tokens se renuevan automáticamente
+- **🏢 Multitenant**: Aislamiento completo por empresa
+- **⏰ Expiración**: Access tokens (15min), Refresh tokens (7 días)
+- **🛡️ Revocación**: Logout invalida tokens inmediatamente
+- **🔍 Auditoría**: IP y User-Agent tracking
 
-#### jwt.service.ts
-**Responsabilidad**: Generación y validación simple de JWT
-```typescript
-sign(payload: { userId: string; empresaId: string; roles: string[] }): string
+## 🔄 Flujo de Datos
+
+### Request → Response Flow
+
+1. **Request HTTP** → **Router**
+2. **Router** → **Controller** (con validación)
+3. **Controller** → **Use Case** (lógica de negocio)
+4. **Use Case** → **Repository Interface** (contrato)
+5. **Repository Implementation** → **PostgreSQL** (datos)
+6. **Response** → **Controller** → **Router** → **Cliente**
+
+### Ejemplo: Crear Cliente
+
 ```
-
-#### password.service.ts
-**Responsabilidad**: Comparación segura de passwords con bcrypt
-```typescript
-compare(password: string, hash: string): Promise<boolean>
-```
-
-#### crypto.service.ts
-**Responsabilidad**: Utilidades criptográficas
-```typescript
-hashToken(token: string): string          // SHA-256 hash
-generateSecureToken(length: number): string // Random bytes hex
-generateUUID(): string                    // UUID v4
-isValidUUID(uuid: string): boolean        // Validación UUID
-```
-
-#### token.service.ts
-**Responsabilidad**: Manejo completo de tokens (access + refresh)
-```typescript
-generateAccessToken(payload): string      // JWT 15min con issuer/audience
-generateRefreshToken(): { token, hash, expiresAt } // Token aleatorio + hash
-verifyAccessToken(token): TokenPayload    // Validación JWT con tipo
-getAccessTokenExpiration(): number        // 15 * 60 segundos
-getRefreshTokenExpiration(): number       // 7 * 24 * 60 * 60 segundos
-```
-
-## Capa de Dominio
-
-### Entidades Disponibles
-
-#### User.ts
-```typescript
-interface User {
-  id: string;              // UUID del usuario
-  email: string;           // email completo (usuario@empresa.com)
-  password: string;        // hash bcrypt
-  empresa_id: string;      // FK a tabla empresas
-  roles: string[];        // Array de roles ['admin', 'user']
-  activo: boolean;         // Estado del usuario
-  tenant?: string;         // Dominio de la empresa (from JOIN)
-  empresa_activa?: boolean; // Estado de la empresa (from JOIN)
-}
-```
-
-#### RefreshToken.ts
-```typescript
-interface RefreshToken {
-  id: string;
-  userId: string;
-  tokenHash: string;        // SHA-256 del token
-  expiresAt: Date;
-  revokedAt: Date | null;
-  lastUsedAt: Date;
-  ipAddress: string | null;
-  userAgent: string | null;
-  isActive: boolean;
-  userInfo: {              // Payload del usuario al crear
-    id: string;
-    email: string;
-    roles: string[];
-    tenant: string;
-    empresaId: string;
-  };
-}
-```
-
-#### Health.ts
-```typescript
-interface Health {
-  status: 'healthy' | 'unhealthy';
-  timestamp: Date;
-  uptime: number;
-  database: 'connected' | 'disconnected';
-}
-```
-
-### Interfaces de Repositorios
-
-#### IUserRepository.ts
-```typescript
-interface IUserRepository {
-  findByEmail(email: string): Promise<User | null>;
-  findByUsernameAndDomain(username: string, domain: string): Promise<User | null>;
-  updateLastLogin(userId: string): Promise<void>;
-}
-```
-
-#### IRefreshTokenRepository.ts
-```typescript
-interface IRefreshTokenRepository {
-  create(data: CreateRefreshTokenData): Promise<void>;
-  findByTokenHash(tokenHash: string): Promise<RefreshToken | null>;
-  revokeByTokenHash(tokenHash: string): Promise<void>;
-  revokeByUserId(userId: string): Promise<void>;
-}
-```
-
-#### IDatabaseRepository.ts
-```typescript
-interface IDatabaseRepository {
-  testConnection(): Promise<boolean>;
-}
-```
-
-**Importante**: Las interfaces son el contrato que separa la lógica de negocio de la implementación. El LoginUseCase no sabe si está usando PostgreSQL, MongoDB, o archivos JSON.
-
-## Casos de Uso
-
-### LoginUseCase
-**Responsabilidad**: Orquestar el flujo completo de login con validaciones multitenant
-**Dependencias**: IUserRepository, IRefreshTokenRepository, PasswordService, TokenService
-**Retorna**: LoginResponse con accessToken, refreshToken, expiresIn, user
-
-### RefreshUseCase
-**Responsabilidad**: Renovar access token usando refresh token de cookie
-**Dependencias**: IRefreshTokenRepository, TokenService
-**Retorna**: Nuevo accessToken con misma payload
-
-### LogoutUseCase
-**Responsabilidad**: Invalidar refresh token y limpiar cookie
-**Dependencias**: IRefreshTokenRepository
-**Retorna**: void (éxito sin contenido)
-
-### GetHealthUseCase
-**Responsabilidad**: Verificar estado del sistema (uptime, BD)
-**Dependencias**: Ninguna (estado simple)
-**Retorna**: Health status
-
-### TestDatabaseUseCase
-**Responsabilidad**: Probar conexión a base de datos
-**Dependencias**: IDatabaseRepository
-**Retorna**: boolean indicando conexión exitosa
-
-### CheckUsersUseCase
-**Responsabilidad**: Verificar existencia de usuarios en BD
-**Dependencias**: IUserRepository
-**Retorna**: Array de usuarios básicos (id, email, activo)
-
-### Patrón de Inyección de Dependencias
-
-Todos los use cases reciben sus dependencias por constructor:
-
-```typescript
-// En el controller
-const loginUseCase = new LoginUseCase(
-  userRepository,           // ← Inyectado
-  refreshTokenRepository,   // ← Inyectado
-  passwordService,          // ← Inyectado
-  TokenService              // ← Inyectado (singleton)
-);
-
-// El use case nunca importa directamente
-export class LoginUseCase {
-  constructor(
-    private userRepository: IUserRepository,        // ← Interface
-    private refreshTokenRepository: IRefreshTokenRepository, // ← Interface
-    private passwordService: PasswordService,      // ← Concreto
-    private tokenService: typeof TokenService       // ← Singleton
-  ) {}
-}
-```
-
-## Infraestructura
-
-### Conexión a PostgreSQL
-
-**postgres.connection.ts** implementa un pool de conexiones:
-
-```typescript
-const pool = new Pool({
-  host: config.database.host,
-  port: config.database.port,
-  user: config.database.user,
-  password: config.database.password || '',
-  database: config.database.name,
-});
-
-export const connectDatabase = async (): Promise<void> => {
-  await pool.connect();
-  console.log('Database connected');
-};
-```
-
-**Ventajas del pool**:
-- Reutilización de conexiones
-- Manejo automático de conexión/disconnection
-- Limitación de conexiones concurrentes
-- Timeout y retry automáticos
-
-### Repositorios PostgreSQL
-
-#### PostgresUserRepository
-**Métodos implementados**:
-- `findByEmail()`: JOIN con tabla empresas para obtener tenant y estado
-- `findByUsernameAndDomain()`: Query multitenant para login
-- `updateLastLogin()`: Actualización timestamp de último login
-
-**Query ejemplo**:
-```sql
-SELECT u.*, e.dominio, e.activo as empresa_activa
-FROM usuarios u
-JOIN empresas e ON u.empresa_id = e.id
-WHERE u.username = $1 AND e.dominio = $2
-LIMIT 1;
-```
-
-#### PostgresRefreshTokenRepository
-**Métodos implementados**:
-- `create()`: Insert con token hash y metadata
-- `findByTokenHash()`: Búsqueda por hash SHA-256
-- `revokeByTokenHash()`: UPDATE revoked_at = NOW()
-- `revokeByUserId()**: Invalidación masiva por usuario
-
-#### PostgresDatabaseRepository
-**Métodos implementados**:
-- `testConnection()`: Query simple para verificar conexión
-
-**Importante**: Esta es la única capa que conoce SQL. Cambiar PostgreSQL por otro motor solo requiere reimplementar estos repositorios.
-
-## Capa de Presentación
-
-### Controllers
-
-#### auth.controller.ts
-**Responsabilidad**: Orquestar LoginUseCase, manejar cookies HttpOnly
-**Use case**: LoginUseCase
-**Response**: `{ success: true, data: { accessToken, refreshToken, expiresIn, user } }`
-
-#### refresh.controller.ts
-**Responsabilidad**: Leer cookie, orquestar RefreshUseCase
-**Use case**: RefreshUseCase
-**Response**: `{ success: true, data: { accessToken, expiresIn } }`
-
-#### logout.controller.ts
-**Responsabilidad**: Leer cookie, orquestar LogoutUseCase, limpiar cookie
-**Use case**: LogoutUseCase
-**Response**: `{ success: true, message: 'Logged out successfully' }`
-
-#### health.controller.ts
-**Responsabilidad**: Retornar estado del sistema
-**Use case**: GetHealthUseCase
-**Response**: `{ success: true, data: { status, timestamp, uptime, database } }`
-
-#### test.controller.ts
-**Responsabilidad**: Probar conexión a BD
-**Use case**: TestDatabaseUseCase
-**Response**: `{ success: true, data: { connected: boolean } }`
-
-#### check.controller.ts
-**Responsabilidad**: Verificar usuarios en BD
-**Use case**: CheckUsersUseCase
-**Response**: `{ success: true, data: { users: UserBasic[] } }`
-
-### Middlewares
-
-#### error.middleware.ts
-**Manejo de errores centralizado**:
-
-```typescript
-interface CustomError extends Error {
-  statusCode?: number;
-}
-
-export const errorHandler = (error: CustomError, req, res, next): void => {
-  const statusCode = error.statusCode || 500;
-  const message = error.message || 'Internal server error';
-  
-  console.error('Error:', error);
-  
-  res.status(statusCode).json({
-    success: false,
-    message
-  });
-};
-```
-
-**Tipos de error manejados**:
-- **400**: Bad Request (datos inválidos)
-- **401**: Unauthorized (credenciales inválidas)
-- **500**: Internal Server Error (error del sistema)
-
-**asyncHandler**: Wrapper para manejo automático de errores async:
-```typescript
-export const asyncHandler = (fn: Function) => {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-};
-```
-
-### Rutas
-
-| Método | Path | Controller | Auth Requerida |
-|--------|------|-------------|----------------|
-| GET | `/health` | HealthController | No |
-| GET | `/api/test-db` | TestController | No |
-| GET | `/api/check-users` | CheckController | No |
-| POST | `/auth/login` | AuthController | No |
-| POST | `/auth/refresh` | RefreshController | Cookie refreshToken |
-| POST | `/auth/logout` | LogoutController | Cookie refreshToken |
-
-### Estructura de Routes
-
-**index.ts**: Router principal con inyección manual de dependencias
-```typescript
-// Dependencies
-const databaseRepository = new PostgresDatabaseRepository();
-const getHealthUseCase = new GetHealthUseCase();
-const testDatabaseUseCase = new TestDatabaseUseCase(databaseRepository);
-
-// Controllers
-const healthController = new HealthController(getHealthUseCase);
-const testController = new TestController(testDatabaseUseCase);
-```
-
-## Cómo Agregar un Nuevo Módulo
-
-Ejemplo: Agregar módulo **Producto** siguiendo Clean Architecture:
-
-### 1. Crear Entidad en Domain
-```typescript
-// src/domain/entities/Product.ts
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  empresa_id: string;
-  activo: boolean;
-  created_at: Date;
-  updated_at: Date;
-}
-```
-
-### 2. Crear Interfaz de Repository
-```typescript
-// src/domain/repositories/IProductRepository.ts
-import { Product } from '../entities/Product';
-
-export interface IProductRepository {
-  findById(id: string): Promise<Product | null>;
-  findByEmpresa(empresaId: string): Promise<Product[]>;
-  create(product: CreateProductData): Promise<Product>;
-  update(id: string, data: UpdateProductData): Promise<Product>;
-  delete(id: string): Promise<void>;
-}
-```
-
-### 3. Crear Use Cases
-```typescript
-// src/application/use-cases/CreateProductUseCase.ts
-export class CreateProductUseCase {
-  constructor(
-    private productRepository: IProductRepository
-  ) {}
-
-  async execute(data: CreateProductRequest): Promise<Product> {
-    // Validaciones de negocio
-    if (data.price <= 0) {
-      throw new Error('Price must be positive');
-    }
-
-    // Crear producto
-    return await this.productRepository.create({
-      ...data,
-      created_at: new Date(),
-      updated_at: new Date()
-    });
-  }
-}
-```
-
-### 4. Implementar Repository
-```typescript
-// src/infrastructure/repositories/PostgresProductRepository.ts
-export class PostgresProductRepository implements IProductRepository {
-  async findById(id: string): Promise<Product | null> {
-    const query = 'SELECT * FROM products WHERE id = $1 AND activo = true';
-    // Implementación SQL
-  }
-
-  // ... otros métodos
-}
-```
-
-### 5. Crear Controller
-```typescript
-// src/presentation/controllers/product.controller.ts
-export class ProductController {
-  private createProductUseCase: CreateProductUseCase;
-
-  constructor() {
-    const productRepository = new PostgresProductRepository();
-    this.createProductUseCase = new CreateProductUseCase(productRepository);
-  }
-
-  async createProduct(req: Request, res: Response): Promise<void> {
-    try {
-      const result = await this.createProductUseCase.execute(req.body);
-      
-      res.status(201).json({
-        success: true,
-        data: result
-      });
-    } catch (error) {
-      next(error); // Deja que el error middleware lo maneje
-    }
-  }
-}
-```
-
-### 6. Registrar Rutas
-```typescript
-// src/presentation/routes/product.routes.ts
-import { Router } from 'express';
-import { ProductController } from '../controllers/product.controller';
-
-const router = Router();
-const productController = new ProductController();
-
-router.post('/products', (req, res, next) => 
-  productController.createProduct(req, res, next)
-);
-
-export default router;
-
-// Agregar a src/presentation/routes/index.ts
-import productRoutes from './product.routes';
-router.use('/', productRoutes);
-```
-
-## Guía para Empezar un Proyecto Nuevo
-
-### Pasos Ordenados
-
-1. **Clonar el boilerplate**
-   ```bash
-   git clone <repo-url> mi-backend
-   cd mi-backend
-   ```
-
-2. **Instalar dependencias**
-   ```bash
-   npm install
-   ```
-
-3. **Configurar variables de entorno**
-   ```bash
-   cp .env.example .env
-   # Editar .env con valores del proyecto
-   ```
-
-4. **Crear base de datos PostgreSQL**
-   ```sql
-   CREATE DATABASE mi_proyecto_db;
-   CREATE USER mi_proyecto_user WITH PASSWORD 'secure_pass';
-   GRANT ALL PRIVILEGES ON DATABASE mi_proyecto_db TO mi_proyecto_user;
-   ```
-
-5. **Crear tablas básicas**
-   - Usar scripts en `docs/database/` del boilerplate
-   - Adaptar nombres de tablas si es necesario
-
-6. **Correr el servidor**
-   ```bash
-   npm run dev
-   ```
-
-7. **Probar endpoints**
-   ```bash
-   # Health check
-   curl http://localhost:4000/health
-   
-   # Test database
-   curl http://localhost:4000/api/test-db
-   ```
-
-### Qué Modificar
-
-**Obligatorio**:
-- `package.json`: nombre, descripción, autor
-- `.env`: todas las variables de entorno
-- Tablas de BD: adaptar a tu modelo de datos
-- `src/app.ts`: CORS origins para tu frontend
-
-**Opcional**:
-- Agregar nuevos módulos siguiendo la guía
-- Modificar tiempo de expiración de tokens
-- Personalizar respuestas HTTP
-
-### Qué NO Tocar Nunca
-
-**Arquitectura core**:
-- Estructura de capas (domain/application/infrastructure/presentation)
-- Interfaces de repositorios (son contratos puros)
-- Patrón de inyección de dependencias manual
-- Sistema de errores centralizado
-
-**Seguridad**:
-- Lógica de refresh tokens
-- Manejo de cookies HttpOnly
-- Validaciones de auth en los use cases
-
-## Convenciones del Proyecto
-
-### Nombres de Archivos por Capa
-
-- **Entities**: PascalCase singular (`User.ts`, `Product.ts`)
-- **Repositories**: `I` + PascalCase (`IUserRepository.ts`)
-- **Use Cases**: PascalCase + `UseCase` (`LoginUseCase.ts`)
-- **Controllers**: PascalCase + `Controller` (`AuthController.ts`)
-- **Services**: PascalCase + `Service` (`PasswordService.ts`)
-
-### Patrón de Respuesta HTTP
-
-**Éxito**:
-```typescript
+POST /api/clientes
 {
-  success: true,
-  data: {
-    // Datos del response
-  }
+  "nombre": "Juan Pérez",
+  "email": "juan@cliente.com",
+  "telefono": "+5491123456789"
 }
+    ↓
+Auth Middleware (verifica JWT)
+    ↓
+ClientesController.create()
+    ↓
+CreateClienteUseCase.execute()
+    ↓
+IClienteRepository.create()
+    ↓
+PostgresClienteRepository.create()
+    ↓
+INSERT INTO clientes (...) VALUES (...)
+    ↓
+Response 201 con cliente creado
 ```
 
-**Error**:
-```typescript
-{
-  success: false,
-  message: "Error descriptivo"
-}
-```
+## 🌐 Conexión con Frontend
 
-### Manejo de Errores en Use Cases
-
-**Siempre lanzar Error con mensaje descriptivo**:
-```typescript
-// ✅ Correcto
-if (!user) {
-  throw new Error('Credenciales inválidas');
-}
-
-if (!user.activo) {
-  throw new Error('Usuario inactivo');
-}
-
-// ❌ Incorrecto
-if (!user) {
-  return null; // No llega al error middleware
-}
-```
-
-El error middleware automáticamente convertirá el Error en respuesta HTTP con statusCode apropiado.
-
-### Cuándo Crear Nuevo Use Case
-
-**Crear nuevo use case cuando**:
-- Es una acción de negocio distinta (crear vs actualizar vs eliminar)
-- Tiene diferentes validaciones o reglas
-- Requiere diferentes dependencias
-
-**Extender use case existente cuando**:
-- Es una variación de la misma acción
-- Comparte las mismas validaciones y dependencias
-- Solo cambia el formato de salida
-
----
-
-## Conexión con el Frontend
-
-Este backend está diseñado para trabajar perfectamente con el [frontend React boilerplate](../frontend/README.md).
+Este backend está diseñado para integrarse perfectamente con el [frontend React](https://github.com/juanxbini/saas-turnos-frontend-mvp.git).
 
 ### Integración
 
-1. **CORS configurado** para `localhost:5173` y `localhost:5174`
-2. **Endpoints compatibles** con el axiosInstance del frontend
-3. **Formato de respuesta** consistente con lo que espera el frontend
-4. **Refresh tokens en cookies HttpOnly** como espera el axiosInstance
+- **✅ CORS configurado** para `localhost:5173` y `localhost:5174`
+- **✅ Endpoints compatibles** con axiosInstance del frontend
+- **✅ Formato de respuesta** consistente
+- **✅ Refresh tokens en cookies** como espera el frontend
 
-### Flujo Completo Frontend-Backend
+### Flujo Frontend-Backend
 
 ```
-Frontend React → axiosInstance → Backend Express → Use Cases → PostgreSQL
-     ↑                    ↓              ↓            ↓           ↓
+React App → axiosInstance → Backend Express → Use Cases → PostgreSQL
+    ↑            ↓              ↓            ↓           ↓
 Toast notifications ← HTTP responses ← Controllers ← Entities ← SQL
 ```
 
-### Variables de Entorno Coordinadas
+## 🚀 Deployment
 
-**Backend (.env)**:
-```env
-VITE_API_URL=http://localhost:4000  # ← Debe coincidir con PORT del backend
+### Producción
+
+1. **Variables de entorno**:
+   ```env
+   NODE_ENV=production
+   PORT=4000
+   DB_HOST=your-db-host
+   # ... otras variables
+   ```
+
+2. **Build**:
+   ```bash
+   npm run build
+   ```
+
+3. **Start**:
+   ```bash
+   npm start
+   ```
+
+### Docker (Opcional)
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 4000
+CMD ["npm", "start"]
 ```
 
-**Frontend (.env)**:
-```env
-VITE_API_URL=http://localhost:4000  # ← URL del backend
+## 🧪 Testing
+
+### Endpoints de Prueba
+
+```bash
+# Health check
+curl http://localhost:4000/health
+
+# Test database
+curl http://localhost:4000/api/test-db
+
+# Login
+curl -X POST http://localhost:4000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@demo.com","password":"demo123"}'
 ```
 
-### Prueba de Integración
+## 📊 Métricas y Monitoreo
 
-1. **Iniciar backend**: `npm run dev` (puerto 4000)
-2. **Iniciar frontend**: `npm run dev` (puerto 5173)
-3. **Probar login**: El frontend debería autenticarse exitosamente
+### Logs
+- **Development**: Console logging detallado
+- **Production**: Estructurado para ELK stack
 
-**Desarrollado para**: Desarrolladores humanos y agentes de IA que necesiten un backend robusto y escalable como punto de partida para aplicaciones empresariales.
+### Health Checks
+- **Application**: `/health` endpoint
+- **Database**: `/api/test-db` endpoint
+- **System**: Uptime y memory usage
+
+## 🔄 Versionado
+
+- **Branch principal**: `develop`
+- **Version**: 1.0.0-MVP
+- **Cambios breaking**: SemVer estricto
+
+## 🤝 Contribución
+
+### Flujo de Trabajo
+
+1. Fork del repositorio
+2. Feature branch desde `develop`
+3. Pull request con tests
+4. Code review obligatorio
+5. Merge a `develop`
+
+### Convenciones
+
+- **Commits**: Conventional Commits
+- **Code**: ESLint + Prettier
+- **Tests**: Jest + Supertest
+
+---
+
+**Sistema de gestión de turnos multitenant - Backend MVP**
+
+📧 **Soporte**: Issues en GitHub
+🌐 **Frontend**: [saas-turnos-frontend-mvp](https://github.com/juanxbini/saas-turnos-frontend-mvp.git)

@@ -8,18 +8,35 @@ export class GetDisponibilidadMesUseCase {
   ) {}
 
   async execute(profesionalId: string, mes: number, año: number): Promise<string[]> {
+    console.log('🔍 [GetDisponibilidadMesUseCase] Iniciando ejecución:', { profesionalId, mes, año });
+    
     const [disponibilidades, vacaciones, excepciones] = await Promise.all([
       this.disponibilidadRepository.findDisponibilidadByProfesional(profesionalId),
       this.disponibilidadRepository.findVacacionesByProfesional(profesionalId),
       this.disponibilidadRepository.findExcepcionesByProfesional(profesionalId)
     ]);
 
-    return this.disponibilidadService.calcularDiasDisponiblesMes(
+    console.log(' [GetDisponibilidadMesUseCase] Datos obtenidos:', {
+      disponibilidades: disponibilidades.length,
+      vacaciones: vacaciones.length,
+      excepciones: excepciones.length,
+      excepciones_detalle: excepciones.map(exc => ({
+        fecha: exc.fecha,
+        disponible: exc.disponible,
+        hora_inicio: exc.hora_inicio,
+        hora_fin: exc.hora_fin
+      }))
+    });
+
+    const result = this.disponibilidadService.calcularDiasDisponiblesMes(
       disponibilidades,
       vacaciones,
       excepciones,
       mes,
       año
     );
+
+    console.log('🔍 [GetDisponibilidadMesUseCase] Resultado final:', result);
+    return result;
   }
 }

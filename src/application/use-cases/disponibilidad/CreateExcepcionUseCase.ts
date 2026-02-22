@@ -34,8 +34,7 @@ export class CreateExcepcionUseCase {
       ...(horaInicio && { hora_inicio: horaInicio }),
       ...(horaFin && { hora_fin: horaFin }),
       ...(intervaloMinutos && { intervalo_minutos: intervaloMinutos }),
-      ...(notas && { notas }),
-      empresa_id: empresaId
+      ...(notas && { notas })
     };
 
     return this.disponibilidadRepository.createExcepcion(data);

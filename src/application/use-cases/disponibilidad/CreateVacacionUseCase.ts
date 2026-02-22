@@ -30,8 +30,7 @@ export class CreateVacacionUseCase {
       fecha,
       ...(fechaFin && { fecha_fin: fechaFin }),
       tipo,
-      ...(motivo && { motivo }),
-      empresa_id: empresaId
+      ...(motivo && { motivo })
     };
 
     return this.disponibilidadRepository.createVacacion(data);

@@ -90,14 +90,19 @@ export class TurnosController {
       const { profesionalId } = req.params;
       const { mes, año } = req.query;
       
+      console.log('🔍 [TurnosController] getDisponibilidadMes - Petición recibida:', { profesionalId, mes, año });
+      
       const diasDisponibles = await this.getDisponibilidadMesUseCase.execute(
         profesionalId,
         Number(mes),
         Number(año)
       );
       
+      console.log('🔍 [TurnosController] getDisponibilidadMes - Resultado:', diasDisponibles);
+      
       res.json({ success: true, data: diasDisponibles });
     } catch (error: any) {
+      console.error('💥 [TurnosController] Error en getDisponibilidadMes:', error);
       const statusCode = error.statusCode || 500;
       res.status(statusCode).json({ 
         success: false, 
@@ -111,13 +116,31 @@ export class TurnosController {
       const { profesionalId } = req.params;
       const { fecha } = req.query;
       
+      console.log('🔍 [TurnosController] getSlotsDisponibles - Petición:', { profesionalId, fecha });
+      
+      // Validar que fecha exista
+      if (!fecha || typeof fecha !== 'string') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'El parámetro fecha es requerido y debe ser un string' 
+        });
+      }
+      
+      // Si no hay usuario autenticado (ruta debug), creamos un usuario mock
+      if (!req.user) {
+        console.log('🔍 [TurnosController] Modo debug - sin autenticación');
+      }
+      
       const slots = await this.getSlotsDisponiblesUseCase.execute(
         profesionalId,
-        fecha as string
+        fecha
       );
+      
+      console.log('🔍 [TurnosController] getSlotsDisponibles - Resultado:', slots);
       
       res.json({ success: true, data: slots });
     } catch (error: any) {
+      console.error('💥 [TurnosController] Error en getSlotsDisponibles:', error);
       const statusCode = error.statusCode || 500;
       res.status(statusCode).json({ 
         success: false, 
@@ -222,10 +245,10 @@ export class TurnosController {
   async createVacacion(req: Request, res: Response) {
     try {
       const { empresaId, id: usuarioId } = req.user!;
-      const { fecha, fecha_fin, tipo, motivo, profesional_id } = req.body;
+      const { fecha, fecha_fin, tipo, motivo } = req.body;
       
       const vacacion = await this.createVacacionUseCase.execute(
-        profesional_id,
+        usuarioId, // Usar el usuario autenticado, no el del body
         fecha,
         fecha_fin,
         tipo,
@@ -282,10 +305,10 @@ export class TurnosController {
   async createExcepcion(req: Request, res: Response) {
     try {
       const { empresaId, id: usuarioId } = req.user!;
-      const { fecha, disponible, hora_inicio, hora_fin, intervalo_minutos, notas, profesional_id } = req.body;
+      const { fecha, disponible, hora_inicio, hora_fin, intervalo_minutos, notas } = req.body;
       
       const excepcion = await this.createExcepcionUseCase.execute(
-        profesional_id,
+        usuarioId, // Usar el usuario autenticado, no el del body
         fecha,
         disponible,
         hora_inicio,

@@ -25,4 +25,10 @@ export interface IUsuarioRepository {
   updateRol(id: string, roles: string[]): Promise<UsuarioPublico>;
   toggleActivo(id: string, activo: boolean): Promise<UsuarioPublico>;
   existeUsername(username: string, empresaId: string, excludeId?: string): Promise<boolean>;
+  findProfesionalesByEmpresa(empresaId: string, params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<UsuarioPublico[]>;
+  countProfesionalesByEmpresa(empresaId: string, search?: string): Promise<number>;
 }

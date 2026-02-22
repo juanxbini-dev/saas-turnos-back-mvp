@@ -32,8 +32,7 @@ export class CreateDisponibilidadUseCase {
       dia_fin: diaFin,
       hora_inicio: horaInicio,
       hora_fin: horaFin,
-      intervalo_minutos: intervaloMinutos,
-      empresa_id: empresaId
+      intervalo_minutos: intervaloMinutos
     };
 
     return this.disponibilidadRepository.createDisponibilidad(data);

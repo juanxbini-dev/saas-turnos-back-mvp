@@ -45,10 +45,15 @@ export class ClientesController {
 
   async createCliente(req: Request, res: Response): Promise<void> {
     try {
+      console.log('🔍 [ClientesController] createCliente - Petición recibida');
+      console.log('🔍 [ClientesController] Body:', req.body);
+      console.log('🔍 [ClientesController] User:', req.user);
+      
       const user = req.user as AuthenticatedUser;
       
       // Verificar si es admin
       if (!user.roles.includes('admin')) {
+        console.error('💥 [ClientesController] Usuario no es admin - roles:', user.roles);
         res.status(403).json({
           success: false,
           message: 'No tienes permisos para crear clientes'
@@ -57,8 +62,10 @@ export class ClientesController {
       }
 
       const { nombre, email, telefono } = req.body;
+      console.log('🔍 [ClientesController] Datos extraídos:', { nombre, email, telefono });
 
       if (!nombre || !email) {
+        console.error('💥 [ClientesController] Datos faltantes - nombre:', nombre, 'email:', email);
         res.status(400).json({
           success: false,
           message: 'Nombre y email son requeridos'
@@ -66,18 +73,21 @@ export class ClientesController {
         return;
       }
 
+      console.log('🔍 [ClientesController] Llamando a CreateClienteUseCase...');
       const cliente = await this.createClienteUseCase.execute(
         nombre,
         email,
         telefono,
         user.empresaId
       );
+      console.log('🔍 [ClientesController] Cliente creado:', cliente);
 
       res.status(201).json({
         success: true,
         data: cliente
       });
     } catch (error) {
+      console.error('💥 [ClientesController] Error en createCliente:', error);
       const statusCode = (error as any).statusCode || 500;
       const message = error instanceof Error ? error.message : 'Error al crear cliente';
       

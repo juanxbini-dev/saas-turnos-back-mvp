@@ -8,17 +8,47 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
       SELECT us.id, us.usuario_id, us.servicio_id, us.empresa_id, us.precio_personalizado,
              us.duracion_personalizada, us.habilitado, us.nivel_habilidad, us.notas,
              us.created_at, us.updated_at,
-             s.nombre as servicio_nombre,
-             s.descripcion as servicio_descripcion,
-             s.precio_base as servicio_precio_base
+             s.nombre, s.descripcion, s.precio_base, s.duracion, s.activo
       FROM usuario_servicios us
       INNER JOIN servicios s ON us.servicio_id = s.id
-      WHERE us.usuario_id = $1
+      WHERE us.usuario_id = $1 AND us.habilitado = true AND s.activo = true
       ORDER BY s.nombre ASC
     `;
     
+    console.log('🔍 [PostgresUsuarioServicioRepository] Consultando servicios para usuario:', usuarioId);
+    console.log('🔍 [PostgresUsuarioServicioRepository] Query SQL:', query);
+    
     const result = await pool.query(query, [usuarioId]);
-    return result.rows;
+    
+    console.log('🔍 [PostgresUsuarioServicioRepository] Resultado crudo de BD:', result.rows);
+    
+    // Convertir campos numéricos de string a number
+    const processedRows = result.rows.map(row => ({
+      ...row,
+      precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
+      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0')
+    }));
+    
+    console.log('🔍 [PostgresUsuarioServicioRepository] Resultado procesado:', processedRows);
+    console.log('🔍 [PostgresUsuarioServicioRepository] Número de registros:', processedRows.length);
+    
+    // Log detallado de cada servicio
+    processedRows.forEach((row, index) => {
+      console.log(`🔍 [PostgresUsuarioServicioRepository] Servicio ${index + 1}:`, {
+        id: row.id,
+        nombre: row.nombre,
+        precio_base: row.precio_base,
+        duracion: row.duracion,
+        precio_personalizado: row.precio_personalizado,
+        duracion_personalizada: row.duracion_personalizada,
+        precio_final: row.precio,
+        duracion_final: row.duracion_minutos,
+        habilitado: row.habilitado,
+        servicio_activo: row.activo
+      });
+    });
+    
+    return processedRows;
   }
 
   async findByServicio(servicioId: string): Promise<UsuarioServicio[]> {
@@ -26,17 +56,21 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
       SELECT us.id, us.usuario_id, us.servicio_id, us.empresa_id, us.precio_personalizado,
              us.duracion_personalizada, us.habilitado, us.nivel_habilidad, us.notas,
              us.created_at, us.updated_at,
-             s.nombre as servicio_nombre,
-             s.descripcion as servicio_descripcion,
-             s.precio_base as servicio_precio_base
+             s.nombre, s.descripcion, s.precio_base, s.duracion, s.activo
       FROM usuario_servicios us
       INNER JOIN servicios s ON us.servicio_id = s.id
-      WHERE us.servicio_id = $1
+      WHERE us.servicio_id = $1 AND us.habilitado = true AND s.activo = true
       ORDER BY us.created_at DESC
     `;
     
     const result = await pool.query(query, [servicioId]);
-    return result.rows;
+    
+    // Convertir campos numéricos de string a number
+    return result.rows.map(row => ({
+      ...row,
+      precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
+      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0')
+    }));
   }
 
   async findByUsuarioAndServicio(usuarioId: string, servicioId: string): Promise<UsuarioServicio | null> {
@@ -44,16 +78,23 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
       SELECT us.id, us.usuario_id, us.servicio_id, us.empresa_id, us.precio_personalizado,
              us.duracion_personalizada, us.habilitado, us.nivel_habilidad, us.notas,
              us.created_at, us.updated_at,
-             s.nombre as servicio_nombre,
-             s.descripcion as servicio_descripcion,
-             s.precio_base as servicio_precio_base
+             s.nombre, s.descripcion, s.precio_base, s.duracion, s.activo
       FROM usuario_servicios us
       INNER JOIN servicios s ON us.servicio_id = s.id
-      WHERE us.usuario_id = $1 AND us.servicio_id = $2
+      WHERE us.usuario_id = $1 AND us.servicio_id = $2 AND us.habilitado = true AND s.activo = true
     `;
     
     const result = await pool.query(query, [usuarioId, servicioId]);
-    return result.rows[0] || null;
+    
+    if (result.rows.length === 0) return null;
+    
+    // Convertir campos numéricos de string a number
+    const row = result.rows[0];
+    return {
+      ...row,
+      precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
+      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0')
+    };
   }
 
   async create(data: CreateUsuarioServicioData): Promise<UsuarioServicio> {

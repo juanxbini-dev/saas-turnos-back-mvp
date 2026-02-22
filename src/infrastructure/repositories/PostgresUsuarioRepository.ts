@@ -126,4 +126,52 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
     const result = await pool.query(query, params);
     return parseInt(result.rows[0].count) > 0;
   }
+
+  async findProfesionalesByEmpresa(empresaId: string, params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<UsuarioPublico[]> {
+    const page = params?.page || 1;
+    const limit = params?.limit || 10;
+    const offset = (page - 1) * limit;
+    const search = params?.search;
+
+    let query = `
+      SELECT id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at
+      FROM usuarios
+      WHERE empresa_id = $1 AND activo = true
+    `;
+    
+    const queryParams: any[] = [empresaId];
+
+    if (search) {
+      query += ` AND (nombre ILIKE $2 OR email ILIKE $2 OR username ILIKE $2)`;
+      queryParams.push(`%${search}%`);
+    }
+
+    query += ` ORDER BY nombre ASC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+    queryParams.push(limit, offset);
+
+    const result = await pool.query(query, queryParams);
+    return result.rows;
+  }
+
+  async countProfesionalesByEmpresa(empresaId: string, search?: string): Promise<number> {
+    let query = `
+      SELECT COUNT(*) as count
+      FROM usuarios
+      WHERE empresa_id = $1 AND activo = true
+    `;
+    
+    const queryParams: any[] = [empresaId];
+
+    if (search) {
+      query += ` AND (nombre ILIKE $2 OR email ILIKE $2 OR username ILIKE $2)`;
+      queryParams.push(`%${search}%`);
+    }
+
+    const result = await pool.query(query, queryParams);
+    return parseInt(result.rows[0].count);
+  }
 }

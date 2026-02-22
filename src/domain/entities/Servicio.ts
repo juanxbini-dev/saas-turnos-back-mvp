@@ -24,8 +24,9 @@ export interface UsuarioServicio {
   notas: string | null
   created_at: string
   updated_at: string
-  // Campos del JOIN con servicios
-  servicio_nombre?: string
-  servicio_descripcion?: string | null
-  servicio_precio_base?: number | null
+  // Campos del JOIN con servicios (sin alias)
+  nombre: string
+  descripcion: string | null
+  precio: number | null
+  duracion_minutos: number
 }

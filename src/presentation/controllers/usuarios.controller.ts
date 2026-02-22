@@ -5,7 +5,9 @@ import { UpdateUsuarioDatosUseCase } from '../../application/use-cases/usuarios/
 import { UpdateUsuarioPasswordUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioPasswordUseCase';
 import { UpdateUsuarioRolUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioRolUseCase';
 import { ToggleUsuarioActivoUseCase } from '../../application/use-cases/usuarios/ToggleUsuarioActivoUseCase';
+import { GetProfesionalesUseCase } from '../../application/use-cases/usuarios/GetProfesionalesUseCase';
 import { PostgresUsuarioRepository } from '../../infrastructure/repositories/PostgresUsuarioRepository';
+import { PostgresUsuarioServicioRepository } from '../../infrastructure/repositories/PostgresUsuarioServicioRepository';
 import { PasswordService } from '../../infrastructure/security/password.service';
 import { CryptoService } from '../../infrastructure/security/crypto.service';
 import { AuthenticatedUser } from '../middlewares/auth.middleware';
@@ -17,9 +19,12 @@ export class UsuariosController {
   private updateUsuarioPasswordUseCase: UpdateUsuarioPasswordUseCase;
   private updateUsuarioRolUseCase: UpdateUsuarioRolUseCase;
   private toggleUsuarioActivoUseCase: ToggleUsuarioActivoUseCase;
+  private getProfesionalesUseCase: GetProfesionalesUseCase;
+  private usuarioServicioRepository: PostgresUsuarioServicioRepository;
 
   constructor() {
     const usuarioRepository = new PostgresUsuarioRepository();
+    this.usuarioServicioRepository = new PostgresUsuarioServicioRepository();
     const passwordService = new PasswordService();
     const cryptoService = new CryptoService();
 
@@ -36,6 +41,7 @@ export class UsuariosController {
     );
     this.updateUsuarioRolUseCase = new UpdateUsuarioRolUseCase(usuarioRepository);
     this.toggleUsuarioActivoUseCase = new ToggleUsuarioActivoUseCase(usuarioRepository);
+    this.getProfesionalesUseCase = new GetProfesionalesUseCase(usuarioRepository);
   }
 
   async getUsuarios(req: Request, res: Response): Promise<void> {
@@ -241,6 +247,76 @@ export class UsuariosController {
     } catch (error) {
       const statusCode = (error as any).statusCode || 500;
       const message = error instanceof Error ? error.message : 'Error al cambiar estado del usuario';
+      
+      res.status(statusCode).json({
+        success: false,
+        message
+      });
+    }
+  }
+
+  async getProfesionales(req: Request, res: Response): Promise<void> {
+    try {
+      const user = req.user as AuthenticatedUser;
+      const { page, limit, search } = req.query;
+
+      const params: {
+        page?: number;
+        limit?: number;
+        search?: string;
+      } = {};
+
+      if (page !== undefined) {
+        params.page = parseInt(page as string);
+      }
+      if (limit !== undefined) {
+        params.limit = parseInt(limit as string);
+      }
+      if (search !== undefined) {
+        params.search = search as string;
+      }
+
+      const result = await this.getProfesionalesUseCase.execute(user.empresaId, params);
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      const statusCode = (error as any).statusCode || 500;
+      const message = error instanceof Error ? error.message : 'Error al obtener profesionales';
+      
+      res.status(statusCode).json({
+        success: false,
+        message
+      });
+    }
+  }
+
+  async getServiciosProfesional(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'ID de profesional es requerido'
+        });
+        return;
+      }
+
+      console.log('🔍 [UsuariosController] Obteniendo servicios para profesional ID:', id);
+      const servicios = await this.usuarioServicioRepository.findByUsuario(id as string);
+      console.log('🔍 [UsuariosController] Servicios encontrados:', servicios);
+
+      res.json({
+        success: true,
+        data: servicios
+      });
+    } catch (error) {
+      console.error('💥 [UsuariosController] Error al obtener servicios del profesional:', error);
+      const statusCode = (error as any).statusCode || 500;
+      const message = error instanceof Error ? error.message : 'Error al obtener servicios del profesional';
       
       res.status(statusCode).json({
         success: false,

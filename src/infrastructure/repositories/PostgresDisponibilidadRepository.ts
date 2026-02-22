@@ -195,7 +195,14 @@ export class PostgresDisponibilidadRepository implements IDisponibilidadReposito
       ORDER BY fecha ASC
     `;
     
+    console.log('🔍 [PostgresDisponibilidadRepository] Buscando excepciones para profesional:', profesionalId);
+    console.log('🔍 [PostgresDisponibilidadRepository] Query SQL:', query);
+    
     const result = await pool.query(query, [profesionalId]);
+    
+    console.log('🔍 [PostgresDisponibilidadRepository] Excepciones encontradas:', result.rows);
+    console.log('🔍 [PostgresDisponibilidadRepository] Número de excepciones:', result.rows.length);
+    
     return result.rows;
   }
 

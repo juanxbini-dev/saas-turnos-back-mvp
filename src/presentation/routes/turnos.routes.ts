@@ -88,6 +88,10 @@ const turnosController = new TurnosController(
 );
 
 // Routes
+
+// Ruta temporal para debugging sin autenticación (debe ir antes del authenticate)
+router.get('/debug/disponibilidad/:profesionalId/slots', turnosController.getSlotsDisponibles.bind(turnosController));
+
 router.use(authenticate);
 
 // Turnos

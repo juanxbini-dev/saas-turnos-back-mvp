@@ -109,10 +109,10 @@ export class CreateTurnoUseCase {
     console.log('🔍 [CreateTurnoUseCase] Datos del turno a crear:', turnoData);
 
     const turno = await this.turnoRepository.create(turnoData);
-    console.log('🔍 [CreateTurnoUseCase] Turno creado:', turno);
+    console.log('🔍 [CreateTurnoUseCase] Turno creado con estado pendiente:', turno);
 
-    // Simular envío de email
-    console.log('📧 [MAIL]', { 
+    // Simular envío de email con mail delivery
+    console.log('📧 [MAIL DELIVERY] Enviando email...', { 
       clienteEmail: 'cliente@example.com', 
       profesionalEmail: 'profesional@example.com', 
       fecha: data.fecha, 
@@ -120,11 +120,27 @@ export class CreateTurnoUseCase {
       servicio: servicioNombre 
     });
 
-    // Actualizar estado a confirmado
-    console.log('🔍 [CreateTurnoUseCase] Actualizando estado a confirmado...');
-    const turnoConfirmado = await this.turnoRepository.updateEstado(id, 'confirmado');
-    console.log('🔍 [CreateTurnoUseCase] Turno confirmado:', turnoConfirmado);
+    // Simular respuesta del mail delivery (async)
+    setTimeout(async () => {
+      try {
+        // Simular mail delivery OK
+        console.log('✅ [MAIL DELIVERY] Email enviado exitosamente!');
+        
+        // Cuando el mail delivery confirma, actualizar estado a confirmado
+        console.log('🔍 [CreateTurnoUseCase] Mail delivery OK - Actualizando estado a confirmado...');
+        const turnoConfirmado = await this.turnoRepository.updateEstado(id, 'confirmado');
+        console.log('🔍 [CreateTurnoUseCase] Turno confirmado por mail delivery:', turnoConfirmado);
+        
+        // Aquí iría la lógica real del mail delivery callback
+        // mailDeliveryService.onSuccess(id, () => { ... });
+        
+      } catch (error) {
+        console.error('💥 [MAIL DELIVERY] Error al confirmar turno:', error);
+        // Manejar error del mail delivery - podría quedar como pendiente o cancelarse
+      }
+    }, 1000); // Simular 1 segundo de delay del mail delivery
 
-    return turnoConfirmado;
+    // Devolver turno como pendiente (esperando confirmación del mail delivery)
+    return turno;
   }
 }

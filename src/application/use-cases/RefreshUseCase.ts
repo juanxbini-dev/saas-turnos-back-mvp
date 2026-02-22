@@ -15,6 +15,7 @@ export interface RefreshResponse {
   user: {
     id: string;
     email: string;
+    nombre: string;
     roles: string[];
     tenant: string;
   };
@@ -58,6 +59,13 @@ export class RefreshUseCase {
       throw new Error('Información de usuario no encontrada en refresh token');
     }
 
+    // Get full user from database to include nombre
+    const user = await this.userRepository.findById(userInfo.id);
+    
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
     // Generate new token pair
     const newRefreshToken = this.tokenService.generateRefreshToken();
     
@@ -90,10 +98,11 @@ export class RefreshUseCase {
       refreshToken: newRefreshToken.token,
       expiresIn: this.tokenService.getAccessTokenExpiration(),
       user: {
-        id: userInfo.id,
-        email: userInfo.email,
-        roles: userInfo.roles,
-        tenant: userInfo.tenant
+        id: user.id,
+        email: user.email,
+        nombre: user.nombre,
+        roles: user.roles,
+        tenant: user.tenant || ''
       }
     };
   }

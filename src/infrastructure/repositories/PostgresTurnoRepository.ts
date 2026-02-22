@@ -44,7 +44,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
   async findByFechaYProfesional(profesionalId: string, fecha: string): Promise<Turno[]> {
     const query = `
       SELECT id, cliente_id, usuario_id, servicio_id, fecha, hora, 
-             estado, notas, servicio, servicio_precio, duracion, 
+             estado, notas, servicio, servicio_precio as precio, duracion as duracion_minutos, 
              empresa_id, created_at, updated_at
       FROM turnos
       WHERE usuario_id = $1 AND fecha = $2
@@ -63,7 +63,8 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       )
       VALUES ($1, $2, $3, $4, $5, $6, 'pendiente', $7, $8, $9, $10, $11, NOW(), NOW())
       RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado, 
-                notas, servicio, servicio_precio, duracion, empresa_id, created_at, updated_at
+                notas, servicio, servicio_precio as precio, duracion as duracion_minutos, 
+                empresa_id, created_at, updated_at
     `;
     
     const result = await pool.query(query, [
@@ -89,7 +90,8 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       SET estado = $1, updated_at = NOW()
       WHERE id = $2
       RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado, 
-                notas, servicio, precio, duracion_minutos, empresa_id, created_at, updated_at
+                notas, servicio, servicio_precio as precio, duracion as duracion_minutos, 
+                empresa_id, created_at, updated_at
     `;
     
     const result = await pool.query(query, [estado, id]);
@@ -100,7 +102,8 @@ export class PostgresTurnoRepository implements ITurnoRepository {
     const query = `
       UPDATE turnos 
       SET estado = 'completado', updated_at = NOW()
-      WHERE estado = 'confirmado' AND (fecha::date + hora::time) < NOW()
+      WHERE estado = 'confirmado' 
+        AND (fecha::date + hora::time + INTERVAL '45 minutes') < NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires'
       RETURNING id
     `;
     

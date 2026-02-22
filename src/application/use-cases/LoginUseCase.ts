@@ -15,6 +15,7 @@ export interface LoginResponse {
   user: {
     id: string;
     email: string;
+    nombre: string;
     roles: string[];
     tenant: string;
   };
@@ -102,6 +103,7 @@ export class LoginUseCase {
       user: {
         id: user.id,
         email: user.email,
+        nombre: user.nombre,
         roles: user.roles,
         tenant: user.tenant || ''
       }

@@ -15,6 +15,19 @@ export class PostgresClienteRepository implements IClienteRepository {
     return result.rows;
   }
 
+  async findByProfesional(profesionalId: string, empresaId: string): Promise<Cliente[]> {
+    const query = `
+      SELECT DISTINCT c.id, c.nombre, c.email, c.telefono, c.empresa_id, c.activo, c.created_at, c.updated_at
+      FROM clientes c
+      INNER JOIN turnos t ON c.id = t.cliente_id
+      WHERE t.usuario_id = $1 AND c.empresa_id = $2
+      ORDER BY c.nombre ASC
+    `;
+    
+    const result = await pool.query(query, [profesionalId, empresaId]);
+    return result.rows;
+  }
+
   async findById(id: string): Promise<Cliente | null> {
     const query = `
       SELECT id, nombre, email, telefono, empresa_id, activo, created_at, updated_at

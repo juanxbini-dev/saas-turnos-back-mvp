@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { GetClientesUseCase } from '../../application/use-cases/clientes/GetClientesUseCase';
+import { GetMisClientesUseCase } from '../../application/use-cases/clientes/GetMisClientesUseCase';
 import { CreateClienteUseCase } from '../../application/use-cases/clientes/CreateClienteUseCase';
 import { UpdateClienteUseCase } from '../../application/use-cases/clientes/UpdateClienteUseCase';
 import { ToggleClienteActivoUseCase } from '../../application/use-cases/clientes/ToggleClienteActivoUseCase';
@@ -9,6 +10,7 @@ import { AuthenticatedUser } from '../middlewares/auth.middleware';
 
 export class ClientesController {
   private getClientesUseCase: GetClientesUseCase;
+  private getMisClientesUseCase: GetMisClientesUseCase;
   private createClienteUseCase: CreateClienteUseCase;
   private updateClienteUseCase: UpdateClienteUseCase;
   private toggleClienteActivoUseCase: ToggleClienteActivoUseCase;
@@ -18,6 +20,7 @@ export class ClientesController {
     const cryptoService = new CryptoService();
 
     this.getClientesUseCase = new GetClientesUseCase(clienteRepository);
+    this.getMisClientesUseCase = new GetMisClientesUseCase(clienteRepository);
     this.createClienteUseCase = new CreateClienteUseCase(clienteRepository, cryptoService);
     this.updateClienteUseCase = new UpdateClienteUseCase(clienteRepository);
     this.toggleClienteActivoUseCase = new ToggleClienteActivoUseCase(clienteRepository);
@@ -191,6 +194,32 @@ export class ClientesController {
       res.status(statusCode).json({
         success: false,
         message
+      });
+    }
+  }
+
+  async getMisClientes(req: Request, res: Response): Promise<void> {
+    try {
+      const user = req.user as AuthenticatedUser;
+      
+      console.log('🔍 [ClientesController] getMisClientes - Petición recibida');
+      console.log('🔍 [ClientesController] User:', user);
+      
+      const clientes = await this.getMisClientesUseCase.execute({
+        usuarioId: user.id,
+        empresaId: user.empresaId
+      });
+
+      res.json({
+        success: true,
+        data: clientes
+      });
+    } catch (error) {
+      console.error('❌ [ClientesController] Error en getMisClientes:', error);
+      
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener mis clientes'
       });
     }
   }

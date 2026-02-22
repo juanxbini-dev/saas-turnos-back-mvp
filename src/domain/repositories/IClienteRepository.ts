@@ -4,6 +4,7 @@ export { CreateClienteData, UpdateClienteData };
 
 export interface IClienteRepository {
   findByEmpresa(empresaId: string): Promise<Cliente[]>
+  findByProfesional(profesionalId: string, empresaId: string): Promise<Cliente[]>
   findById(id: string): Promise<Cliente | null>
   create(data: CreateClienteData): Promise<Cliente>
   update(id: string, data: UpdateClienteData): Promise<Cliente>

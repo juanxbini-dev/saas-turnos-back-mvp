@@ -25,9 +25,14 @@ export class PostgresUserRepository implements IUserRepository {
         id: row.id,
         email: row.email,
         password: row.password,
+        nombre: row.nombre,
+        username: row.username,
         empresa_id: row.empresa_id,
         roles: row.roles || [],
         activo: row.activo,
+        last_login: row.last_login,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
         tenant: row.dominio,
         empresa_activa: row.empresa_activa
       };
@@ -59,14 +64,58 @@ export class PostgresUserRepository implements IUserRepository {
         id: row.id,
         email: row.email,
         password: row.password,
+        nombre: row.nombre,
+        username: row.username,
         empresa_id: row.empresa_id,
         roles: row.roles || [],
         activo: row.activo,
+        last_login: row.last_login,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
         tenant: row.dominio,
         empresa_activa: row.empresa_activa
       };
     } catch (error) {
       console.error('Error finding user by username and domain:', error);
+      throw error;
+    }
+  }
+
+  async findById(id: string): Promise<User | null> {
+    const query = `
+      SELECT u.*, e.dominio, e.activo as empresa_activa
+      FROM usuarios u
+      JOIN empresas e ON u.empresa_id = e.id
+      WHERE u.id = $1
+      LIMIT 1;
+    `;
+    
+    try {
+      const result = await pool.query(query, [id]);
+      
+      if (result.rows.length === 0) {
+        return null;
+      }
+      
+      const row = result.rows[0];
+      
+      return {
+        id: row.id,
+        email: row.email,
+        password: row.password,
+        nombre: row.nombre,
+        username: row.username,
+        empresa_id: row.empresa_id,
+        roles: row.roles || [],
+        activo: row.activo,
+        last_login: row.last_login,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        tenant: row.dominio,
+        empresa_activa: row.empresa_activa
+      };
+    } catch (error) {
+      console.error('Error finding user by id:', error);
       throw error;
     }
   }

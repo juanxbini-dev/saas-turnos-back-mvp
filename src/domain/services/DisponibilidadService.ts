@@ -91,16 +91,29 @@ export class DisponibilidadService {
     console.log('🔍 [DisponibilidadService] Excepciones:', excepciones);
     console.log('🔍 [DisponibilidadService] Turnos existentes:', turnosExistentes.length);
     
-    const fechaObj = new Date(fecha);
+    const fechaObj = new Date(fecha + 'T00:00:00'); // Forzar medianoche hora local
     const diaSemana = fechaObj.getDay();
     const ahora = new Date();
-    const esHoy = fechaObj.toDateString() === ahora.toDateString();
+    
+    // Usar hora local para que coincida con la zona horaria del servidor
+    const esHoy = (
+      fechaObj.getFullYear() === ahora.getFullYear() &&
+      fechaObj.getMonth() === ahora.getMonth() &&
+      fechaObj.getDate() === ahora.getDate()
+    );
     
     console.log('🔍 [DisponibilidadService] Fecha procesada:', { 
-      fechaObj, 
-      diaSemana, 
+      fechaParametro: fecha,
+      fechaObj,
+      fechaObjLocal: `${fechaObj.getFullYear()}-${fechaObj.getMonth() + 1}-${fechaObj.getDate()}`,
+      ahora,
+      ahoraLocal: `${ahora.getFullYear()}-${ahora.getMonth() + 1}-${ahora.getDate()}`,
       esHoy,
-      diaSemanaTexto: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][diaSemana]
+      diaSemana,
+      diaSemanaTexto: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][diaSemana],
+      horaActual: `${ahora.getHours().toString().padStart(2, '0')}:${ahora.getMinutes().toString().padStart(2, '0')} LOCAL`,
+      horaUTC: `${ahora.getUTCHours().toString().padStart(2, '0')}:${ahora.getUTCMinutes().toString().padStart(2, '0')} UTC`,
+      timestamp: Date.now()
     });
 
     // Primero verificar si hay una excepción que marque el día como NO disponible
@@ -178,7 +191,36 @@ export class DisponibilidadService {
       const slot = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
       
       // No incluir slots anteriores a hora actual si es hoy
-      if (!esHoy || new Date(fechaObj.getFullYear(), fechaObj.getMonth(), fechaObj.getDate(), horas, minutos) > ahora) {
+      const slotDateTime = new Date(
+        fechaObj.getFullYear(),
+        fechaObj.getMonth(), 
+        fechaObj.getDate(),
+        horas,
+        minutos
+      );
+      
+      // Usar hora local para comparación
+      const slotTimestamp = slotDateTime.getTime();
+      const ahoraTimestamp = ahora.getTime();
+      const debeIncluirse = !esHoy || slotTimestamp > ahoraTimestamp;
+      
+      console.log('🔍 [DisponibilidadService] Evaluando slot:', {
+        slot,
+        esHoy,
+        slotDateTime,
+        slotTimestamp,
+        ahora,
+        ahoraTimestamp,
+        debeIncluirse,
+        diferenciaMinutos: Math.round((slotTimestamp - ahoraTimestamp) / (1000 * 60)),
+        razon: esHoy 
+          ? (slotTimestamp > ahoraTimestamp 
+              ? `Futuro (+${Math.round((slotTimestamp - ahoraTimestamp) / (1000 * 60))} min) - Incluir` 
+              : `Pasado (${Math.round((ahoraTimestamp - slotTimestamp) / (1000 * 60))} min) - Excluir`)
+          : 'No es hoy - Incluir'
+      });
+      
+      if (debeIncluirse) {
         slots.push(slot);
       }
       
@@ -188,9 +230,26 @@ export class DisponibilidadService {
     // Restar slots ocupados por turnos con estado pendiente o confirmado
     const slotsOcupados = turnosExistentes
       .filter(turno => turno.estado === 'pendiente' || turno.estado === 'confirmado')
-      .map(turno => turno.hora);
+      .map(turno => {
+        const horaNormalizada = turno.hora.slice(0, 5);
+        console.log('🔍 [DisponibilidadService] Turno ocupado:', {
+          turno_id: turno.id,
+          hora_original: turno.hora,
+          hora_normalizada: horaNormalizada,
+          estado: turno.estado
+        });
+        return horaNormalizada;
+      });
 
-    const slotsFinales = slots.filter(slot => !slotsOcupados.includes(slot));
+    const slotsFinales = slots.filter(slot => {
+      const estaOcupado = slotsOcupados.includes(slot);
+      console.log('🔍 [DisponibilidadService] Verificando slot:', {
+        slot,
+        estaOcupado,
+        slotsOcupados
+      });
+      return !estaOcupado;
+    });
     
     console.log('🔍 [DisponibilidadService] Slots generados:', slots);
     console.log('🔍 [DisponibilidadService] Slots ocupados:', slotsOcupados);

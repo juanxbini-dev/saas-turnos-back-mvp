@@ -5,7 +5,13 @@ import { authenticate, requireAdmin } from '../middlewares/auth.middleware';
 const router = Router();
 const usuariosController = new UsuariosController();
 
-// Todas las rutas requieren autenticación y rol de admin
+// GET /api/usuarios/profesionales - lista paginada de todos los usuarios activos de la empresa incluyendo admins. Solo admin.
+router.get('/profesionales', authenticate, requireAdmin, (req, res) => usuariosController.getProfesionales(req, res));
+
+// GET /api/usuarios/:id/servicios - servicios suscriptos por ese profesional. Todos los autenticados.
+router.get('/:id/servicios', authenticate, (req, res) => usuariosController.getServiciosProfesional(req, res));
+
+// Todas las rutas siguientes requieren autenticación y rol de admin
 router.use(authenticate);
 router.use(requireAdmin);
 

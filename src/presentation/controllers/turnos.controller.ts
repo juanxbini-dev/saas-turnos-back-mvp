@@ -4,6 +4,7 @@ import { CreateTurnoUseCase } from '../../application/use-cases/turnos/CreateTur
 import { UpdateTurnoEstadoUseCase } from '../../application/use-cases/turnos/UpdateTurnoEstadoUseCase';
 import { GetDisponibilidadMesUseCase } from '../../application/use-cases/turnos/GetDisponibilidadMesUseCase';
 import { GetSlotsDisponiblesUseCase } from '../../application/use-cases/turnos/GetSlotsDisponiblesUseCase';
+import { GetCalendarioUseCase } from '../../application/use-cases/turnos/GetCalendarioUseCase';
 import { CreateDisponibilidadUseCase } from '../../application/use-cases/disponibilidad/CreateDisponibilidadUseCase';
 import { UpdateDisponibilidadUseCase } from '../../application/use-cases/disponibilidad/UpdateDisponibilidadUseCase';
 import { DeleteDisponibilidadUseCase } from '../../application/use-cases/disponibilidad/DeleteDisponibilidadUseCase';
@@ -13,7 +14,10 @@ import { DeleteVacacionUseCase } from '../../application/use-cases/disponibilida
 import { CreateExcepcionUseCase } from '../../application/use-cases/disponibilidad/CreateExcepcionUseCase';
 import { UpdateExcepcionUseCase } from '../../application/use-cases/disponibilidad/UpdateExcepcionUseCase';
 import { DeleteExcepcionUseCase } from '../../application/use-cases/disponibilidad/DeleteExcepcionUseCase';
+import { GetSlotsRangoUseCase } from '../../application/use-cases/turnos/GetSlotsRangoUseCase';
 import { IDisponibilidadRepository } from '../../domain/repositories/IDisponibilidadRepository';
+import { DateUtils } from '../../shared/utils/DateUtils';
+import { isFeatureEnabled, logDate } from '../../shared/config/featureFlags';
 
 export class TurnosController {
   constructor(
@@ -22,6 +26,7 @@ export class TurnosController {
     private updateTurnoEstadoUseCase: UpdateTurnoEstadoUseCase,
     private getDisponibilidadMesUseCase: GetDisponibilidadMesUseCase,
     private getSlotsDisponiblesUseCase: GetSlotsDisponiblesUseCase,
+    private getCalendarioUseCase: GetCalendarioUseCase,
     private createDisponibilidadUseCase: CreateDisponibilidadUseCase,
     private updateDisponibilidadUseCase: UpdateDisponibilidadUseCase,
     private deleteDisponibilidadUseCase: DeleteDisponibilidadUseCase,
@@ -31,6 +36,7 @@ export class TurnosController {
     private createExcepcionUseCase: CreateExcepcionUseCase,
     private updateExcepcionUseCase: UpdateExcepcionUseCase,
     private deleteExcepcionUseCase: DeleteExcepcionUseCase,
+    private getSlotsRangoUseCase: GetSlotsRangoUseCase,
     private disponibilidadRepository: IDisponibilidadRepository
   ) {}
 
@@ -145,6 +151,84 @@ export class TurnosController {
       res.status(statusCode).json({ 
         success: false, 
         message: error.message || 'Error al obtener slots disponibles' 
+      });
+    }
+  }
+
+  async getSlotsRango(req: Request, res: Response) {
+    try {
+      const { profesionalId } = req.params;
+      const { fechaInicio, fechaFin } = req.query;
+      
+      logDate('getSlotsRango - Petición:', { profesionalId, fechaInicio, fechaFin });
+      
+      // Usar DateUtils si el feature flag está activo
+      const useNewUtils = isFeatureEnabled('USE_DATE_UTILS_IN_TURNS');
+      
+      // Validar parámetros requeridos
+      if (!profesionalId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID del profesional es requerido'
+        });
+      }
+      
+      if (!fechaInicio || !fechaFin || typeof fechaInicio !== 'string' || typeof fechaFin !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'Las fechas de inicio y fin son requeridas'
+        });
+      }
+      
+      // Validar formato de fechas
+      const inicio = useNewUtils ? (() => {
+        if (!DateUtils.isValidDate(fechaInicio)) {
+          return null;
+        }
+        return new Date(fechaInicio);
+      })() : new Date(fechaInicio);
+      
+      const fin = useNewUtils ? (() => {
+        if (!DateUtils.isValidDate(fechaFin)) {
+          return null;
+        }
+        return new Date(fechaFin);
+      })() : new Date(fechaFin);
+      
+      if (!inicio || !fin || (useNewUtils ? false : (isNaN(inicio.getTime()) || isNaN(fin.getTime())))) {
+        return res.status(400).json({
+          success: false,
+          message: 'Formato de fechas inválido'
+        });
+      }
+      
+      // Limitar rango a máximo 30 días para evitar sobrecarga
+      const diasDiferencia = useNewUtils ? DateUtils.daysDifference(inicio, fin) : Math.ceil((fin.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diasDiferencia > 30) {
+        return res.status(400).json({
+          success: false,
+          message: 'El rango máximo permitido es de 30 días'
+        });
+      }
+      
+      logDate('Validaciones OK - Procesando rango de', { diasDiferencia, useNewUtils });
+      
+      const slotsRango = await this.getSlotsRangoUseCase.execute(
+        profesionalId as string,
+        fechaInicio,
+        fechaFin
+      );
+      
+      logDate('getSlotsRango - Resultado:', slotsRango);
+      
+      res.json({ success: true, data: slotsRango });
+    } catch (error: any) {
+      console.error('💥 [TurnosController] Error en getSlotsRango:', error);
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ 
+        success: false, 
+        message: error.message || 'Error al obtener slots por rango' 
       });
     }
   }
@@ -359,6 +443,34 @@ export class TurnosController {
       res.status(statusCode).json({ 
         success: false, 
         message: error.message || 'Error al eliminar excepción' 
+      });
+    }
+  }
+
+  async getCalendario(req: Request, res: Response) {
+    try {
+      const { profesionalId, fechaInicio, fechaFin } = req.query;
+      
+      // Validar que los tres parámetros existan
+      if (!profesionalId || !fechaInicio || !fechaFin) {
+        return res.status(400).json({
+          success: false,
+          message: 'Los parámetros profesionalId, fechaInicio y fechaFin son requeridos'
+        });
+      }
+      
+      const turnos = await this.getCalendarioUseCase.execute(
+        profesionalId as string,
+        fechaInicio as string,
+        fechaFin as string
+      );
+      
+      res.json({ success: true, data: turnos });
+    } catch (error: any) {
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ 
+        success: false, 
+        message: error.message || 'Error al obtener calendario' 
       });
     }
   }

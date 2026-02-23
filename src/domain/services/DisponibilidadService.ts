@@ -1,5 +1,7 @@
 import { DisponibilidadSemanal, DiasVacacion, ExcepcionDia } from '../entities/Disponibilidad';
 import { Turno } from '../entities/Turno';
+import { DateUtils } from '../../shared/utils/DateUtils';
+import { isFeatureEnabled, logDate } from '../../shared/config/featureFlags';
 
 export class DisponibilidadService {
   calcularDiasDisponiblesMes(
@@ -9,37 +11,78 @@ export class DisponibilidadService {
     mes: number,
     año: number
   ): string[] {
-    console.log('🔍🔍🔍 [DisponibilidadService] INICIO - Parámetros:', { mes, año });
-    console.log('🔍🔍🔍 [DisponibilidadService] Excepciones recibidas:', excepciones);
+    logDate('INICIO - Parámetros:', { mes, año });
+    logDate('Excepciones recibidas:', excepciones);
+    
+    // Usar DateUtils si el feature flag está activo
+    const useNewUtils = isFeatureEnabled('USE_DATE_UTILS_IN_DISPONIBILIDAD');
     
     const diasDisponibles: string[] = [];
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
+    const hoy = useNewUtils ? DateUtils.today() : (() => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      return date;
+    })();
+
+    // Debug: Investigar por qué muestra días anteriores
+    logDate('Fecha actual y parámetros:', {
+      hoy: hoy.toISOString(),
+      hoyLocal: useNewUtils ? DateUtils.normalizeDate(hoy) : `${hoy.getFullYear()}-${hoy.getMonth()+1}-${hoy.getDate()}`,
+      mesParametro: mes,
+      añoParametro: año,
+      mesActual: hoy.getMonth() + 1,
+      añoActual: hoy.getFullYear(),
+      diaActual: hoy.getDate(),
+      diaSemanaActual: hoy.getDay(),
+      diaSemanaActualTexto: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][hoy.getDay()],
+      useNewUtils
+    });
 
     // Generar todos los días del mes
-    const ultimoDiaMes = new Date(año, mes, 0).getDate();
+    const ultimoDiaMes = useNewUtils ? DateUtils.getDaysInMonth(año, mes) : new Date(año, mes, 0).getDate();
+    
     for (let dia = 1; dia <= ultimoDiaMes; dia++) {
-      const fecha = new Date(año, mes - 1, dia);
-      const fechaStr = fecha.toISOString().split('T')[0];
+      const fecha = useNewUtils ? DateUtils.createDate(año, mes, dia) : new Date(año, mes - 1, dia);
+      const fechaStr = useNewUtils ? DateUtils.normalizeDate(fecha) : `${año}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
       
       // No incluir días anteriores a hoy
-      if (fecha < hoy) {
+      const esPasado = useNewUtils ? DateUtils.isPast(fecha) : fecha < hoy;
+      
+      if (esPasado) {
+        logDate('Día excluido (anterior a hoy):', {
+          dia,
+          fechaStr,
+          fechaISO: fecha.toISOString(),
+          hoyISO: hoy.toISOString(),
+          comparacion: `${fecha.toISOString()} < ${hoy.toISOString()} = ${fecha < hoy}`,
+          useNewUtils
+        });
         continue;
       }
 
       // Primero verificar si hay una excepción para este día (prioridad máxima)
       const excepcion = excepciones.find(exc => {
-        const fechaExcepcion = new Date(exc.fecha).toISOString().split('T')[0];
+        const fechaExcepcion = useNewUtils ? DateUtils.normalizeDate(exc.fecha) : (() => {
+          if (typeof exc.fecha === 'string') {
+            return exc.fecha.slice(0, 10);
+          }
+          const d = exc.fecha as Date;
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        })();
         return fechaExcepcion === fechaStr;
       });
+      
       if (excepcion) {
-        console.log(`🔍 [DisponibilidadService] Excepción encontrada para ${fechaStr}:`, excepcion);
+        logDate(`Excepción encontrada para ${fechaStr}:`, excepcion);
         if (excepcion.disponible) {
           // Si la excepción dice que está disponible, agregar el día
-          console.log(`🔍 [DisponibilidadService] Día ${fechaStr} disponible por excepción`);
-          diasDisponibles.push(fechaStr!);
+          logDate(`Día ${fechaStr} disponible por excepción`);
+          diasDisponibles.push(fechaStr);
         } else {
-          console.log(`🔍 [DisponibilidadService] Día ${fechaStr} NO disponible por excepción`);
+          logDate(`Día ${fechaStr} NO disponible por excepción`);
         }
         // Si disponible = false, no se agrega el día (se ignora la disponibilidad semanal)
         continue;
@@ -60,10 +103,28 @@ export class DisponibilidadService {
 
       // Restar días con vacaciones activas
       const estaDeVacaciones = vacaciones.some(vacacion => {
-        const fechaInicio = new Date(vacacion.fecha);
-        const fechaFin = vacacion.fecha_fin ? new Date(vacacion.fecha_fin) : fechaInicio;
+        const fechaInicio = useNewUtils ? DateUtils.normalizeDate(vacacion.fecha) : (() => {
+          if (typeof vacacion.fecha === 'string') {
+            return vacacion.fecha.slice(0, 10);
+          }
+          const d = vacacion.fecha as Date;
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        })();
+        const fechaFin = vacacion.fecha_fin ? (useNewUtils ? DateUtils.normalizeDate(vacacion.fecha_fin) : (() => {
+          if (typeof vacacion.fecha_fin === 'string') {
+            return vacacion.fecha_fin.slice(0, 10);
+          }
+          const d = vacacion.fecha_fin as Date;
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        })()) : fechaInicio;
         
-        return fecha >= fechaInicio && fecha <= fechaFin;
+        return fechaStr >= fechaInicio && fechaStr <= fechaFin;
       });
 
       if (estaDeVacaciones) {
@@ -71,11 +132,11 @@ export class DisponibilidadService {
       }
 
       // Si no hay excepción y pasa todas las validaciones, agregar el día
-      console.log(`🔍 [DisponibilidadService] Día ${fechaStr} disponible por disponibilidad semanal`);
-      diasDisponibles.push(fechaStr!);
+      logDate(`Día ${fechaStr} disponible por disponibilidad semanal`);
+      diasDisponibles.push(fechaStr);
     }
 
-    console.log('🔍🔍🔍 [DisponibilidadService] Días disponibles finales:', diasDisponibles);
+    logDate('Días disponibles finales:', diasDisponibles);
     return diasDisponibles;
   }
 
@@ -85,41 +146,54 @@ export class DisponibilidadService {
     turnosExistentes: Turno[],
     fecha: string
   ): string[] {
-    console.log('🔍🔍🔍 [DisponibilidadService] calcularSlotsDisponibles - INICIO');
-    console.log('🔍 [DisponibilidadService] Parámetros:', { fecha });
-    console.log('🔍 [DisponibilidadService] Disponibilidades:', disponibilidades.length);
-    console.log('🔍 [DisponibilidadService] Excepciones:', excepciones);
-    console.log('🔍 [DisponibilidadService] Turnos existentes:', turnosExistentes.length);
+    logDate('calcularSlotsDisponibles - INICIO');
+    logDate('Parámetros:', { fecha });
+    logDate('Disponibilidades:', disponibilidades.length);
+    logDate('Excepciones:', excepciones);
+    logDate('Turnos existentes:', turnosExistentes.length);
     
-    const fechaObj = new Date(fecha + 'T00:00:00'); // Forzar medianoche hora local
+    // Usar DateUtils si el feature flag está activo
+    const useNewUtils = isFeatureEnabled('USE_DATE_UTILS_IN_DISPONIBILIDAD');
+    
+    const fechaObj = useNewUtils ? DateUtils.combineDateTime(fecha, '00:00') : new Date(fecha + 'T00:00:00');
     const diaSemana = fechaObj.getDay();
     const ahora = new Date();
     
     // Usar hora local para que coincida con la zona horaria del servidor
-    const esHoy = (
+    const esHoy = useNewUtils ? DateUtils.isToday(fechaObj) : (
       fechaObj.getFullYear() === ahora.getFullYear() &&
       fechaObj.getMonth() === ahora.getMonth() &&
       fechaObj.getDate() === ahora.getDate()
     );
     
-    console.log('🔍 [DisponibilidadService] Fecha procesada:', { 
+    logDate('Fecha procesada:', { 
       fechaParametro: fecha,
       fechaObj,
-      fechaObjLocal: `${fechaObj.getFullYear()}-${fechaObj.getMonth() + 1}-${fechaObj.getDate()}`,
+      fechaObjLocal: useNewUtils ? DateUtils.normalizeDate(fechaObj) : `${fechaObj.getFullYear()}-${fechaObj.getMonth() + 1}-${fechaObj.getDate()}`,
       ahora,
-      ahoraLocal: `${ahora.getFullYear()}-${ahora.getMonth() + 1}-${ahora.getDate()}`,
+      ahoraLocal: useNewUtils ? DateUtils.normalizeDate(ahora) : `${ahora.getFullYear()}-${ahora.getMonth() + 1}-${ahora.getDate()}`,
       esHoy,
       diaSemana,
       diaSemanaTexto: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][diaSemana],
       horaActual: `${ahora.getHours().toString().padStart(2, '0')}:${ahora.getMinutes().toString().padStart(2, '0')} LOCAL`,
       horaUTC: `${ahora.getUTCHours().toString().padStart(2, '0')}:${ahora.getUTCMinutes().toString().padStart(2, '0')} UTC`,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      useNewUtils
     });
 
     // Primero verificar si hay una excepción que marque el día como NO disponible
     const excepcionNoDisponible = excepciones.find(exc => {
-      const fechaExcepcion = new Date(exc.fecha).toISOString().split('T')[0];
-      console.log('🔍 [DisponibilidadService] Verificando excepción NO disponible:', { 
+      const fechaExcepcion = useNewUtils ? DateUtils.normalizeDate(exc.fecha) : (() => {
+        if (typeof exc.fecha === 'string') {
+          return exc.fecha.slice(0, 10);
+        }
+        const d = exc.fecha as Date;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      })();
+      logDate('Verificando excepción NO disponible:', { 
         excFecha: exc.fecha, 
         fechaExcepcion, 
         fechaParametro: fecha, 
@@ -130,14 +204,23 @@ export class DisponibilidadService {
     });
 
     if (excepcionNoDisponible) {
-      console.log('🔍 [DisponibilidadService] Día marcado como NO disponible por excepción, retornando array vacío');
+      logDate('Día marcado como NO disponible por excepción, retornando array vacío');
       return [];
     }
 
     // Determinar hora_inicio, hora_fin e intervalo del día (excepción tiene prioridad)
     const excepcionDia = excepciones.find(exc => {
-      const fechaExcepcion = new Date(exc.fecha).toISOString().split('T')[0];
-      console.log('🔍 [DisponibilidadService] Buscando excepción CON disponibilidad:', { 
+      const fechaExcepcion = useNewUtils ? DateUtils.normalizeDate(exc.fecha) : (() => {
+        if (typeof exc.fecha === 'string') {
+          return exc.fecha.slice(0, 10);
+        }
+        const d = exc.fecha as Date;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      })();
+      logDate('Buscando excepción CON disponibilidad:', { 
         excFecha: exc.fecha, 
         fechaExcepcion, 
         fechaParametro: fecha, 
@@ -147,7 +230,7 @@ export class DisponibilidadService {
       return fechaExcepcion === fecha && exc.disponible;
     });
     
-    console.log('🔍 [DisponibilidadService] Excepción encontrada para el día:', excepcionDia);
+    logDate('Excepción encontrada para el día:', excepcionDia);
     
     let horaInicio: string;
     let horaFin: string;
@@ -191,7 +274,7 @@ export class DisponibilidadService {
       const slot = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
       
       // No incluir slots anteriores a hora actual si es hoy
-      const slotDateTime = new Date(
+      const slotDateTime = useNewUtils ? DateUtils.combineDateTime(fecha, slot) : new Date(
         fechaObj.getFullYear(),
         fechaObj.getMonth(), 
         fechaObj.getDate(),
@@ -204,7 +287,7 @@ export class DisponibilidadService {
       const ahoraTimestamp = ahora.getTime();
       const debeIncluirse = !esHoy || slotTimestamp > ahoraTimestamp;
       
-      console.log('🔍 [DisponibilidadService] Evaluando slot:', {
+      logDate('Evaluando slot:', {
         slot,
         esHoy,
         slotDateTime,
@@ -217,7 +300,8 @@ export class DisponibilidadService {
           ? (slotTimestamp > ahoraTimestamp 
               ? `Futuro (+${Math.round((slotTimestamp - ahoraTimestamp) / (1000 * 60))} min) - Incluir` 
               : `Pasado (${Math.round((ahoraTimestamp - slotTimestamp) / (1000 * 60))} min) - Excluir`)
-          : 'No es hoy - Incluir'
+          : 'No es hoy - Incluir',
+        useNewUtils
       });
       
       if (debeIncluirse) {
@@ -232,7 +316,7 @@ export class DisponibilidadService {
       .filter(turno => turno.estado === 'pendiente' || turno.estado === 'confirmado')
       .map(turno => {
         const horaNormalizada = turno.hora.slice(0, 5);
-        console.log('🔍 [DisponibilidadService] Turno ocupado:', {
+        logDate('Turno ocupado:', {
           turno_id: turno.id,
           hora_original: turno.hora,
           hora_normalizada: horaNormalizada,
@@ -243,7 +327,7 @@ export class DisponibilidadService {
 
     const slotsFinales = slots.filter(slot => {
       const estaOcupado = slotsOcupados.includes(slot);
-      console.log('🔍 [DisponibilidadService] Verificando slot:', {
+      logDate('Verificando slot:', {
         slot,
         estaOcupado,
         slotsOcupados
@@ -251,10 +335,10 @@ export class DisponibilidadService {
       return !estaOcupado;
     });
     
-    console.log('🔍 [DisponibilidadService] Slots generados:', slots);
-    console.log('🔍 [DisponibilidadService] Slots ocupados:', slotsOcupados);
-    console.log('🔍 [DisponibilidadService] Slots finales disponibles:', slotsFinales);
-    console.log('🔍🔍🔍 [DisponibilidadService] calcularSlotsDisponibles - FIN');
+    logDate('Slots generados:', slots);
+    logDate('Slots ocupados:', slotsOcupados);
+    logDate('Slots finales disponibles:', slotsFinales);
+    logDate('calcularSlotsDisponibles - FIN');
 
     return slotsFinales;
   }
@@ -267,7 +351,8 @@ export class DisponibilidadService {
     fecha: string,
     hora: string
   ): boolean {
-    const fechaObj = new Date(fecha);
+    const useNewUtils = isFeatureEnabled('USE_DATE_UTILS_IN_DISPONIBILIDAD');
+    const fechaObj = useNewUtils ? DateUtils.combineDateTime(fecha, '00:00') : new Date(fecha);
     const diaSemana = fechaObj.getDay();
 
     // Verificar que la fecha esté disponible
@@ -275,8 +360,8 @@ export class DisponibilidadService {
       disponibilidades,
       vacaciones,
       excepciones,
-      fechaObj.getMonth() + 1,
-      fechaObj.getFullYear()
+      useNewUtils ? (fechaObj.getMonth() + 1) : fechaObj.getMonth() + 1,
+      useNewUtils ? fechaObj.getFullYear() : fechaObj.getFullYear()
     );
 
     if (!diasDisponibles.includes(fecha)) {

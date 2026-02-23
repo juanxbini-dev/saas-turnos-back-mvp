@@ -11,6 +11,7 @@ import { CreateTurnoUseCase } from '../../application/use-cases/turnos/CreateTur
 import { UpdateTurnoEstadoUseCase } from '../../application/use-cases/turnos/UpdateTurnoEstadoUseCase';
 import { GetDisponibilidadMesUseCase } from '../../application/use-cases/turnos/GetDisponibilidadMesUseCase';
 import { GetSlotsDisponiblesUseCase } from '../../application/use-cases/turnos/GetSlotsDisponiblesUseCase';
+import { GetCalendarioUseCase } from '../../application/use-cases/turnos/GetCalendarioUseCase';
 import { CreateDisponibilidadUseCase } from '../../application/use-cases/disponibilidad/CreateDisponibilidadUseCase';
 import { UpdateDisponibilidadUseCase } from '../../application/use-cases/disponibilidad/UpdateDisponibilidadUseCase';
 import { DeleteDisponibilidadUseCase } from '../../application/use-cases/disponibilidad/DeleteDisponibilidadUseCase';
@@ -20,6 +21,7 @@ import { DeleteVacacionUseCase } from '../../application/use-cases/disponibilida
 import { CreateExcepcionUseCase } from '../../application/use-cases/disponibilidad/CreateExcepcionUseCase';
 import { UpdateExcepcionUseCase } from '../../application/use-cases/disponibilidad/UpdateExcepcionUseCase';
 import { DeleteExcepcionUseCase } from '../../application/use-cases/disponibilidad/DeleteExcepcionUseCase';
+import { GetSlotsRangoUseCase } from '../../application/use-cases/turnos/GetSlotsRangoUseCase';
 
 const router = Router();
 
@@ -49,6 +51,7 @@ const getSlotsDisponiblesUseCase = new GetSlotsDisponiblesUseCase(
   turnoRepository,
   disponibilidadService
 );
+const getCalendarioUseCase = new GetCalendarioUseCase(turnoRepository);
 const createDisponibilidadUseCase = new CreateDisponibilidadUseCase(
   disponibilidadRepository,
   cryptoService
@@ -67,6 +70,11 @@ const createExcepcionUseCase = new CreateExcepcionUseCase(
 );
 const updateExcepcionUseCase = new UpdateExcepcionUseCase(disponibilidadRepository);
 const deleteExcepcionUseCase = new DeleteExcepcionUseCase(disponibilidadRepository);
+const getSlotsRangoUseCase = new GetSlotsRangoUseCase(
+  disponibilidadRepository,
+  turnoRepository,
+  disponibilidadService
+);
 
 // Controller
 const turnosController = new TurnosController(
@@ -75,6 +83,7 @@ const turnosController = new TurnosController(
   updateTurnoEstadoUseCase,
   getDisponibilidadMesUseCase,
   getSlotsDisponiblesUseCase,
+  getCalendarioUseCase,
   createDisponibilidadUseCase,
   updateDisponibilidadUseCase,
   deleteDisponibilidadUseCase,
@@ -84,6 +93,7 @@ const turnosController = new TurnosController(
   createExcepcionUseCase,
   updateExcepcionUseCase,
   deleteExcepcionUseCase,
+  getSlotsRangoUseCase,
   disponibilidadRepository
 );
 
@@ -98,10 +108,12 @@ router.use(authenticate);
 router.get('/', turnosController.getTurnos.bind(turnosController));
 router.post('/', turnosController.createTurno.bind(turnosController));
 router.put('/:id/estado', turnosController.updateEstado.bind(turnosController));
+router.get('/calendario', turnosController.getCalendario.bind(turnosController));
 
 // Disponibilidad
 router.get('/disponibilidad/:profesionalId/mes', turnosController.getDisponibilidadMes.bind(turnosController));
 router.get('/disponibilidad/:profesionalId/slots', turnosController.getSlotsDisponibles.bind(turnosController));
+router.get('/disponibilidad/:profesionalId/slots-rango', turnosController.getSlotsRango.bind(turnosController));
 router.get('/configuracion', turnosController.getConfiguracion.bind(turnosController));
 
 // CRUD Disponibilidad

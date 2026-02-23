@@ -6,6 +6,11 @@ export interface ITurnoRepository {
   findByEmpresa(empresaId: string): Promise<TurnoConDetalle[]>;
   findByProfesional(profesionalId: string): Promise<TurnoConDetalle[]>;
   findByFechaYProfesional(profesionalId: string, fecha: string): Promise<Turno[]>;
+  findByProfesionalEnRango(
+    profesionalId: string,
+    fechaInicio: string,
+    fechaFin: string
+  ): Promise<TurnoConDetalle[]>;
   create(data: CreateTurnoData): Promise<Turno>;
   updateEstado(id: string, estado: 'pendiente' | 'confirmado' | 'completado' | 'cancelado'): Promise<Turno>;
   completarVencidos(): Promise<number>;

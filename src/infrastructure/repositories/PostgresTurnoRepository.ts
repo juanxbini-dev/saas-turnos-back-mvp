@@ -19,7 +19,13 @@ export class PostgresTurnoRepository implements ITurnoRepository {
     `;
     
     const result = await pool.query(query, [empresaId]);
-    return result.rows;
+    
+    // Mapear duracion a duracion_minutos para que coincida con la entidad
+    return result.rows.map(row => ({
+      ...row,
+      duracion_minutos: row.duracion,
+      precio: row.servicio_precio
+    }));
   }
 
   async findByProfesional(profesionalId: string): Promise<TurnoConDetalle[]> {
@@ -38,7 +44,13 @@ export class PostgresTurnoRepository implements ITurnoRepository {
     `;
     
     const result = await pool.query(query, [profesionalId]);
-    return result.rows;
+    
+    // Mapear duracion a duracion_minutos para que coincida con la entidad
+    return result.rows.map(row => ({
+      ...row,
+      duracion_minutos: row.duracion,
+      precio: row.servicio_precio
+    }));
   }
 
   async findByFechaYProfesional(profesionalId: string, fecha: string): Promise<Turno[]> {
@@ -53,6 +65,40 @@ export class PostgresTurnoRepository implements ITurnoRepository {
     
     const result = await pool.query(query, [profesionalId, fecha]);
     return result.rows;
+  }
+
+  async findByProfesionalEnRango(
+    profesionalId: string,
+    fechaInicio: string,
+    fechaFin: string
+  ): Promise<TurnoConDetalle[]> {
+    const query = `
+      SELECT 
+        t.id, t.cliente_id, t.usuario_id, t.servicio_id, 
+        TO_CHAR(t.fecha::date, 'YYYY-MM-DD') as fecha, 
+        TO_CHAR(t.hora::time, 'HH24:MI') as hora,
+        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion, 
+        t.empresa_id, t.created_at, t.updated_at,
+        c.nombre as cliente_nombre, c.email as cliente_email,
+        u.nombre as usuario_nombre, u.username as usuario_username
+      FROM turnos t
+      JOIN clientes c ON t.cliente_id = c.id
+      JOIN usuarios u ON t.usuario_id = u.id
+      WHERE t.usuario_id = $1
+      AND t.fecha >= $2
+      AND t.fecha <= $3
+      AND t.estado IN ('pendiente', 'confirmado', 'completado')
+      ORDER BY t.fecha ASC, t.hora ASC
+    `;
+    
+    const result = await pool.query(query, [profesionalId, fechaInicio, fechaFin]);
+    
+    // Mapear duracion a duracion_minutos para que coincida con la entidad
+    return result.rows.map(row => ({
+      ...row,
+      duracion_minutos: row.duracion,
+      precio: row.servicio_precio
+    }));
   }
 
   async create(data: CreateTurnoData): Promise<Turno> {

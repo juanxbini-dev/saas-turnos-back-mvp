@@ -2,53 +2,41 @@ import { pool } from '../database/postgres.connection';
 import { IUsuarioServicioRepository, CreateUsuarioServicioData, UpdateUsuarioServicioData } from '../../domain/repositories/IUsuarioServicioRepository';
 import { UsuarioServicio } from '../../domain/entities/Servicio';
 
+import { createLogger } from '../../utils/logger';
+
+const serviciosLogger = createLogger('PostgresUsuarioServicioRepository');
+
 export class PostgresUsuarioServicioRepository implements IUsuarioServicioRepository {
   async findByUsuario(usuarioId: string): Promise<UsuarioServicio[]> {
     const query = `
       SELECT us.id, us.usuario_id, us.servicio_id, us.empresa_id, us.precio_personalizado,
              us.duracion_personalizada, us.habilitado, us.nivel_habilidad, us.notas,
              us.created_at, us.updated_at,
-             s.nombre, s.descripcion, s.precio_base, s.duracion, s.activo
+             s.nombre, s.descripcion, s.precio_base, s.precio_minimo, s.precio_maximo, s.duracion, s.activo
       FROM usuario_servicios us
       INNER JOIN servicios s ON us.servicio_id = s.id
       WHERE us.usuario_id = $1 AND us.habilitado = true AND s.activo = true
       ORDER BY s.nombre ASC
     `;
     
-    console.log('🔍 [PostgresUsuarioServicioRepository] Consultando servicios para usuario:', usuarioId);
-    console.log('🔍 [PostgresUsuarioServicioRepository] Query SQL:', query);
-    
     const result = await pool.query(query, [usuarioId]);
     
-    console.log('🔍 [PostgresUsuarioServicioRepository] Resultado crudo de BD:', result.rows);
-    
-    // Convertir campos numéricos de string a number (sin mapeo de nombres)
-    const processedRows = result.rows.map(row => ({
-      ...row,
-      precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
-      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0')
-    }));
-    
-    console.log('🔍 [PostgresUsuarioServicioRepository] Resultado procesado:', processedRows);
-    console.log('🔍 [PostgresUsuarioServicioRepository] Número de registros:', processedRows.length);
-    
-    // Log detallado de cada servicio
-    processedRows.forEach((row, index) => {
-      console.log(`🔍 [PostgresUsuarioServicioRepository] Servicio ${index + 1}:`, {
-        id: row.id,
-        nombre: row.nombre,
-        precio_base: row.precio_base,
-        duracion: row.duracion,
-        precio_personalizado: row.precio_personalizado,
-        duracion_personalizada: row.duracion_personalizada,
-        precio_final: row.precio,
-        duracion_final: row.duracion_minutos,
-        habilitado: row.habilitado,
-        servicio_activo: row.activo
-      });
+    serviciosLogger.debug('Servicios obtenidos para usuario', {
+      usuarioId,
+      cantidad: result.rows.length
     });
     
-    return processedRows;
+    // Convertir campos numéricos de string a number y mapear nombres correctos
+    return result.rows.map(row => ({
+      ...row,
+      // Campos procesados para frontend
+      precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
+      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0'),
+      // Campos de validación del servicio base
+      precio_base: parseFloat(row.precio_base || '0'),
+      precio_minimo: row.precio_minimo ? parseFloat(row.precio_minimo) : null,
+      precio_maximo: row.precio_maximo ? parseFloat(row.precio_maximo) : null
+    }));
   }
 
   async findByServicio(servicioId: string): Promise<UsuarioServicio[]> {
@@ -56,7 +44,7 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
       SELECT us.id, us.usuario_id, us.servicio_id, us.empresa_id, us.precio_personalizado,
              us.duracion_personalizada, us.habilitado, us.nivel_habilidad, us.notas,
              us.created_at, us.updated_at,
-             s.nombre, s.descripcion, s.precio_base, s.duracion, s.activo
+             s.nombre, s.descripcion, s.precio_base, s.precio_minimo, s.precio_maximo, s.duracion, s.activo
       FROM usuario_servicios us
       INNER JOIN servicios s ON us.servicio_id = s.id
       WHERE us.servicio_id = $1 AND us.habilitado = true AND s.activo = true
@@ -65,11 +53,20 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
     
     const result = await pool.query(query, [servicioId]);
     
-    // Convertir campos numéricos de string a number (sin mapeo de nombres)
+    serviciosLogger.debug('Servicios obtenidos por servicio', {
+      servicioId,
+      cantidad: result.rows.length
+    });
+    
+    // Convertir campos numéricos de string a number y mapear nombres correctos
     return result.rows.map(row => ({
       ...row,
       precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
-      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0')
+      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0'),
+      // Campos de validación del servicio base
+      precio_base: parseFloat(row.precio_base || '0'),
+      precio_minimo: row.precio_minimo ? parseFloat(row.precio_minimo) : null,
+      precio_maximo: row.precio_maximo ? parseFloat(row.precio_maximo) : null
     }));
   }
 
@@ -78,7 +75,7 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
       SELECT us.id, us.usuario_id, us.servicio_id, us.empresa_id, us.precio_personalizado,
              us.duracion_personalizada, us.habilitado, us.nivel_habilidad, us.notas,
              us.created_at, us.updated_at,
-             s.nombre, s.descripcion, s.precio_base, s.duracion, s.activo
+             s.nombre, s.descripcion, s.precio_base, s.precio_minimo, s.precio_maximo, s.duracion, s.activo
       FROM usuario_servicios us
       INNER JOIN servicios s ON us.servicio_id = s.id
       WHERE us.usuario_id = $1 AND us.servicio_id = $2 AND us.habilitado = true AND s.activo = true
@@ -88,12 +85,16 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
     
     if (result.rows.length === 0) return null;
     
-    // Convertir campos numéricos de string a number (sin mapeo de nombres)
+    // Convertir campos numéricos de string a number y mapear nombres correctos
     const row = result.rows[0];
     return {
       ...row,
       precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
-      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0')
+      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0'),
+      // Campos de validación del servicio base
+      precio_base: parseFloat(row.precio_base || '0'),
+      precio_minimo: row.precio_minimo ? parseFloat(row.precio_minimo) : null,
+      precio_maximo: row.precio_maximo ? parseFloat(row.precio_maximo) : null
     };
   }
 
@@ -119,21 +120,30 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
       data.notas || null
     ]);
     
-    // Necesitamos hacer un JOIN para obtener los datos del servicio
+    // Necesitamos hacer un JOIN para obtener los datos del servicio con mapeo correcto
     const servicioQuery = `
       SELECT us.id, us.usuario_id, us.servicio_id, us.empresa_id, us.precio_personalizado,
              us.duracion_personalizada, us.habilitado, us.nivel_habilidad, us.notas,
              us.created_at, us.updated_at,
-             s.nombre as servicio_nombre,
-             s.descripcion as servicio_descripcion,
-             s.precio_base as servicio_precio_base
+             s.nombre, s.descripcion, s.precio_base, s.precio_minimo, s.precio_maximo, s.duracion, s.activo
       FROM usuario_servicios us
       INNER JOIN servicios s ON us.servicio_id = s.id
       WHERE us.id = $1
     `;
     
     const servicioResult = await pool.query(servicioQuery, [result.rows[0].id]);
-    return servicioResult.rows[0];
+    const row = servicioResult.rows[0];
+    
+    // Mapear campos para frontend
+    return {
+      ...row,
+      precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
+      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0'),
+      // Campos de validación del servicio base
+      precio_base: parseFloat(row.precio_base || '0'),
+      precio_minimo: row.precio_minimo ? parseFloat(row.precio_minimo) : null,
+      precio_maximo: row.precio_maximo ? parseFloat(row.precio_maximo) : null
+    };
   }
 
   async update(id: string, data: UpdateUsuarioServicioData): Promise<UsuarioServicio> {
@@ -175,21 +185,30 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
 
     await pool.query(query, values);
 
-    // Obtener el resultado con JOIN
+    // Obtener el resultado con JOIN y mapeo correcto
     const servicioQuery = `
       SELECT us.id, us.usuario_id, us.servicio_id, us.empresa_id, us.precio_personalizado,
              us.duracion_personalizada, us.habilitado, us.nivel_habilidad, us.notas,
              us.created_at, us.updated_at,
-             s.nombre as servicio_nombre,
-             s.descripcion as servicio_descripcion,
-             s.precio_base as servicio_precio_base
+             s.nombre, s.descripcion, s.precio_base, s.precio_minimo, s.precio_maximo, s.duracion, s.activo
       FROM usuario_servicios us
       INNER JOIN servicios s ON us.servicio_id = s.id
       WHERE us.id = $1
     `;
     
     const result = await pool.query(servicioQuery, [id]);
-    return result.rows[0];
+    const row = result.rows[0];
+    
+    // Mapear campos para frontend
+    return {
+      ...row,
+      precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
+      duracion_minutos: parseInt(row.duracion_personalizada || row.duracion || '0'),
+      // Campos de validación del servicio base
+      precio_base: parseFloat(row.precio_base || '0'),
+      precio_minimo: row.precio_minimo ? parseFloat(row.precio_minimo) : null,
+      precio_maximo: row.precio_maximo ? parseFloat(row.precio_maximo) : null
+    };
   }
 
   async delete(id: string): Promise<void> {

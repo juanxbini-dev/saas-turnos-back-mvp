@@ -14,7 +14,7 @@ router.get('/', (req, res) => clientesController.getClientes(req, res));
 // GET /api/clientes/mis-clientes - Listar clientes del profesional actual
 router.get('/mis-clientes', (req, res) => clientesController.getMisClientes(req, res));
 
-// POST /api/clientes - Crear cliente (solo admin)
+// POST /api/clientes - Crear cliente (admin y staff)
 router.post('/', (req, res) => clientesController.createCliente(req, res));
 
 // PUT /api/clientes/:id - Editar cliente (admin y staff)

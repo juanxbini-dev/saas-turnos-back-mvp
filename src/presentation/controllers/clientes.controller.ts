@@ -54,9 +54,9 @@ export class ClientesController {
       
       const user = req.user as AuthenticatedUser;
       
-      // Verificar si es admin
-      if (!user.roles.includes('admin')) {
-        console.error('💥 [ClientesController] Usuario no es admin - roles:', user.roles);
+      // Verificar si es admin o staff (ambos pueden crear clientes)
+      if (!user.roles.includes('admin') && !user.roles.includes('staff')) {
+        console.error('💥 [ClientesController] Usuario no tiene permisos - roles:', user.roles);
         res.status(403).json({
           success: false,
           message: 'No tienes permisos para crear clientes'

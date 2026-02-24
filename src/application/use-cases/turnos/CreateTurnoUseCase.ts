@@ -4,6 +4,9 @@ import { IUsuarioServicioRepository } from '../../../domain/repositories/IUsuari
 import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
 import { CryptoService } from '../../../infrastructure/security/crypto.service';
 import { CreateTurnoData, Turno } from '../../../domain/entities/Turno';
+import { createLogger } from '../../../utils/logger';
+
+const turnoLogger = createLogger('CreateTurnoUseCase');
 
 export class CreateTurnoUseCase {
   constructor(
@@ -19,18 +22,21 @@ export class CreateTurnoUseCase {
     usuarioAutenticadoId: string,
     isAdmin: boolean
   ): Promise<Turno> {
-    console.log('🔍 [CreateTurnoUseCase] INICIO - Datos recibidos:', { 
-      data, 
-      usuarioAutenticadoId, 
-      isAdmin 
+    turnoLogger.debug('INICIO - Creación de turno', { 
+      usuarioId: data.usuario_id, 
+      servicioId: data.servicio_id, 
+      fecha: data.fecha,
+      hora: data.hora,
+      isAdmin,
+      usuarioAutenticadoId
     });
 
     // Si no es admin, forzar usuario_id = usuarioAutenticadoId
     const usuarioId = isAdmin ? data.usuario_id : usuarioAutenticadoId;
-    console.log('🔍 [CreateTurnoUseCase] UsuarioId final:', usuarioId);
+    turnoLogger.debug('UsuarioId final', { usuarioId, isAdmin });
 
     // Validar slot con DisponibilidadService.validarSlotDisponible
-    console.log('🔍 [CreateTurnoUseCase] Validando disponibilidad...');
+    turnoLogger.debug('Validando disponibilidad');
     const [disponibilidades, vacaciones, excepciones, turnosExistentes] = await Promise.all([
       this.disponibilidadRepository.findDisponibilidadByProfesional(usuarioId),
       this.disponibilidadRepository.findVacacionesByProfesional(usuarioId),
@@ -38,7 +44,7 @@ export class CreateTurnoUseCase {
       this.turnoRepository.findByFechaYProfesional(usuarioId, data.fecha)
     ]);
 
-    console.log('🔍 [CreateTurnoUseCase] Datos de disponibilidad:', {
+    turnoLogger.debug('Datos de disponibilidad cargados', {
       disponibilidades: disponibilidades.length,
       vacaciones: vacaciones.length,
       excepciones: excepciones.length,
@@ -54,25 +60,25 @@ export class CreateTurnoUseCase {
       data.hora
     );
 
-    console.log('🔍 [CreateTurnoUseCase] Resultado validación slot:', { 
+    turnoLogger.debug('Resultado validación slot', { 
       slotDisponible, 
       fecha: data.fecha, 
       hora: data.hora 
     });
 
     if (!slotDisponible) {
-      console.error('💥 [CreateTurnoUseCase] Slot no disponible - lanzando error 400');
+      turnoLogger.error('Slot no disponible', undefined, { fecha: data.fecha, hora: data.hora });
       throw Object.assign(new Error('El slot no está disponible'), { statusCode: 400 });
     }
 
     // Buscar servicio en usuario_servicios JOIN servicios para snapshot
-    console.log('🔍 [CreateTurnoUseCase] Buscando servicio:', { usuarioId, servicio_id: data.servicio_id });
+    turnoLogger.debug('Buscando servicio', { usuarioId, servicioId: data.servicio_id });
     const servicio = await this.usuarioServicioRepository.findByUsuarioAndServicio(usuarioId, data.servicio_id);
     
-    console.log('🔍 [CreateTurnoUseCase] Servicio encontrado:', servicio);
+    turnoLogger.debug('Servicio encontrado', { servicioId: servicio?.id, nombre: servicio?.nombre });
     
     if (!servicio) {
-      console.error('💥 [CreateTurnoUseCase] Servicio no disponible - lanzando error 400');
+      turnoLogger.error('Servicio no disponible', undefined, { usuarioId, servicioId: data.servicio_id });
       throw Object.assign(new Error('El servicio no está disponible para este profesional'), { statusCode: 400 });
     }
 
@@ -80,12 +86,10 @@ export class CreateTurnoUseCase {
     const precio = servicio.precio_personalizado || servicio.precio || 0;
     const duracion = servicio.duracion_personalizada || servicio.duracion_minutos || 30; // valor por defecto
 
-    console.log('🔍 [CreateTurnoUseCase] Datos del servicio:', {
+    turnoLogger.debug('Datos del servicio', {
       nombre: servicioNombre,
       precio,
-      duracion,
-      precio_personalizado: servicio.precio_personalizado,
-      precio_base: servicio.precio
+      duracion
     });
 
     // Generar id con cryptoService.generateUUID()
@@ -106,36 +110,38 @@ export class CreateTurnoUseCase {
       empresa_id: servicio.empresa_id
     };
 
-    console.log('🔍 [CreateTurnoUseCase] Datos del turno a crear:', turnoData);
+    turnoLogger.debug('Datos del turno a crear', { 
+      turnoId: id,
+      clienteId: data.cliente_id,
+      servicio: servicioNombre
+    });
 
     const turno = await this.turnoRepository.create(turnoData);
-    console.log('🔍 [CreateTurnoUseCase] Turno creado con estado pendiente:', turno);
+    turnoLogger.info('Turno creado con estado pendiente', { turnoId: turno.id });
 
     // Simular envío de email con mail delivery
-    console.log('📧 [MAIL DELIVERY] Enviando email...', { 
-      clienteEmail: 'cliente@example.com', 
-      profesionalEmail: 'profesional@example.com', 
+    turnoLogger.info('Iniciando envío de email', { 
+      turnoId: id,
       fecha: data.fecha, 
-      hora: data.hora, 
-      servicio: servicioNombre 
+      hora: data.hora
     });
 
     // Simular respuesta del mail delivery (async)
     setTimeout(async () => {
       try {
         // Simular mail delivery OK
-        console.log('✅ [MAIL DELIVERY] Email enviado exitosamente!');
+        turnoLogger.info('Email enviado exitosamente', { turnoId: id });
         
         // Cuando el mail delivery confirma, actualizar estado a confirmado
-        console.log('🔍 [CreateTurnoUseCase] Mail delivery OK - Actualizando estado a confirmado...');
+        turnoLogger.debug('Actualizando estado a confirmado', { turnoId: id });
         const turnoConfirmado = await this.turnoRepository.updateEstado(id, 'confirmado');
-        console.log('🔍 [CreateTurnoUseCase] Turno confirmado por mail delivery:', turnoConfirmado);
+        turnoLogger.info('Turno confirmado', { turnoId: id });
         
         // Aquí iría la lógica real del mail delivery callback
         // mailDeliveryService.onSuccess(id, () => { ... });
         
       } catch (error) {
-        console.error('💥 [MAIL DELIVERY] Error al confirmar turno:', error);
+        turnoLogger.error('Error al confirmar turno', error as Error, { turnoId: id });
         // Manejar error del mail delivery - podría quedar como pendiente o cancelarse
       }
     }, 1000); // Simular 1 segundo de delay del mail delivery

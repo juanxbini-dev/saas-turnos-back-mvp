@@ -22,7 +22,7 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
     
     console.log('🔍 [PostgresUsuarioServicioRepository] Resultado crudo de BD:', result.rows);
     
-    // Convertir campos numéricos de string a number
+    // Convertir campos numéricos de string a number (sin mapeo de nombres)
     const processedRows = result.rows.map(row => ({
       ...row,
       precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
@@ -65,7 +65,7 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
     
     const result = await pool.query(query, [servicioId]);
     
-    // Convertir campos numéricos de string a number
+    // Convertir campos numéricos de string a number (sin mapeo de nombres)
     return result.rows.map(row => ({
       ...row,
       precio: parseFloat(row.precio_personalizado || row.precio_base || '0'),
@@ -88,7 +88,7 @@ export class PostgresUsuarioServicioRepository implements IUsuarioServicioReposi
     
     if (result.rows.length === 0) return null;
     
-    // Convertir campos numéricos de string a number
+    // Convertir campos numéricos de string a number (sin mapeo de nombres)
     const row = result.rows[0];
     return {
       ...row,

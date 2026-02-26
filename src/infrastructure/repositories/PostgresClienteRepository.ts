@@ -138,4 +138,52 @@ export class PostgresClienteRepository implements IClienteRepository {
     const result = await pool.query(query, params);
     return parseInt(result.rows[0].count) > 0;
   }
+
+  async findByEmailOrTelefono(email: string, empresaId: string, telefono?: string): Promise<Cliente | null> {
+    let query = `
+      SELECT id, nombre, email, telefono, empresa_id, activo, created_at, updated_at
+      FROM clientes
+      WHERE empresa_id = $2 AND (email = $1
+    `;
+    const params = [email, empresaId];
+
+    if (telefono) {
+      query += ` OR telefono = $${params.length + 1}`;
+      params.push(telefono);
+    }
+
+    query += `) AND activo = true LIMIT 1`;
+
+    const result = await pool.query(query, params);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return this.mapRowToCliente(result.rows[0]);
+  }
+
+  async getTurnosCount(clienteId: string): Promise<number> {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM turnos
+      WHERE cliente_id = $1
+    `;
+    
+    const result = await pool.query(query, [clienteId]);
+    return parseInt(result.rows[0].count);
+  }
+
+  private mapRowToCliente(row: any): Cliente {
+    return {
+      id: row.id,
+      nombre: row.nombre,
+      email: row.email,
+      telefono: row.telefono,
+      empresa_id: row.empresa_id,
+      activo: row.activo,
+      created_at: row.created_at,
+      updated_at: row.updated_at
+    };
+  }
 }

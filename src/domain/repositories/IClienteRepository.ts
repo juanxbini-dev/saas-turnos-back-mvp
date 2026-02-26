@@ -11,4 +11,6 @@ export interface IClienteRepository {
   toggleActivo(id: string, activo: boolean): Promise<Cliente>
   existeEmail(email: string, empresaId: string, excludeId?: string): Promise<boolean>
   existeTelefono(telefono: string, empresaId: string, excludeId?: string): Promise<boolean>
+  findByEmailOrTelefono(email: string, empresaId: string, telefono?: string): Promise<Cliente | null>
+  getTurnosCount(clienteId: string): Promise<number>
 }

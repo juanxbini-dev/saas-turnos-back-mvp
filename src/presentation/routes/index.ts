@@ -13,6 +13,7 @@ import serviciosRoutes from './servicios.routes';
 import clientesRoutes from './clientes.routes';
 import turnosRoutes from './turnos.routes';
 import mailDeliveryRoutes from './mailDelivery.routes';
+import publicRoutes from './public.routes';
 
 const router = Router();
 
@@ -50,5 +51,8 @@ router.use('/api/turnos', turnosRoutes);
 
 // Mail delivery routes
 router.use('/api/mail-delivery', mailDeliveryRoutes);
+
+// Public routes (sin autenticación)
+router.use('/public', publicRoutes);
 
 export default router;

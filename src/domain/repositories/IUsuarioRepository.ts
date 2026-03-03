@@ -8,11 +8,15 @@ export interface CreateUsuarioData {
   email: string;
   empresa_id: string;
   rol: 'admin' | 'staff';
+  comision_turno?: number;
+  comision_producto?: number;
 }
 
 export interface UpdateDatosData {
   nombre: string;
   username: string;
+  comision_turno?: number;
+  comision_producto?: number;
 }
 
 export interface IUsuarioRepository {

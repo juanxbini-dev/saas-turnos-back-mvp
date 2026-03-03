@@ -6,7 +6,8 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
   async findByEmpresa(empresaId: string): Promise<UsuarioPublico[]> {
     const query = `
       SELECT u.id, u.email, u.nombre, u.username, u.empresa_id, u.roles, u.activo, 
-             u.last_login, u.created_at, u.updated_at
+             u.last_login, u.created_at, u.updated_at,
+             u.comision_turno, u.comision_producto
       FROM usuarios u
       WHERE u.empresa_id = $1
       ORDER BY u.nombre ASC
@@ -19,7 +20,8 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
   async findById(id: string): Promise<UsuarioPublico | null> {
     const query = `
       SELECT u.id, u.email, u.nombre, u.username, u.empresa_id, u.roles, u.activo, 
-             u.last_login, u.created_at, u.updated_at
+             u.last_login, u.created_at, u.updated_at,
+             u.comision_turno, u.comision_producto
       FROM usuarios u
       WHERE u.id = $1
     `;
@@ -44,9 +46,9 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
     const roles = data.rol === 'admin' ? ['admin', 'staff'] : ['staff'];
     
     const query = `
-      INSERT INTO usuarios (id, email, password, nombre, username, empresa_id, roles, activo, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-      RETURNING id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at
+      INSERT INTO usuarios (id, email, password, nombre, username, empresa_id, roles, activo, comision_turno, comision_producto, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+      RETURNING id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at, comision_turno, comision_producto
     `;
     
     const result = await pool.query(query, [
@@ -57,7 +59,9 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
       data.username,
       data.empresa_id,
       roles,
-      true
+      true,
+      data.comision_turno || 20,
+      data.comision_producto || 20
     ]);
     
     return result.rows[0];
@@ -66,12 +70,18 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
   async updateDatos(id: string, data: UpdateDatosData): Promise<UsuarioPublico> {
     const query = `
       UPDATE usuarios
-      SET nombre = $1, username = $2, updated_at = NOW()
-      WHERE id = $3
-      RETURNING id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at
+      SET nombre = $1, username = $2, comision_turno = $3, comision_producto = $4, updated_at = NOW()
+      WHERE id = $5
+      RETURNING id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at, comision_turno, comision_producto
     `;
     
-    const result = await pool.query(query, [data.nombre, data.username, id]);
+    const result = await pool.query(query, [
+      data.nombre, 
+      data.username, 
+      data.comision_turno, 
+      data.comision_producto, 
+      id
+    ]);
     return result.rows[0];
   }
 

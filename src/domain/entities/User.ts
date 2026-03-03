@@ -27,4 +27,6 @@ export interface UsuarioPublico {
   last_login: string | null;
   created_at: string;
   updated_at: string;
+  comision_turno?: number;
+  comision_producto?: number;
 }

@@ -91,6 +91,45 @@ export class TurnosController {
     }
   }
 
+  async finalizarTurno(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { empresaId, id: usuarioId } = req.user!;
+      const { metodoPago, precioModificado, descuentoPorcentaje, productos } = req.body;
+      
+      // Importamos dinámicamente para evitar dependencia circular
+      const { FinalizarTurnoUseCase } = await import('../../application/use-cases/turnos/FinalizarTurnoUseCase');
+      const { PostgresComisionRepository } = await import('../../infrastructure/repositories/PostgresComisionRepository');
+      const { PostgresVentaProductoRepository } = await import('../../infrastructure/repositories/PostgresVentaProductoRepository');
+      const { PostgresUsuarioRepository } = await import('../../infrastructure/repositories/PostgresUsuarioRepository');
+      
+      const finalizarUseCase = new FinalizarTurnoUseCase(
+        this.getTurnosUseCase['turnoRepository'], // Acceder al repository interno
+        new PostgresUsuarioRepository(),
+        new PostgresComisionRepository(),
+        new PostgresVentaProductoRepository()
+      );
+      
+      const turno = await finalizarUseCase.execute({
+        turnoId: id,
+        profesionalId: usuarioId,
+        empresaId: empresaId,
+        metodoPago,
+        precioModificado,
+        descuentoPorcentaje,
+        productos
+      });
+      
+      res.json({ success: true, data: turno });
+    } catch (error: any) {
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ 
+        success: false, 
+        message: error.message || 'Error al finalizar turno' 
+      });
+    }
+  }
+
   async getDisponibilidadMes(req: Request, res: Response) {
     try {
       const { profesionalId } = req.params;

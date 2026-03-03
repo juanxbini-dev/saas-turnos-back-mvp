@@ -108,6 +108,7 @@ router.use(authenticate);
 router.get('/', turnosController.getTurnos.bind(turnosController));
 router.post('/', turnosController.createTurno.bind(turnosController));
 router.put('/:id/estado', turnosController.updateEstado.bind(turnosController));
+router.put('/:id/finalizar', turnosController.finalizarTurno.bind(turnosController));
 router.get('/calendario', turnosController.getCalendario.bind(turnosController));
 
 // Disponibilidad

@@ -1,4 +1,4 @@
-import { Turno, TurnoConDetalle, CreateTurnoData } from '../entities/Turno';
+import { Turno, TurnoConDetalle, CreateTurnoData, FinalizarTurnoData } from '../entities/Turno';
 
 export { CreateTurnoData };
 
@@ -13,5 +13,6 @@ export interface ITurnoRepository {
   ): Promise<TurnoConDetalle[]>;
   create(data: CreateTurnoData): Promise<Turno>;
   updateEstado(id: string, estado: 'pendiente' | 'confirmado' | 'completado' | 'cancelado'): Promise<Turno>;
+  finalizar(id: string, data: Partial<FinalizarTurnoData>): Promise<Turno>;
   completarVencidos(): Promise<number>;
 }

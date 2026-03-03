@@ -137,10 +137,55 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       WHERE id = $2
       RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado, 
                 notas, servicio, servicio_precio as precio, duracion as duracion_minutos, 
-                empresa_id, created_at, updated_at
+                empresa_id, created_at, updated_at,
+                metodo_pago, precio_original, descuento_porcentaje, descuento_monto, 
+                total_final, finalizado_at, finalizado_por_id
     `;
     
     const result = await pool.query(query, [estado, id]);
+    return result.rows[0];
+  }
+
+  async finalizar(id: string, data: {
+    metodoPago?: string;
+    precio_original?: number;
+    descuentoPorcentaje?: number;
+    descuento_monto?: number;
+    total_final?: number;
+    finalizado_at?: string;
+    finalizado_por_id?: string;
+  }): Promise<Turno> {
+    const query = `
+      UPDATE turnos
+      SET 
+        estado = 'completado',
+        metodo_pago = COALESCE($1, metodo_pago),
+        precio_original = COALESCE($2, precio_original),
+        descuento_porcentaje = COALESCE($3, descuento_porcentaje),
+        descuento_monto = COALESCE($4, descuento_monto),
+        total_final = COALESCE($5, total_final),
+        finalizado_at = COALESCE($6, finalizado_at),
+        finalizado_por_id = COALESCE($7, finalizado_por_id),
+        updated_at = NOW()
+      WHERE id = $8
+      RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado, 
+                notas, servicio, servicio_precio as precio, duracion as duracion_minutos, 
+                empresa_id, created_at, updated_at,
+                metodo_pago, precio_original, descuento_porcentaje, descuento_monto, 
+                total_final, finalizado_at, finalizado_por_id
+    `;
+    
+    const result = await pool.query(query, [
+      data.metodoPago,
+      data.precio_original,
+      data.descuentoPorcentaje,
+      data.descuento_monto,
+      data.total_final,
+      data.finalizado_at,
+      data.finalizado_por_id,
+      id
+    ]);
+    
     return result.rows[0];
   }
 

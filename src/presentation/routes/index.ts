@@ -14,6 +14,7 @@ import clientesRoutes from './clientes.routes';
 import turnosRoutes from './turnos.routes';
 import mailDeliveryRoutes from './mailDelivery.routes';
 import publicRoutes from './public.routes';
+import finanzasRoutes from './finanzas.routes';
 
 const router = Router();
 
@@ -48,6 +49,9 @@ router.use('/api/clientes', clientesRoutes);
 
 // Turnos routes
 router.use('/api/turnos', turnosRoutes);
+
+// Finanzas routes
+router.use('/api/finanzas', finanzasRoutes);
 
 // Mail delivery routes
 router.use('/api/mail-delivery', mailDeliveryRoutes);

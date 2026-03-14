@@ -14,6 +14,8 @@ export interface User {
   updated_at: string;
   tenant?: string;
   empresa_activa?: boolean;
+  avatar_url?: string | null;
+  avatar_public_id?: string | null;
 }
 
 export interface UsuarioPublico {
@@ -29,4 +31,5 @@ export interface UsuarioPublico {
   updated_at: string;
   comision_turno?: number;
   comision_producto?: number;
+  avatar_url?: string | null;
 }

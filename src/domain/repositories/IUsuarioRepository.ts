@@ -35,4 +35,5 @@ export interface IUsuarioRepository {
     search?: string;
   }): Promise<UsuarioPublico[]>;
   countProfesionalesByEmpresa(empresaId: string, search?: string): Promise<number>;
+  updateAvatar(id: string, avatarUrl: string | null, avatarPublicId: string | null): Promise<UsuarioPublico>;
 }

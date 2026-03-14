@@ -5,39 +5,39 @@ import { UsuarioPublico, User } from '../../domain/entities/User';
 export class PostgresUsuarioRepository implements IUsuarioRepository {
   async findByEmpresa(empresaId: string): Promise<UsuarioPublico[]> {
     const query = `
-      SELECT u.id, u.email, u.nombre, u.username, u.empresa_id, u.roles, u.activo, 
+      SELECT u.id, u.email, u.nombre, u.username, u.empresa_id, u.roles, u.activo,
              u.last_login, u.created_at, u.updated_at,
-             u.comision_turno, u.comision_producto
+             u.comision_turno, u.comision_producto, u.avatar_url
       FROM usuarios u
       WHERE u.empresa_id = $1
       ORDER BY u.nombre ASC
     `;
-    
+
     const result = await pool.query(query, [empresaId]);
     return result.rows;
   }
 
   async findById(id: string): Promise<UsuarioPublico | null> {
     const query = `
-      SELECT u.id, u.email, u.nombre, u.username, u.empresa_id, u.roles, u.activo, 
+      SELECT u.id, u.email, u.nombre, u.username, u.empresa_id, u.roles, u.activo,
              u.last_login, u.created_at, u.updated_at,
-             u.comision_turno, u.comision_producto
+             u.comision_turno, u.comision_producto, u.avatar_url
       FROM usuarios u
       WHERE u.id = $1
     `;
-    
+
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
   }
 
   async findByIdWithPassword(id: string): Promise<User | null> {
     const query = `
-      SELECT u.id, u.email, u.password, u.nombre, u.username, u.empresa_id, u.roles, u.activo, 
-             u.last_login, u.created_at, u.updated_at
+      SELECT u.id, u.email, u.password, u.nombre, u.username, u.empresa_id, u.roles, u.activo,
+             u.last_login, u.created_at, u.updated_at, u.avatar_url, u.avatar_public_id
       FROM usuarios u
       WHERE u.id = $1
     `;
-    
+
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
   }
@@ -148,7 +148,7 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
     const search = params?.search;
 
     let query = `
-      SELECT id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at
+      SELECT id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at, avatar_url
       FROM usuarios
       WHERE empresa_id = $1 AND activo = true
     `;
@@ -173,7 +173,7 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
       FROM usuarios
       WHERE empresa_id = $1 AND activo = true
     `;
-    
+
     const queryParams: any[] = [empresaId];
 
     if (search) {
@@ -183,5 +183,17 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
 
     const result = await pool.query(query, queryParams);
     return parseInt(result.rows[0].count);
+  }
+
+  async updateAvatar(id: string, avatarUrl: string | null, avatarPublicId: string | null): Promise<UsuarioPublico> {
+    const query = `
+      UPDATE usuarios
+      SET avatar_url = $1, avatar_public_id = $2, updated_at = NOW()
+      WHERE id = $3
+      RETURNING id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at, comision_turno, comision_producto, avatar_url
+    `;
+
+    const result = await pool.query(query, [avatarUrl, avatarPublicId, id]);
+    return result.rows[0];
   }
 }

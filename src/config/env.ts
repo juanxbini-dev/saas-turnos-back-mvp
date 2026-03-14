@@ -21,5 +21,10 @@ export const config = {
     sameSite: 'strict' as const,
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  },
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || ''
   }
 };

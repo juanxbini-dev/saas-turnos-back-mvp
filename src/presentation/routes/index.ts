@@ -16,6 +16,7 @@ import mailDeliveryRoutes from './mailDelivery.routes';
 import publicRoutes from './public.routes';
 import finanzasRoutes from './finanzas.routes';
 import perfilRoutes from './perfil.routes';
+import configuracionRoutes from './configuracion.routes';
 
 const router = Router();
 
@@ -56,6 +57,9 @@ router.use('/api/finanzas', finanzasRoutes);
 
 // Perfil routes
 router.use('/api/perfil', perfilRoutes);
+
+// Configuracion routes (admin)
+router.use('/api/configuracion', configuracionRoutes);
 
 // Mail delivery routes
 router.use('/api/mail-delivery', mailDeliveryRoutes);

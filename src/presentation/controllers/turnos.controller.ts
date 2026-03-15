@@ -102,12 +102,14 @@ export class TurnosController {
       const { PostgresComisionRepository } = await import('../../infrastructure/repositories/PostgresComisionRepository');
       const { PostgresVentaProductoRepository } = await import('../../infrastructure/repositories/PostgresVentaProductoRepository');
       const { PostgresUsuarioRepository } = await import('../../infrastructure/repositories/PostgresUsuarioRepository');
-      
+      const { PostgresProductoRepository } = await import('../../infrastructure/repositories/PostgresProductoRepository');
+
       const finalizarUseCase = new FinalizarTurnoUseCase(
         this.getTurnosUseCase['turnoRepository'], // Acceder al repository interno
         new PostgresUsuarioRepository(),
         new PostgresComisionRepository(),
-        new PostgresVentaProductoRepository()
+        new PostgresVentaProductoRepository(),
+        new PostgresProductoRepository()
       );
       
       const turno = await finalizarUseCase.execute({

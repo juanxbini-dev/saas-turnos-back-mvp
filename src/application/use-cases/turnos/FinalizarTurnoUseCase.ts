@@ -2,6 +2,7 @@ import { ITurnoRepository } from '../../../domain/repositories/ITurnoRepository'
 import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
 import { IComisionRepository } from '../../../domain/repositories/IComisionRepository';
 import { IVentaProductoRepository } from '../../../domain/repositories/IVentaProductoRepository';
+import { IProductoRepository } from '../../../domain/repositories/IProductoRepository';
 import { Turno, FinalizarTurnoData, CalculoCompletoTurno } from '../../../domain/entities/Turno';
 import { CreateComisionData } from '../../../domain/entities/Comision';
 import { calcularComisiones, generarId } from '../../../shared/utils/calculos.utils';
@@ -11,7 +12,8 @@ export class FinalizarTurnoUseCase {
     private turnoRepository: ITurnoRepository,
     private usuarioRepository: IUsuarioRepository,
     private comisionRepository: IComisionRepository,
-    private productoRepository: IVentaProductoRepository
+    private productoRepository: IVentaProductoRepository,
+    private catalogoProductoRepository?: IProductoRepository
   ) {}
 
   async execute(data: FinalizarTurnoData): Promise<Turno> {
@@ -73,6 +75,11 @@ export class FinalizarTurnoUseCase {
           precio_unitario: producto.precio_unitario,
           precio_total: producto.precio_total
         });
+
+        // Descontar stock si viene del catálogo
+        if (producto.producto_id && this.catalogoProductoRepository) {
+          await this.catalogoProductoRepository.deductStock(producto.producto_id, producto.cantidad);
+        }
       }
     }
 

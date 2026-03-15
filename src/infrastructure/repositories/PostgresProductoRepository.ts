@@ -71,6 +71,19 @@ export class PostgresProductoRepository implements IProductoRepository {
     return result.rows[0];
   }
 
+  async delete(id: string): Promise<void> {
+    await pool.query(`DELETE FROM productos WHERE id = $1`, [id]);
+  }
+
+  async findByNombre(empresaId: string, nombre: string, excludeId?: string): Promise<Producto | null> {
+    const query = excludeId
+      ? `SELECT * FROM productos WHERE empresa_id = $1 AND LOWER(nombre) = LOWER($2) AND id != $3`
+      : `SELECT * FROM productos WHERE empresa_id = $1 AND LOWER(nombre) = LOWER($2)`;
+    const params = excludeId ? [empresaId, nombre, excludeId] : [empresaId, nombre];
+    const result = await pool.query(query, params);
+    return result.rows[0] || null;
+  }
+
   async findBajoStock(empresaId: string, umbral = 3): Promise<Producto[]> {
     const result = await pool.query(
       `SELECT * FROM productos WHERE empresa_id = $1 AND stock <= $2 AND activo = true ORDER BY stock ASC`,

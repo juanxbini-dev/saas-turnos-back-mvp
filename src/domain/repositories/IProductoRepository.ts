@@ -7,6 +7,8 @@ export interface IProductoRepository {
   update(id: string, data: UpdateProductoData): Promise<Producto>;
   addStock(id: string, cantidad: number): Promise<Producto>;
   deductStock(id: string, cantidad: number): Promise<Producto>;
+  delete(id: string): Promise<void>;
+  findByNombre(empresaId: string, nombre: string, excludeId?: string): Promise<Producto | null>;
   findBajoStock(empresaId: string, umbral?: number): Promise<Producto[]>;
   getTopVendidos(empresaId: string, limit?: number): Promise<TopProducto[]>;
   getTopVendedores(empresaId: string, limit?: number): Promise<TopVendedor[]>;

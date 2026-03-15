@@ -4,6 +4,7 @@ import { GetProductosUseCase } from '../../application/use-cases/productos/GetPr
 import { CreateProductoUseCase } from '../../application/use-cases/productos/CreateProductoUseCase';
 import { UpdateProductoUseCase } from '../../application/use-cases/productos/UpdateProductoUseCase';
 import { AddStockUseCase } from '../../application/use-cases/productos/AddStockUseCase';
+import { DeleteProductoUseCase } from '../../application/use-cases/productos/DeleteProductoUseCase';
 import { GetProductosStatsUseCase } from '../../application/use-cases/productos/GetProductosStatsUseCase';
 import { PostgresProductoRepository } from '../../infrastructure/repositories/PostgresProductoRepository';
 
@@ -13,6 +14,7 @@ export class ProductosController {
   private updateProductoUseCase: UpdateProductoUseCase;
   private addStockUseCase: AddStockUseCase;
   private getStatsUseCase: GetProductosStatsUseCase;
+  private deleteProductoUseCase: DeleteProductoUseCase;
 
   constructor() {
     const repo = new PostgresProductoRepository();
@@ -20,6 +22,7 @@ export class ProductosController {
     this.createProductoUseCase = new CreateProductoUseCase(repo);
     this.updateProductoUseCase = new UpdateProductoUseCase(repo);
     this.addStockUseCase = new AddStockUseCase(repo);
+    this.deleteProductoUseCase = new DeleteProductoUseCase(repo);
     this.getStatsUseCase = new GetProductosStatsUseCase(repo);
   }
 
@@ -73,6 +76,18 @@ export class ProductosController {
     } catch (error: any) {
       const status = error.statusCode || 500;
       res.status(status).json({ success: false, message: error.message || 'Error al agregar stock' });
+    }
+  }
+
+  async deleteProducto(req: Request, res: Response): Promise<void> {
+    try {
+      const { empresaId } = req.user as AuthenticatedUser;
+      const id = req.params.id as string;
+      await this.deleteProductoUseCase.execute(id, empresaId);
+      res.json({ success: true });
+    } catch (error: any) {
+      const status = error.statusCode || 500;
+      res.status(status).json({ success: false, message: error.message || 'Error al eliminar producto' });
     }
   }
 

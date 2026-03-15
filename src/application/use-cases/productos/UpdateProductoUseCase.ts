@@ -12,6 +12,13 @@ export class UpdateProductoUseCase {
     if (data.precio !== undefined && data.precio < 0) {
       throw Object.assign(new Error('El precio no puede ser negativo'), { statusCode: 400 });
     }
+    if (data.nombre !== undefined) {
+      const existe = await this.productoRepository.findByNombre(empresaId, data.nombre.trim(), id);
+      if (existe) {
+        throw Object.assign(new Error(`Ya existe un producto con el nombre "${data.nombre.trim()}"`), { statusCode: 409 });
+      }
+      data.nombre = data.nombre.trim();
+    }
     return this.productoRepository.update(id, data);
   }
 }

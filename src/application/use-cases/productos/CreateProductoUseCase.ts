@@ -14,6 +14,10 @@ export class CreateProductoUseCase {
     if (data.stock < 0) {
       throw Object.assign(new Error('El stock no puede ser negativo'), { statusCode: 400 });
     }
-    return this.productoRepository.create({ ...data, empresa_id: empresaId });
+    const existe = await this.productoRepository.findByNombre(empresaId, data.nombre.trim());
+    if (existe) {
+      throw Object.assign(new Error(`Ya existe un producto con el nombre "${data.nombre.trim()}"`), { statusCode: 409 });
+    }
+    return this.productoRepository.create({ ...data, nombre: data.nombre.trim(), empresa_id: empresaId });
   }
 }

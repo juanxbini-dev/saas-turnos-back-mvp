@@ -15,8 +15,9 @@ router.post('/logo',  uploadAvatar, (req, res) => controller.uploadLogo(req, res
 router.post('/fondo', uploadAvatar, (req, res) => controller.uploadFondo(req, res));
 
 // Profesionales en landing
-router.get('/profesionales',                    (req, res) => controller.getProfesionales(req, res));
-router.patch('/profesionales/:usuarioId',        (req, res) => controller.updateProfesional(req, res));
-router.patch('/profesionales-orden',             (req, res) => controller.updateOrden(req, res));
+router.get('/profesionales',                              (req, res) => controller.getProfesionales(req, res));
+router.patch('/profesionales/:usuarioId',                 (req, res) => controller.updateProfesional(req, res));
+router.post('/profesionales/:usuarioId/avatar', uploadAvatar, (req, res) => controller.uploadAvatarProfesional(req, res));
+router.patch('/profesionales-orden',                      (req, res) => controller.updateOrden(req, res));
 
 export default router;

@@ -6,6 +6,7 @@ import { UploadImagenConfigUseCase } from '../../application/use-cases/configura
 import { GetProfesionalesConfigUseCase } from '../../application/use-cases/configuracion/GetProfesionalesConfigUseCase';
 import { UpdateProfesionalConfigUseCase } from '../../application/use-cases/configuracion/UpdateProfesionalConfigUseCase';
 import { UpdateOrdenUseCase } from '../../application/use-cases/configuracion/UpdateOrdenUseCase';
+import { UpdateAvatarUseCase } from '../../application/use-cases/perfil/UpdateAvatarUseCase';
 import { PostgresLandingConfigRepository, PostgresLandingProfesionalRepository } from '../../infrastructure/repositories/PostgresLandingConfigRepository';
 import { CloudinaryImageRepository } from '../../infrastructure/repositories/CloudinaryImageRepository';
 import { PostgresUsuarioRepository } from '../../infrastructure/repositories/PostgresUsuarioRepository';
@@ -17,6 +18,7 @@ export class ConfiguracionController {
   private getProfesionalesConfigUseCase: GetProfesionalesConfigUseCase;
   private updateProfesionalConfigUseCase: UpdateProfesionalConfigUseCase;
   private updateOrdenUseCase: UpdateOrdenUseCase;
+  private updateAvatarUseCase: UpdateAvatarUseCase;
 
   constructor() {
     const landingConfigRepo = new PostgresLandingConfigRepository();
@@ -30,6 +32,7 @@ export class ConfiguracionController {
     this.getProfesionalesConfigUseCase = new GetProfesionalesConfigUseCase(landingProfesionalRepo, usuarioRepo);
     this.updateProfesionalConfigUseCase = new UpdateProfesionalConfigUseCase(landingProfesionalRepo);
     this.updateOrdenUseCase = new UpdateOrdenUseCase(landingProfesionalRepo);
+    this.updateAvatarUseCase = new UpdateAvatarUseCase(imageRepo, usuarioRepo);
   }
 
   async getConfig(req: Request, res: Response): Promise<void> {
@@ -100,6 +103,26 @@ export class ConfiguracionController {
       res.json({ success: true, data: result });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Error al actualizar profesional' });
+    }
+  }
+
+  async uploadAvatarProfesional(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioId = req.params.usuarioId as string;
+
+      if (!req.file) {
+        res.status(400).json({ success: false, message: 'No se envio ninguna imagen' });
+        return;
+      }
+
+      const usuario = await this.updateAvatarUseCase.execute(usuarioId, req.file.buffer);
+      res.json({ success: true, data: usuario });
+    } catch (error) {
+      const statusCode = (error as any).statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Error al subir avatar'
+      });
     }
   }
 

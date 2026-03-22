@@ -1,6 +1,7 @@
 import { ITurnoRepository } from '../../../domain/repositories/ITurnoRepository';
 import { IDisponibilidadRepository } from '../../../domain/repositories/IDisponibilidadRepository';
 import { IUsuarioServicioRepository } from '../../../domain/repositories/IUsuarioServicioRepository';
+import { IBloqueoSlotRepository } from '../../../domain/repositories/IBloqueoSlotRepository';
 import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
 import { CryptoService } from '../../../infrastructure/security/crypto.service';
 import { CreateTurnoData, Turno } from '../../../domain/entities/Turno';
@@ -14,7 +15,8 @@ export class CreateTurnoUseCase {
     private disponibilidadRepository: IDisponibilidadRepository,
     private usuarioServicioRepository: IUsuarioServicioRepository,
     private disponibilidadService: DisponibilidadService,
-    private cryptoService: CryptoService
+    private cryptoService: CryptoService,
+    private bloqueoSlotRepository: IBloqueoSlotRepository
   ) {}
 
   async execute(
@@ -37,11 +39,12 @@ export class CreateTurnoUseCase {
 
     // Validar slot con DisponibilidadService.validarSlotDisponible
     turnoLogger.debug('Validando disponibilidad');
-    const [disponibilidades, vacaciones, excepciones, turnosExistentes] = await Promise.all([
+    const [disponibilidades, vacaciones, excepciones, turnosExistentes, bloqueosSlots] = await Promise.all([
       this.disponibilidadRepository.findDisponibilidadByProfesional(usuarioId),
       this.disponibilidadRepository.findVacacionesByProfesional(usuarioId),
       this.disponibilidadRepository.findExcepcionesByProfesional(usuarioId),
-      this.turnoRepository.findByFechaYProfesional(usuarioId, data.fecha)
+      this.turnoRepository.findByFechaYProfesional(usuarioId, data.fecha),
+      this.bloqueoSlotRepository.findByProfesionalAndFecha(usuarioId, data.fecha)
     ]);
 
     turnoLogger.debug('Datos de disponibilidad cargados', {
@@ -57,7 +60,8 @@ export class CreateTurnoUseCase {
       turnosExistentes,
       vacaciones,
       data.fecha,
-      data.hora
+      data.hora,
+      bloqueosSlots
     );
 
     turnoLogger.debug('Resultado validación slot', { 

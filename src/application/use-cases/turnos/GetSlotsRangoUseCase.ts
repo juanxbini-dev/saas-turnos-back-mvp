@@ -1,5 +1,6 @@
 import { IDisponibilidadRepository } from '../../../domain/repositories/IDisponibilidadRepository';
 import { ITurnoRepository } from '../../../domain/repositories/ITurnoRepository';
+import { IBloqueoSlotRepository } from '../../../domain/repositories/IBloqueoSlotRepository';
 import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
 import { DateUtils } from '../../../shared/utils/DateUtils';
 import { isFeatureEnabled, logDate } from '../../../shared/config/featureFlags';
@@ -8,7 +9,8 @@ export class GetSlotsRangoUseCase {
   constructor(
     private disponibilidadRepository: IDisponibilidadRepository,
     private turnoRepository: ITurnoRepository,
-    private disponibilidadService: DisponibilidadService
+    private disponibilidadService: DisponibilidadService,
+    private bloqueoSlotRepository: IBloqueoSlotRepository
   ) {}
 
   async execute(
@@ -72,10 +74,11 @@ export class GetSlotsRangoUseCase {
 
     logDate('Fechas a procesar:', { fechas, useNewUtils });
 
-    // Obtener disponibilidades y excepciones una sola vez para todo el rango
-    const [disponibilidades, excepciones] = await Promise.all([
+    // Obtener disponibilidades, excepciones y bloqueos una sola vez para todo el rango
+    const [disponibilidades, excepciones, bloqueosRango] = await Promise.all([
       this.disponibilidadRepository.findDisponibilidadByProfesional(profesionalId),
-      this.disponibilidadRepository.findExcepcionesByProfesional(profesionalId)
+      this.disponibilidadRepository.findExcepcionesByProfesional(profesionalId),
+      this.bloqueoSlotRepository.findByProfesionalAndRango(profesionalId, fechaInicio, fechaFin)
     ]);
 
     // Procesar cada fecha
@@ -89,11 +92,13 @@ export class GetSlotsRangoUseCase {
           );
 
           // Generar slots disponibles usando el mismo servicio que el use case existente
+          const bloqueosDelDia = bloqueosRango.filter(b => b.fecha.slice(0, 10) === fecha);
           const slots = this.disponibilidadService.calcularSlotsDisponibles(
             disponibilidades,
             excepciones,
             turnosExistentes,
-            fecha
+            fecha,
+            bloqueosDelDia
           );
 
           return {

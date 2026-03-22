@@ -41,7 +41,8 @@ const createTurnoUseCase = new CreateTurnoUseCase(
   disponibilidadRepository,
   usuarioServicioRepository,
   disponibilidadService,
-  cryptoService
+  cryptoService,
+  bloqueoSlotRepository
 );
 const updateTurnoEstadoUseCase = new UpdateTurnoEstadoUseCase(turnoRepository);
 const getDisponibilidadMesUseCase = new GetDisponibilidadMesUseCase(
@@ -76,7 +77,8 @@ const deleteExcepcionUseCase = new DeleteExcepcionUseCase(disponibilidadReposito
 const getSlotsRangoUseCase = new GetSlotsRangoUseCase(
   disponibilidadRepository,
   turnoRepository,
-  disponibilidadService
+  disponibilidadService,
+  bloqueoSlotRepository
 );
 
 // Controller

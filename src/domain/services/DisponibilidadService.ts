@@ -371,7 +371,8 @@ export class DisponibilidadService {
     turnosExistentes: Turno[],
     vacaciones: DiasVacacion[],
     fecha: string,
-    hora: string
+    hora: string,
+    bloqueosSlots: BloqueoSlot[] = []
   ): boolean {
     const useNewUtils = isFeatureEnabled('USE_DATE_UTILS_IN_DISPONIBILIDAD');
     const fechaObj = useNewUtils ? DateUtils.combineDateTime(fecha, '00:00') : new Date(fecha);
@@ -395,7 +396,8 @@ export class DisponibilidadService {
       disponibilidades,
       excepciones,
       turnosExistentes,
-      fecha
+      fecha,
+      bloqueosSlots
     );
 
     return slotsDisponibles.includes(hora);

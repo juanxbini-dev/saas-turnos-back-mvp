@@ -1,4 +1,5 @@
 import { DisponibilidadSemanal, DiasVacacion, ExcepcionDia } from '../entities/Disponibilidad';
+import { BloqueoSlot } from '../entities/BloqueoSlot';
 import { Turno } from '../entities/Turno';
 import { DateUtils } from '../../shared/utils/DateUtils';
 import { isFeatureEnabled, logDate } from '../../shared/config/featureFlags';
@@ -144,7 +145,8 @@ export class DisponibilidadService {
     disponibilidades: DisponibilidadSemanal[],
     excepciones: ExcepcionDia[],
     turnosExistentes: Turno[],
-    fecha: string
+    fecha: string,
+    bloqueosSlots: BloqueoSlot[] = []
   ): string[] {
     logDate('calcularSlotsDisponibles - INICIO');
     logDate('Parámetros:', { fecha });
@@ -335,12 +337,32 @@ export class DisponibilidadService {
       return !estaOcupado;
     });
     
+    // Restar slots bloqueados puntualmente
+    const bloqueosDelDia = bloqueosSlots.filter(b => {
+      const fechaBloqueo = typeof b.fecha === 'string' ? b.fecha.slice(0, 10) : b.fecha;
+      return fechaBloqueo === fecha;
+    });
+
+    const slotsSinBloqueos = slotsFinales.filter(slot => {
+      const parts = slot.split(':').map(Number);
+      const slotMinutos = (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
+
+      return !bloqueosDelDia.some(b => {
+        const iParts = b.hora_inicio.split(':').map(Number);
+        const fParts = b.hora_fin.split(':').map(Number);
+        const bIMin = (iParts[0] ?? 0) * 60 + (iParts[1] ?? 0);
+        const bFMin = (fParts[0] ?? 0) * 60 + (fParts[1] ?? 0);
+        return slotMinutos >= bIMin && slotMinutos < bFMin;
+      });
+    });
+
     logDate('Slots generados:', slots);
     logDate('Slots ocupados:', slotsOcupados);
-    logDate('Slots finales disponibles:', slotsFinales);
+    logDate('Bloqueos del día:', bloqueosDelDia);
+    logDate('Slots finales disponibles:', slotsSinBloqueos);
     logDate('calcularSlotsDisponibles - FIN');
 
-    return slotsFinales;
+    return slotsSinBloqueos;
   }
 
   validarSlotDisponible(

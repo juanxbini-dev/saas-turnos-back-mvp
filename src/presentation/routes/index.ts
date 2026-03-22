@@ -19,6 +19,7 @@ import perfilRoutes from './perfil.routes';
 import configuracionRoutes from './configuracion.routes';
 import productosRoutes from './productos.routes';
 import ventasRoutes from './ventas.routes';
+import bloqueoSlotRoutes from './bloqueo-slot.routes';
 
 const router = Router();
 
@@ -68,6 +69,9 @@ router.use('/api/productos', productosRoutes);
 
 // Ventas directas routes
 router.use('/api/ventas', ventasRoutes);
+
+// Bloqueos de slots routes
+router.use('/api/bloqueo-slots', bloqueoSlotRoutes);
 
 // Mail delivery routes
 router.use('/api/mail-delivery', mailDeliveryRoutes);

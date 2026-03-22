@@ -22,6 +22,7 @@ import { CreateExcepcionUseCase } from '../../application/use-cases/disponibilid
 import { UpdateExcepcionUseCase } from '../../application/use-cases/disponibilidad/UpdateExcepcionUseCase';
 import { DeleteExcepcionUseCase } from '../../application/use-cases/disponibilidad/DeleteExcepcionUseCase';
 import { GetSlotsRangoUseCase } from '../../application/use-cases/turnos/GetSlotsRangoUseCase';
+import { PostgresBloqueoSlotRepository } from '../../infrastructure/repositories/PostgresBloqueoSlotRepository';
 
 const router = Router();
 
@@ -29,6 +30,7 @@ const router = Router();
 const turnoRepository = new PostgresTurnoRepository();
 const disponibilidadRepository = new PostgresDisponibilidadRepository();
 const usuarioServicioRepository = new PostgresUsuarioServicioRepository();
+const bloqueoSlotRepository = new PostgresBloqueoSlotRepository();
 const disponibilidadService = new DisponibilidadService();
 const cryptoService = new CryptoService();
 
@@ -49,7 +51,8 @@ const getDisponibilidadMesUseCase = new GetDisponibilidadMesUseCase(
 const getSlotsDisponiblesUseCase = new GetSlotsDisponiblesUseCase(
   disponibilidadRepository,
   turnoRepository,
-  disponibilidadService
+  disponibilidadService,
+  bloqueoSlotRepository
 );
 const getCalendarioUseCase = new GetCalendarioUseCase(turnoRepository);
 const createDisponibilidadUseCase = new CreateDisponibilidadUseCase(

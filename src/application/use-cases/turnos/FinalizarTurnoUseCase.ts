@@ -35,9 +35,9 @@ export class FinalizarTurnoUseCase {
       throw Object.assign(new Error('Profesional no encontrado'), { statusCode: 404 });
     }
 
-    // 3. Calcular totales
-    const precioServicio = data.precioModificado || turno.precio;
-    const montoProductos = data.productos?.reduce((sum, p) => sum + p.precio_total, 0) || 0;
+    // 3. Calcular totales (castear a Number explícitamente: node-pg devuelve NUMERIC como string)
+    const precioServicio = Number(data.precioModificado || turno.precio);
+    const montoProductos = data.productos?.reduce((sum, p) => sum + Number(p.precio_total), 0) || 0;
     
     const calculo = calcularComisiones(
       precioServicio,

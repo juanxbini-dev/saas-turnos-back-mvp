@@ -46,8 +46,22 @@ export interface FinanzasSummary {
   promedio_por_turno: number;
 }
 
+// Venta directa de productos (sin turno) para mostrar en Finanzas
+export interface VentaDirectaFinanzas {
+  tipo: 'venta_directa';
+  id: string;
+  fecha: string;
+  cliente_nombre: string | null;
+  vendedor_nombre: string;
+  metodo_pago: 'efectivo' | 'transferencia' | 'pendiente';
+  total: number;
+  items_count: number;
+  empresa_id: string;
+}
+
 export interface FinanzasResponse {
-  data: ComisionProfesional[];
+  data: ComisionConDetalle[];
+  ventas_directas: VentaDirectaFinanzas[];
   summary: FinanzasSummary;
   total: number;
   pagina: number;
@@ -57,6 +71,7 @@ export interface FinanzasResponse {
 
 // Para el JOIN con datos del turno
 export interface ComisionConDetalle extends ComisionProfesional {
+  tipo: 'turno';
   turno_fecha: string;
   turno_hora: string;
   turno_estado: string;
@@ -68,4 +83,5 @@ export interface ComisionConDetalle extends ComisionProfesional {
   cliente_nombre: string;
   servicio_nombre: string;
   profesional_nombre?: string;
+  tiene_productos: boolean;
 }

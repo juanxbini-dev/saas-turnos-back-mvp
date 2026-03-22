@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { ComisionProfesional, FinanzasFilters, FinanzasSummary, ComisionConDetalle } from '../../domain/entities/Finanzas';
+import { FinanzasFilters, FinanzasSummary, ComisionConDetalle, VentaDirectaFinanzas } from '../../domain/entities/Finanzas';
 import { IFinanzasRepository } from '../../domain/repositories/IFinanzasRepository';
 
 export class PostgresFinanzasRepository implements IFinanzasRepository {
@@ -47,8 +47,9 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     
     // Query principal con paginación
     const query = `
-      SELECT 
+      SELECT
         cp.*,
+        'turno' AS tipo,
         t.fecha AS turno_fecha,
         t.hora AS turno_hora,
         t.estado AS turno_estado,
@@ -59,7 +60,11 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
         t.total_final,
         c.nombre AS cliente_nombre,
         s.nombre AS servicio_nombre,
-        u.nombre AS profesional_nombre
+        u.nombre AS profesional_nombre,
+        EXISTS (
+          SELECT 1 FROM venta_productos vp
+          WHERE vp.turno_id = t.id AND vp.producto_id IS NOT NULL
+        ) AS tiene_productos
       FROM comisiones_profesionales cp
       JOIN turnos t ON cp.turno_id = t.id
       JOIN clientes c ON t.cliente_id = c.id
@@ -171,5 +176,49 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       console.error('Error en getFinanzasSummary:', error);
       throw error;
     }
+  }
+
+  async getVentasDirectas(
+    vendedorId: string,
+    empresaId: string,
+    filters: FinanzasFilters
+  ): Promise<VentaDirectaFinanzas[]> {
+    const params: any[] = [vendedorId, empresaId, filters.fecha_desde, filters.fecha_hasta];
+    let paramIndex = 5;
+    const extraConditions: string[] = [];
+
+    if (filters.metodo_pago !== 'todos') {
+      extraConditions.push(`v.metodo_pago = $${paramIndex}`);
+      params.push(filters.metodo_pago);
+      paramIndex++;
+    }
+
+    const whereExtra = extraConditions.length > 0 ? `AND ${extraConditions.join(' AND ')}` : '';
+
+    const query = `
+      SELECT
+        'venta_directa' AS tipo,
+        v.id,
+        v.created_at AS fecha,
+        v.metodo_pago,
+        v.total,
+        v.empresa_id,
+        c.nombre AS cliente_nombre,
+        u.nombre AS vendedor_nombre,
+        COUNT(vi.id)::int AS items_count
+      FROM ventas v
+      LEFT JOIN clientes c ON c.id = v.cliente_id
+      JOIN usuarios u ON u.id = v.vendedor_id
+      LEFT JOIN venta_items vi ON vi.venta_id = v.id
+      WHERE v.vendedor_id = $1
+        AND v.empresa_id = $2
+        AND DATE(v.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $3 AND $4
+        ${whereExtra}
+      GROUP BY v.id, c.nombre, u.nombre
+      ORDER BY v.created_at DESC
+    `;
+
+    const result = await this.pool.query(query, params);
+    return result.rows as VentaDirectaFinanzas[];
   }
 }

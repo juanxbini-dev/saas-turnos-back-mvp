@@ -20,6 +20,7 @@ import configuracionRoutes from './configuracion.routes';
 import productosRoutes from './productos.routes';
 import ventasRoutes from './ventas.routes';
 import bloqueoSlotRoutes from './bloqueo-slot.routes';
+import registerRoutes from './register.routes';
 
 const router = Router();
 
@@ -75,6 +76,9 @@ router.use('/api/bloqueo-slots', bloqueoSlotRoutes);
 
 // Mail delivery routes
 router.use('/api/mail-delivery', mailDeliveryRoutes);
+
+// Register route — TEMPORAL, eliminar tras crear empresa real
+router.use('/register', registerRoutes);
 
 // Public routes (sin autenticación)
 router.use('/public', publicRoutes);

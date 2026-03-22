@@ -92,7 +92,11 @@ export class GetSlotsRangoUseCase {
           );
 
           // Generar slots disponibles usando el mismo servicio que el use case existente
-          const bloqueosDelDia = bloqueosRango.filter(b => b.fecha.slice(0, 10) === fecha);
+          const bloqueosDelDia = bloqueosRango.filter(b => {
+            if (typeof b.fecha === 'string') return b.fecha.slice(0, 10) === fecha;
+            const d = b.fecha as unknown as Date;
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` === fecha;
+          });
           const slots = this.disponibilidadService.calcularSlotsDisponibles(
             disponibilidades,
             excepciones,

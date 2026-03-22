@@ -339,7 +339,16 @@ export class DisponibilidadService {
     
     // Restar slots bloqueados puntualmente
     const bloqueosDelDia = bloqueosSlots.filter(b => {
-      const fechaBloqueo = typeof b.fecha === 'string' ? b.fecha.slice(0, 10) : b.fecha;
+      let fechaBloqueo: string;
+      if (typeof b.fecha === 'string') {
+        fechaBloqueo = b.fecha.slice(0, 10);
+      } else {
+        const d = b.fecha as unknown as Date;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        fechaBloqueo = `${y}-${m}-${day}`;
+      }
       return fechaBloqueo === fecha;
     });
 

@@ -7,7 +7,7 @@ export class UpdateProfesionalConfigUseCase {
   async execute(
     empresaId: string,
     usuarioId: string,
-    data: { descripcion?: string; visible?: boolean }
+    data: { subtitulo?: string; descripcion?: string; visible?: boolean }
   ): Promise<LandingProfesional> {
     // Garantizar que exista la fila antes de actualizar
     await this.landingProfesionalRepository.upsert(empresaId, usuarioId);

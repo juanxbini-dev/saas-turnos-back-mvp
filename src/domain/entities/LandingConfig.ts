@@ -14,6 +14,7 @@ export interface LandingConfig {
   fondo_url: string | null;
   fondo_public_id: string | null;
   direccion: string | null;
+  direccion_maps: string | null;
   horarios: Horario[];
   created_at: string;
   updated_at: string;
@@ -23,6 +24,7 @@ export interface LandingProfesional {
   id: string;
   empresa_id: string;
   usuario_id: string;
+  subtitulo: string | null;
   descripcion: string | null;
   orden: number;
   visible: boolean;

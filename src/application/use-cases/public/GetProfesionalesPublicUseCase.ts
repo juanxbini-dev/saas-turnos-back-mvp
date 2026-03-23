@@ -11,6 +11,7 @@ export interface ProfesionalPublic {
   email: string;
   roles: string[];
   activo: boolean;
+  avatar_url?: string | null;
 }
 
 export class GetProfesionalesPublicUseCase {
@@ -24,9 +25,9 @@ export class GetProfesionalesPublicUseCase {
 
     // Filtrar solo públicos (activos y con rol staff/admin)
     return usuarios
-      .filter(usuario => 
-        usuario.activo && 
-        (usuario.roles.includes('staff') || usuario.roles.includes('admin'))
+      .filter(usuario =>
+        usuario.activo &&
+        (usuario.roles.includes('staff') || usuario.roles.includes('admin') || usuario.roles.includes('profesional'))
       )
       .map(usuario => ({
         id: usuario.id,
@@ -34,7 +35,8 @@ export class GetProfesionalesPublicUseCase {
         username: usuario.username,
         email: usuario.email,
         roles: usuario.roles,
-        activo: usuario.activo
+        activo: usuario.activo,
+        avatar_url: usuario.avatar_url ?? null,
       }));
   }
 }

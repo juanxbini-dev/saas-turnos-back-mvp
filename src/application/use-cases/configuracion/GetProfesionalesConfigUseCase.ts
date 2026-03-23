@@ -32,6 +32,7 @@ export class GetProfesionalesConfigUseCase {
           nombre: u.nombre,
           username: u.username,
           avatar_url: u.avatar_url ?? null,
+          subtitulo: landingData?.subtitulo ?? null,
           descripcion: landingData?.descripcion ?? null,
           orden: landingData?.orden ?? 0,
           visible: landingData?.visible ?? false,

@@ -48,8 +48,8 @@ export class ConfiguracionController {
   async updateConfig(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user as AuthenticatedUser;
-      const { titulo, descripcion, direccion, horarios } = req.body;
-      const config = await this.updateConfigUseCase.execute(user.empresaId, { titulo, descripcion, direccion, horarios });
+      const { titulo, descripcion, direccion, direccion_maps, horarios } = req.body;
+      const config = await this.updateConfigUseCase.execute(user.empresaId, { titulo, descripcion, direccion, direccion_maps, horarios });
       res.json({ success: true, data: config });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Error al actualizar configuracion' });
@@ -98,8 +98,8 @@ export class ConfiguracionController {
     try {
       const user = req.user as AuthenticatedUser;
       const usuarioId = req.params.usuarioId as string;
-      const { descripcion, visible } = req.body;
-      const result = await this.updateProfesionalConfigUseCase.execute(user.empresaId, usuarioId, { descripcion, visible });
+      const { subtitulo, descripcion, visible } = req.body;
+      const result = await this.updateProfesionalConfigUseCase.execute(user.empresaId, usuarioId, { subtitulo, descripcion, visible });
       res.json({ success: true, data: result });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Error al actualizar profesional' });

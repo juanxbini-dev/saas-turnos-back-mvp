@@ -33,8 +33,9 @@ export class PostgresLandingConfigRepository implements ILandingConfigRepository
 
     if (data.titulo !== undefined)      { fields.push(`titulo = $${i++}`);      values.push(data.titulo); }
     if (data.descripcion !== undefined) { fields.push(`descripcion = $${i++}`); values.push(data.descripcion); }
-    if (data.direccion !== undefined)   { fields.push(`direccion = $${i++}`);   values.push(data.direccion); }
-    if (data.horarios !== undefined)    { fields.push(`horarios = $${i++}`);    values.push(JSON.stringify(data.horarios)); }
+    if (data.direccion !== undefined)      { fields.push(`direccion = $${i++}`);      values.push(data.direccion); }
+    if (data.direccion_maps !== undefined) { fields.push(`direccion_maps = $${i++}`); values.push(data.direccion_maps); }
+    if (data.horarios !== undefined)       { fields.push(`horarios = $${i++}`);       values.push(JSON.stringify(data.horarios)); }
 
     fields.push(`updated_at = NOW()`);
     values.push(empresaId);
@@ -68,7 +69,7 @@ export class PostgresLandingConfigRepository implements ILandingConfigRepository
 export class PostgresLandingProfesionalRepository implements ILandingProfesionalRepository {
   async findAllByEmpresa(empresaId: string): Promise<LandingProfesional[]> {
     const result = await pool.query(
-      `SELECT lp.*, u.nombre, u.username, u.avatar_url
+      `SELECT lp.id, lp.empresa_id, lp.usuario_id, lp.subtitulo, lp.descripcion, lp.orden, lp.visible, lp.created_at, lp.updated_at, u.nombre, u.username, u.avatar_url
        FROM landing_profesionales lp
        JOIN usuarios u ON u.id = lp.usuario_id
        WHERE lp.empresa_id = $1
@@ -89,11 +90,12 @@ export class PostgresLandingProfesionalRepository implements ILandingProfesional
     return result.rows[0];
   }
 
-  async update(empresaId: string, usuarioId: string, data: { descripcion?: string; visible?: boolean }): Promise<LandingProfesional> {
+  async update(empresaId: string, usuarioId: string, data: { subtitulo?: string; descripcion?: string; visible?: boolean }): Promise<LandingProfesional> {
     const fields: string[] = [];
     const values: any[] = [];
     let i = 1;
 
+    if (data.subtitulo !== undefined)   { fields.push(`subtitulo = $${i++}`);   values.push(data.subtitulo); }
     if (data.descripcion !== undefined) { fields.push(`descripcion = $${i++}`); values.push(data.descripcion); }
     if (data.visible !== undefined)     { fields.push(`visible = $${i++}`);     values.push(data.visible); }
 
@@ -131,7 +133,7 @@ export class PostgresLandingProfesionalRepository implements ILandingProfesional
 
   async findVisiblesByEmpresa(empresaId: string): Promise<LandingProfesional[]> {
     const result = await pool.query(
-      `SELECT lp.*, u.nombre, u.username, u.avatar_url
+      `SELECT lp.id, lp.empresa_id, lp.usuario_id, lp.subtitulo, lp.descripcion, lp.orden, lp.visible, lp.created_at, lp.updated_at, u.nombre, u.username, u.avatar_url
        FROM landing_profesionales lp
        JOIN usuarios u ON u.id = lp.usuario_id
        WHERE lp.empresa_id = $1 AND lp.visible = true AND u.activo = true

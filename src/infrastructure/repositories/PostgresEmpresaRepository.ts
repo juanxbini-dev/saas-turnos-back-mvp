@@ -5,19 +5,13 @@ import { pool } from '../database/postgres.connection';
 
 export class PostgresEmpresaRepository implements IEmpresaRepository {
   async findByDominio(dominio: string): Promise<Empresa | null> {
-    // Si no tiene .com, intentarlo con .com
-    const searchDominio = dominio.includes('.') ? dominio : `${dominio}.com`;
-    
     const query = `
       SELECT id, nombre, dominio, activo, created_at, updated_at
       FROM empresas
       WHERE dominio = $1
     `;
-    
-    console.log('🔍 Repository - Query:', query);
-    console.log('🔍 Repository - Buscando dominio:', searchDominio, '(original:', dominio, ')');
-    
-    const result = await pool.query(query, [searchDominio]);
+
+    const result = await pool.query(query, [dominio]);
     console.log('🔍 Repository - Resultados:', result.rows.length, 'filas');
     
     if (result.rows.length === 0) {

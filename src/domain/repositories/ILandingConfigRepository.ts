@@ -4,6 +4,7 @@ export interface UpdateLandingConfigData {
   titulo?: string;
   descripcion?: string;
   direccion?: string;
+  direccion_maps?: string;
   horarios?: Horario[];
 }
 
@@ -18,7 +19,7 @@ export interface ILandingConfigRepository {
 export interface ILandingProfesionalRepository {
   findAllByEmpresa(empresaId: string): Promise<LandingProfesional[]>;
   upsert(empresaId: string, usuarioId: string): Promise<LandingProfesional>;
-  update(empresaId: string, usuarioId: string, data: { descripcion?: string; visible?: boolean }): Promise<LandingProfesional>;
+  update(empresaId: string, usuarioId: string, data: { subtitulo?: string; descripcion?: string; visible?: boolean }): Promise<LandingProfesional>;
   updateOrden(empresaId: string, orden: { usuarioId: string; orden: number }[]): Promise<void>;
   findVisiblesByEmpresa(empresaId: string): Promise<LandingProfesional[]>;
 }

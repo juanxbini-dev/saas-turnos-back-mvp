@@ -1,9 +1,9 @@
-import { ComisionProfesional, CreateComisionData } from '../entities/Comision';
+import { ComisionTurno, CreateComisionData } from '../entities/Comision';
 
 export interface IComisionRepository {
-  create(data: CreateComisionData): Promise<ComisionProfesional>;
-  findByTurno(turnoId: string): Promise<ComisionProfesional | null>;
-  findByProfesional(profesionalId: string): Promise<ComisionProfesional[]>;
-  findByEmpresa(empresaId: string): Promise<ComisionProfesional[]>;
-  updateEstado(id: string, estado: 'pendiente' | 'pagada' | 'cancelada'): Promise<ComisionProfesional>;
+  create(data: CreateComisionData): Promise<ComisionTurno>;
+  findByTurno(turnoId: string): Promise<ComisionTurno | null>;
+  findByProfesional(profesionalId: string): Promise<ComisionTurno[]>;
+  findByEmpresa(empresaId: string): Promise<ComisionTurno[]>;
+  updateEstado(id: string, estado: 'pendiente' | 'pagada' | 'cancelada'): Promise<ComisionTurno>;
 }

@@ -39,23 +39,37 @@ export interface FinanzasFilters {
 
 export interface FinanzasSummary {
   total_venta: number;
+  total_venta_servicios: number;
+  total_venta_productos: number;
   total_comision_empresa: number;
+  total_comision_empresa_servicios: number;
+  total_comision_empresa_productos: number;
   total_neto_profesional: number;
+  total_neto_profesional_servicios: number;
+  total_neto_profesional_productos: number;
   total_descuentos: number;
   cantidad_turnos: number;
+  cantidad_productos_vendidos: number;
   promedio_por_turno: number;
+  total_pendiente: number;
 }
 
-// Venta directa de productos (sin turno) para mostrar en Finanzas
+// Venta de producto (desde turno o directa) para mostrar en Finanzas
 export interface VentaDirectaFinanzas {
-  tipo: 'venta_directa';
+  tipo: 'venta_producto';
   id: string;
   fecha: string;
+  turno_id: string | null;
+  venta_grupo_id: string | null;
   cliente_nombre: string | null;
   vendedor_nombre: string;
-  metodo_pago: 'efectivo' | 'transferencia' | 'pendiente';
+  metodo_pago: string;
   total: number;
-  items_count: number;
+  comision_porcentaje: number;
+  comision_monto: number;
+  neto_vendedor: number;
+  nombre_producto: string;
+  cantidad: number;
   empresa_id: string;
 }
 

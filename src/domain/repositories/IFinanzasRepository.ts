@@ -17,5 +17,12 @@ export interface IFinanzasRepository {
     vendedorId: string,
     empresaId: string,
     filters: FinanzasFilters
-  ): Promise<VentaDirectaFinanzas[]>;
+  ): Promise<{ data: VentaDirectaFinanzas[]; total: number }>;
+
+  cobrarPago(
+    tipo: 'turno' | 'venta',
+    id: string,
+    empresaId: string,
+    metodoPago: 'efectivo' | 'transferencia'
+  ): Promise<void>;
 }

@@ -1,27 +1,12 @@
-export interface ComisionProfesional {
+export interface ComisionTurno {
   id: string;
   turno_id: string;
   profesional_id: string;
   empresa_id: string;
-  
-  // Datos del servicio
   servicio_monto: number;
   servicio_comision_porcentaje: number;
   servicio_comision_monto: number;
   servicio_neto_profesional: number;
-  
-  // Datos de productos
-  productos_monto: number;
-  productos_comision_porcentaje: number;
-  productos_comision_monto: number;
-  productos_neto_profesional: number;
-  
-  // Totales
-  total_venta: number;
-  total_comision_empresa: number;
-  total_neto_profesional: number;
-  
-  // Estado
   estado: ComisionEstado;
   fecha_pago?: string;
   notas?: string;
@@ -39,32 +24,41 @@ export interface CreateComisionData {
   servicio_comision_porcentaje: number;
   servicio_comision_monto: number;
   servicio_neto_profesional: number;
-  productos_monto: number;
-  productos_comision_porcentaje: number;
-  productos_comision_monto: number;
-  productos_neto_profesional: number;
-  total_venta: number;
-  total_comision_empresa: number;
-  total_neto_profesional: number;
 }
 
 export interface VentaProducto {
   id: string;
-  turno_id: string;
-  producto_id?: string;
+  empresa_id: string;
+  vendedor_id: string;
+  cliente_id: string | null;
+  turno_id: string | null;
+  venta_grupo_id: string | null;
+  producto_id: string | null;
   nombre_producto: string;
   cantidad: number;
   precio_unitario: number;
   precio_total: number;
+  metodo_pago: string | null;
+  comision_porcentaje: number;
+  comision_monto: number;
+  neto_vendedor: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateVentaProductoData {
-  turno_id: string;
+  empresa_id: string;
+  vendedor_id: string;
+  cliente_id?: string | null;
+  turno_id?: string | null;
+  venta_grupo_id?: string | null;
   producto_id?: string | null;
   nombre_producto: string;
   cantidad: number;
   precio_unitario: number;
   precio_total: number;
+  metodo_pago?: string | null;
+  comision_porcentaje: number;
+  comision_monto: number;
+  neto_vendedor: number;
 }

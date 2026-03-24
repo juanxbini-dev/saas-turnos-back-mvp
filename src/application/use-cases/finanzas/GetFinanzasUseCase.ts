@@ -7,11 +7,13 @@ async function buildFinanzasResponse(
   empresaId: string,
   filters: FinanzasFilters
 ): Promise<FinanzasResponse> {
-  const [{ data, total }, summary, ventas_directas] = await Promise.all([
+  const [{ data, total: totalComisiones }, summary, { data: ventas_directas, total: totalVentas }] = await Promise.all([
     finanzasRepository.getComisionesByProfesional(profesionalId, empresaId, filters),
     finanzasRepository.getFinanzasSummary(profesionalId, empresaId, filters),
     finanzasRepository.getVentasDirectas(profesionalId, empresaId, filters),
   ]);
+
+  const total = totalComisiones + totalVentas;
 
   return {
     data,

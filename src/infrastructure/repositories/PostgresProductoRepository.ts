@@ -93,19 +93,17 @@ export class PostgresProductoRepository implements IProductoRepository {
   }
 
   async getTopVendidos(empresaId: string, limit = 10): Promise<TopProducto[]> {
-    // Une ventas directas (venta_items) + ventas via turno (venta_productos con producto_id)
     const result = await pool.query(
       `SELECT
          p.id AS producto_id,
          p.nombre,
-         COALESCE(SUM(vi.cantidad), 0) + COALESCE(SUM(vp.cantidad), 0) AS total_vendido,
-         COALESCE(SUM(vi.precio_total), 0) + COALESCE(SUM(vp.precio_total), 0) AS total_ingresos
+         COALESCE(SUM(vp.cantidad), 0) AS total_vendido,
+         COALESCE(SUM(vp.precio_total), 0) AS total_ingresos
        FROM productos p
-       LEFT JOIN venta_items vi ON vi.producto_id = p.id
        LEFT JOIN venta_productos vp ON vp.producto_id = p.id
        WHERE p.empresa_id = $1
        GROUP BY p.id, p.nombre
-       HAVING COALESCE(SUM(vi.cantidad), 0) + COALESCE(SUM(vp.cantidad), 0) > 0
+       HAVING COALESCE(SUM(vp.cantidad), 0) > 0
        ORDER BY total_vendido DESC
        LIMIT $2`,
       [empresaId, limit]
@@ -114,27 +112,15 @@ export class PostgresProductoRepository implements IProductoRepository {
   }
 
   async getTopVendedores(empresaId: string, limit = 5): Promise<TopVendedor[]> {
-    // Top vendedores = profesionales que más productos vendieron (directo + vía turno)
     const result = await pool.query(
       `SELECT
          u.id AS vendedor_id,
          u.nombre,
-         SUM(sub.cantidad) AS total_vendido,
-         SUM(sub.ingresos) AS total_ingresos
-       FROM (
-         -- Ventas directas
-         SELECT v.vendedor_id AS usuario_id, vi.cantidad, vi.precio_total AS ingresos
-         FROM ventas v
-         JOIN venta_items vi ON vi.venta_id = v.id
-         WHERE v.empresa_id = $1
-         UNION ALL
-         -- Ventas vía turno (usando turno.usuario_id como vendedor)
-         SELECT t.usuario_id, vp.cantidad, vp.precio_total AS ingresos
-         FROM venta_productos vp
-         JOIN turnos t ON t.id = vp.turno_id
-         WHERE t.empresa_id = $1 AND vp.producto_id IS NOT NULL
-       ) sub
-       JOIN usuarios u ON u.id = sub.usuario_id
+         SUM(vp.cantidad) AS total_vendido,
+         SUM(vp.precio_total) AS total_ingresos
+       FROM venta_productos vp
+       JOIN usuarios u ON u.id = vp.vendedor_id
+       WHERE vp.empresa_id = $1
        GROUP BY u.id, u.nombre
        ORDER BY total_vendido DESC
        LIMIT $2`,

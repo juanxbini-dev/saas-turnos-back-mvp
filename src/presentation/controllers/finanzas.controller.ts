@@ -9,6 +9,7 @@ import { FinanzasFilters } from '../../domain/entities/Finanzas';
 const finanzasRepository = new PostgresFinanzasRepository(pool);
 const getMyFinanzasUseCase = new GetMyFinanzasUseCase(finanzasRepository);
 const getFinanzasByProfesionalUseCase = new GetFinanzasByProfesionalUseCase(finanzasRepository);
+const cobrarPagoRepo = finanzasRepository;
 
 export class FinanzasController {
   async getMyFinanzas(req: Request, res: Response): Promise<Response | void> {
@@ -141,10 +142,35 @@ export class FinanzasController {
       res.json(result);
     } catch (error) {
       console.error('Error en getFinanzasByProfesional:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: 'Error interno del servidor',
         error: error instanceof Error ? error.message : 'Error desconocido'
       });
+    }
+  }
+
+  async cobrarPago(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const authUser = (req as any).user;
+      if (!authUser) return res.status(401).json({ message: 'No autenticado' });
+
+      const { tipo, id, metodo_pago } = req.body;
+
+      if (!tipo || !id || !metodo_pago) {
+        return res.status(400).json({ message: 'tipo, id y metodo_pago son requeridos' });
+      }
+      if (!['turno', 'venta'].includes(tipo)) {
+        return res.status(400).json({ message: 'tipo debe ser "turno" o "venta"' });
+      }
+      if (!['efectivo', 'transferencia'].includes(metodo_pago)) {
+        return res.status(400).json({ message: 'metodo_pago debe ser "efectivo" o "transferencia"' });
+      }
+
+      await cobrarPagoRepo.cobrarPago(tipo, id, authUser.empresaId, metodo_pago);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error en cobrarPago:', error);
+      res.status(500).json({ message: 'Error al registrar el cobro' });
     }
   }
 }

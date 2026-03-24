@@ -4,4 +4,5 @@ export interface IVentaProductoRepository {
   create(data: CreateVentaProductoData): Promise<VentaProducto>;
   findByTurno(turnoId: string): Promise<VentaProducto[]>;
   deleteByTurno(turnoId: string): Promise<void>;
+  findByVendedor(vendedorId: string, empresaId: string, fechaDesde: string, fechaHasta: string): Promise<VentaProducto[]>;
 }

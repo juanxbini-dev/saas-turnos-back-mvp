@@ -62,28 +62,35 @@ export class FinalizarTurnoUseCase {
 
     // 5. Guardar productos si hay
     if (data.productos && data.productos.length > 0) {
-      // Primero eliminar productos existentes si los hay
       await this.productoRepository.deleteByTurno(data.turnoId);
-      
-      // Guardar nuevos productos
+
+      const comisionProductoPct = profesional.comision_producto || 20;
+
       for (const producto of data.productos) {
+        const comisionMonto = Number(producto.precio_total) * comisionProductoPct / 100;
         await this.productoRepository.create({
+          empresa_id: data.empresaId,
+          vendedor_id: data.profesionalId,
+          cliente_id: turno.cliente_id ?? null,
           turno_id: data.turnoId,
           producto_id: producto.producto_id || null,
           nombre_producto: producto.nombre_producto,
           cantidad: producto.cantidad,
           precio_unitario: producto.precio_unitario,
-          precio_total: producto.precio_total
+          precio_total: producto.precio_total,
+          metodo_pago: data.metodoPago,
+          comision_porcentaje: comisionProductoPct,
+          comision_monto: comisionMonto,
+          neto_vendedor: Number(producto.precio_total) - comisionMonto,
         });
 
-        // Descontar stock si viene del catálogo
         if (producto.producto_id && this.catalogoProductoRepository) {
           await this.catalogoProductoRepository.deductStock(producto.producto_id, producto.cantidad);
         }
       }
     }
 
-    // 6. Registrar comisiones
+    // 6. Registrar comisión del servicio (solo servicio, productos van a venta_productos)
     const comisionData: CreateComisionData = {
       turno_id: data.turnoId,
       profesional_id: data.profesionalId,
@@ -92,13 +99,6 @@ export class FinalizarTurnoUseCase {
       servicio_comision_porcentaje: calculo.comisionServicio.porcentajeEmpresa,
       servicio_comision_monto: calculo.comisionServicio.montoEmpresa,
       servicio_neto_profesional: calculo.comisionServicio.netoProfesional,
-      productos_monto: calculo.comisionProductos.base,
-      productos_comision_porcentaje: calculo.comisionProductos.porcentajeEmpresa,
-      productos_comision_monto: calculo.comisionProductos.montoEmpresa,
-      productos_neto_profesional: calculo.comisionProductos.netoProfesional,
-      total_venta: calculo.totales.totalRecaudado,
-      total_comision_empresa: calculo.totales.totalEmpresa,
-      total_neto_profesional: calculo.totales.totalProfesional
     };
 
     await this.comisionRepository.create(comisionData);

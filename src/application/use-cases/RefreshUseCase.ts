@@ -31,7 +31,7 @@ export class RefreshUseCase {
 
   async execute(request: RefreshRequest, ipAddress?: string, userAgent?: string): Promise<RefreshResponse> {
     // Hash the refresh token for lookup
-    const tokenHash = this.cryptoService.hashToken(request.refreshToken);
+    const tokenHash = CryptoService.hashToken(request.refreshToken);
 
     // Find the refresh token in database
     const storedToken = await this.refreshTokenRepository.findByTokenHash(tokenHash);

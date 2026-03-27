@@ -1,5 +1,5 @@
-import { ITurnoRepository } from '../../domain/repositories/ITurnoRepository';
-import { TurnoConDetalle } from '../../domain/entities/Turno';
+import { ITurnoRepository } from '../../../domain/repositories/ITurnoRepository';
+import { TurnoConDetalle } from '../../../domain/entities/Turno';
 
 export class GetCalendarioUseCase {
   constructor(private turnoRepository: ITurnoRepository) {}

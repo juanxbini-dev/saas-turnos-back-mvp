@@ -35,7 +35,7 @@ export class TokenService {
 
   static generateRefreshToken(): { token: string; hash: string; expiresAt: Date } {
     const token = this.cryptoService.generateSecureToken(64);
-    const hash = this.cryptoService.hashToken(token);
+    const hash = CryptoService.hashToken(token);
     const expiresAt = new Date(Date.now() + this.REFRESH_TOKEN_EXPIRES_IN * 1000);
 
     return { token, hash, expiresAt };

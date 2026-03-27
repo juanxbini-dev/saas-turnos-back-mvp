@@ -76,7 +76,7 @@ export class TurnosController {
 
   async updateEstado(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { estado } = req.body;
       
       const turno = await this.updateTurnoEstadoUseCase.execute(id, estado);
@@ -93,7 +93,7 @@ export class TurnosController {
 
   async finalizarTurno(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { empresaId, id: usuarioId } = req.user!;
       const { metodoPago, precioModificado, descuentoPorcentaje, productos } = req.body;
       
@@ -134,7 +134,7 @@ export class TurnosController {
 
   async getDisponibilidadMes(req: Request, res: Response) {
     try {
-      const { profesionalId } = req.params;
+      const profesionalId = req.params['profesionalId'] as string;
       const { mes, año } = req.query;
       
       console.log('🔍 [TurnosController] getDisponibilidadMes - Petición recibida:', { profesionalId, mes, año });
@@ -160,7 +160,7 @@ export class TurnosController {
 
   async getSlotsDisponibles(req: Request, res: Response) {
     try {
-      const { profesionalId } = req.params;
+      const profesionalId = req.params['profesionalId'] as string;
       const { fecha } = req.query;
       
       console.log('🔍 [TurnosController] getSlotsDisponibles - Petición:', { profesionalId, fecha });
@@ -198,7 +198,7 @@ export class TurnosController {
 
   async getSlotsRango(req: Request, res: Response) {
     try {
-      const { profesionalId } = req.params;
+      const profesionalId = req.params['profesionalId'] as string;
       const { fechaInicio, fechaFin } = req.query;
       
       logDate('getSlotsRango - Petición:', { profesionalId, fechaInicio, fechaFin });
@@ -334,7 +334,7 @@ export class TurnosController {
 
   async updateDisponibilidad(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { id: usuarioId } = req.user!;
       
       const disponibilidad = await this.updateDisponibilidadUseCase.execute(id, req.body, usuarioId);
@@ -351,7 +351,7 @@ export class TurnosController {
 
   async deleteDisponibilidad(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { id: usuarioId } = req.user!;
       
       await this.deleteDisponibilidadUseCase.execute(id, usuarioId);
@@ -394,7 +394,7 @@ export class TurnosController {
 
   async updateVacacion(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { id: usuarioId } = req.user!;
       
       const vacacion = await this.updateVacacionUseCase.execute(id, req.body, usuarioId);
@@ -411,7 +411,7 @@ export class TurnosController {
 
   async deleteVacacion(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { id: usuarioId } = req.user!;
       
       await this.deleteVacacionUseCase.execute(id, usuarioId);
@@ -456,7 +456,7 @@ export class TurnosController {
 
   async updateExcepcion(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { id: usuarioId } = req.user!;
       
       const excepcion = await this.updateExcepcionUseCase.execute(id, req.body, usuarioId);
@@ -473,7 +473,7 @@ export class TurnosController {
 
   async deleteExcepcion(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { id: usuarioId } = req.user!;
       
       await this.deleteExcepcionUseCase.execute(id, usuarioId);

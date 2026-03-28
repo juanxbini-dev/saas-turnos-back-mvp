@@ -48,8 +48,8 @@ export class ConfiguracionController {
   async updateConfig(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user as AuthenticatedUser;
-      const { titulo, descripcion, direccion, direccion_maps, horarios } = req.body;
-      const config = await this.updateConfigUseCase.execute(user.empresaId, { titulo, descripcion, direccion, direccion_maps, horarios });
+      const { titulo, descripcion, direccion, direccion_maps, horarios_texto } = req.body;
+      const config = await this.updateConfigUseCase.execute(user.empresaId, { titulo, descripcion, direccion, direccion_maps, horarios_texto });
       res.json({ success: true, data: config });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Error al actualizar configuracion' });

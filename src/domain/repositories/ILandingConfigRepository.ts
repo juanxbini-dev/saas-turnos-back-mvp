@@ -1,11 +1,11 @@
-import { LandingConfig, LandingProfesional, Horario } from '../entities/LandingConfig';
+import { LandingConfig, LandingProfesional } from '../entities/LandingConfig';
 
 export interface UpdateLandingConfigData {
   titulo?: string;
   descripcion?: string;
   direccion?: string;
   direccion_maps?: string;
-  horarios?: Horario[];
+  horarios_texto?: string;
 }
 
 export interface ILandingConfigRepository {

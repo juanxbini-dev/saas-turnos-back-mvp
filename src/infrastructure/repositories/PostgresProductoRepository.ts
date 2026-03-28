@@ -4,9 +4,15 @@ import { Producto, CreateProductoData, UpdateProductoData, TopProducto, TopVende
 import { generarId } from '../../shared/utils/calculos.utils';
 
 export class PostgresProductoRepository implements IProductoRepository {
+  private readonly SELECT_PRODUCTO = `
+    SELECT p.*, m.nombre AS marca_nombre
+    FROM productos p
+    LEFT JOIN marcas m ON m.id = p.marca_id
+  `;
+
   async findAll(empresaId: string): Promise<Producto[]> {
     const result = await pool.query(
-      `SELECT * FROM productos WHERE empresa_id = $1 ORDER BY nombre ASC`,
+      `${this.SELECT_PRODUCTO} WHERE p.empresa_id = $1 ORDER BY p.nombre ASC`,
       [empresaId]
     );
     return result.rows;
@@ -14,7 +20,7 @@ export class PostgresProductoRepository implements IProductoRepository {
 
   async findById(id: string): Promise<Producto | null> {
     const result = await pool.query(
-      `SELECT * FROM productos WHERE id = $1`,
+      `${this.SELECT_PRODUCTO} WHERE p.id = $1`,
       [id]
     );
     return result.rows[0] || null;
@@ -22,12 +28,13 @@ export class PostgresProductoRepository implements IProductoRepository {
 
   async create(data: CreateProductoData): Promise<Producto> {
     const result = await pool.query(
-      `INSERT INTO productos (id, empresa_id, nombre, descripcion, precio, stock, activo, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW())
+      `INSERT INTO productos (id, empresa_id, nombre, descripcion, precio, stock, marca_id, activo, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW(), NOW())
        RETURNING *`,
-      [generarId(), data.empresa_id, data.nombre, data.descripcion || null, data.precio, data.stock]
+      [generarId(), data.empresa_id, data.nombre, data.descripcion || null, data.precio, data.stock, data.marca_id || null]
     );
-    return result.rows[0];
+    const inserted = result.rows[0];
+    return (await this.findById(inserted.id))!;
   }
 
   async update(id: string, data: UpdateProductoData): Promise<Producto> {
@@ -39,15 +46,16 @@ export class PostgresProductoRepository implements IProductoRepository {
     if (data.descripcion !== undefined) { fields.push(`descripcion = $${i++}`); values.push(data.descripcion); }
     if (data.precio !== undefined) { fields.push(`precio = $${i++}`); values.push(data.precio); }
     if (data.activo !== undefined) { fields.push(`activo = $${i++}`); values.push(data.activo); }
+    if (data.marca_id !== undefined) { fields.push(`marca_id = $${i++}`); values.push(data.marca_id); }
 
     fields.push(`updated_at = NOW()`);
     values.push(id);
 
-    const result = await pool.query(
-      `UPDATE productos SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`,
+    await pool.query(
+      `UPDATE productos SET ${fields.join(', ')} WHERE id = $${i}`,
       values
     );
-    return result.rows[0];
+    return (await this.findById(id))!;
   }
 
   async addStock(id: string, cantidad: number): Promise<Producto> {
@@ -86,7 +94,7 @@ export class PostgresProductoRepository implements IProductoRepository {
 
   async findBajoStock(empresaId: string, umbral = 3): Promise<Producto[]> {
     const result = await pool.query(
-      `SELECT * FROM productos WHERE empresa_id = $1 AND stock <= $2 AND activo = true ORDER BY stock ASC`,
+      `${this.SELECT_PRODUCTO} WHERE p.empresa_id = $1 AND p.stock <= $2 AND p.activo = true ORDER BY p.stock ASC`,
       [empresaId, umbral]
     );
     return result.rows;

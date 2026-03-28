@@ -33,9 +33,9 @@ export class PostgresLandingConfigRepository implements ILandingConfigRepository
 
     if (data.titulo !== undefined)      { fields.push(`titulo = $${i++}`);      values.push(data.titulo); }
     if (data.descripcion !== undefined) { fields.push(`descripcion = $${i++}`); values.push(data.descripcion); }
-    if (data.direccion !== undefined)      { fields.push(`direccion = $${i++}`);      values.push(data.direccion); }
-    if (data.direccion_maps !== undefined) { fields.push(`direccion_maps = $${i++}`); values.push(data.direccion_maps); }
-    if (data.horarios !== undefined)       { fields.push(`horarios = $${i++}`);       values.push(JSON.stringify(data.horarios)); }
+    if (data.direccion !== undefined)       { fields.push(`direccion = $${i++}`);       values.push(data.direccion); }
+    if (data.direccion_maps !== undefined)  { fields.push(`direccion_maps = $${i++}`);  values.push(data.direccion_maps); }
+    if (data.horarios_texto !== undefined)  { fields.push(`horarios_texto = $${i++}`);  values.push(data.horarios_texto); }
 
     fields.push(`updated_at = NOW()`);
     values.push(empresaId);

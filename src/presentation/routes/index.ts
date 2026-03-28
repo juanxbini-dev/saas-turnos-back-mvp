@@ -18,6 +18,7 @@ import finanzasRoutes from './finanzas.routes';
 import perfilRoutes from './perfil.routes';
 import configuracionRoutes from './configuracion.routes';
 import productosRoutes from './productos.routes';
+import marcasRoutes from './marcas.routes';
 import ventasRoutes from './ventas.routes';
 import bloqueoSlotRoutes from './bloqueo-slot.routes';
 
@@ -66,6 +67,9 @@ router.use('/api/configuracion', configuracionRoutes);
 
 // Productos routes
 router.use('/api/productos', productosRoutes);
+
+// Marcas routes
+router.use('/api/marcas', marcasRoutes);
 
 // Ventas directas routes
 router.use('/api/ventas', ventasRoutes);

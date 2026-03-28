@@ -39,8 +39,14 @@ export class ProductosController {
   async createProducto(req: Request, res: Response): Promise<void> {
     try {
       const { empresaId } = req.user as AuthenticatedUser;
-      const { nombre, descripcion, precio, stock } = req.body;
-      const producto = await this.createProductoUseCase.execute(empresaId, { nombre, descripcion, precio: Number(precio), stock: Number(stock) });
+      const { nombre, descripcion, precio, stock, marca_id } = req.body;
+      const producto = await this.createProductoUseCase.execute(empresaId, {
+        nombre,
+        descripcion,
+        precio: Number(precio),
+        stock: Number(stock),
+        marca_id: marca_id || null,
+      });
       res.status(201).json({ success: true, data: producto });
     } catch (error: any) {
       const status = error.statusCode || 500;
@@ -52,12 +58,13 @@ export class ProductosController {
     try {
       const { empresaId } = req.user as AuthenticatedUser;
       const id = req.params.id as string;
-      const { nombre, descripcion, precio, activo } = req.body;
+      const { nombre, descripcion, precio, activo, marca_id } = req.body;
       const updateData: import('../../domain/entities/Producto').UpdateProductoData = {};
       if (nombre !== undefined) updateData.nombre = nombre;
       if (descripcion !== undefined) updateData.descripcion = descripcion;
       if (precio !== undefined) updateData.precio = Number(precio);
       if (activo !== undefined) updateData.activo = activo;
+      if (marca_id !== undefined) updateData.marca_id = marca_id || null;
       const producto = await this.updateProductoUseCase.execute(id, empresaId, updateData);
       res.json({ success: true, data: producto });
     } catch (error: any) {

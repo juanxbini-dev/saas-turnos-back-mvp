@@ -54,33 +54,32 @@ export interface FinanzasSummary {
   total_pendiente: number;
 }
 
-// Venta de producto (desde turno o directa) para mostrar en Finanzas
-export interface VentaDirectaFinanzas {
-  tipo: 'venta_producto';
+// Item individual dentro de una venta agrupada
+export interface VentaItemFinanzas {
   id: string;
-  fecha: string;
-  turno_id: string | null;
-  venta_grupo_id: string | null;
-  cliente_nombre: string | null;
-  vendedor_nombre: string;
-  metodo_pago: string;
-  total: number;
+  nombre_producto: string;
+  cantidad: number;
+  precio_total: number;
   comision_porcentaje: number;
   comision_monto: number;
   neto_vendedor: number;
-  nombre_producto: string;
-  cantidad: number;
-  empresa_id: string;
 }
 
-export interface FinanzasResponse {
-  data: ComisionConDetalle[];
-  ventas_directas: VentaDirectaFinanzas[];
-  summary: FinanzasSummary;
+// Venta de producto agrupada por transacción (venta_grupo_id)
+export interface VentaGrupadaFinanzas {
+  tipo: 'venta_producto';
+  id: string;
+  venta_grupo_id: string;
+  turno_id: string | null;
+  fecha: string;
+  metodo_pago: string;
   total: number;
-  pagina: number;
-  por_pagina: number;
-  total_paginas: number;
+  comision_monto: number;
+  neto_vendedor: number;
+  cliente_nombre: string | null;
+  vendedor_nombre: string;
+  empresa_id: string;
+  items: VentaItemFinanzas[];
 }
 
 // Para el JOIN con datos del turno
@@ -98,4 +97,15 @@ export interface ComisionConDetalle extends ComisionProfesional {
   servicio_nombre: string;
   profesional_nombre?: string;
   tiene_productos: boolean;
+}
+
+export type EntradaFinanzas = ComisionConDetalle | VentaGrupadaFinanzas;
+
+export interface FinanzasResponse {
+  items: EntradaFinanzas[];
+  summary: FinanzasSummary;
+  total: number;
+  pagina: number;
+  por_pagina: number;
+  total_paginas: number;
 }

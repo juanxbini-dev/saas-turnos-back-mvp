@@ -1,77 +1,174 @@
 import { Pool } from 'pg';
-import { FinanzasFilters, FinanzasSummary, ComisionConDetalle, VentaDirectaFinanzas } from '../../domain/entities/Finanzas';
+import { FinanzasFilters, FinanzasSummary, EntradaFinanzas } from '../../domain/entities/Finanzas';
 import { IFinanzasRepository } from '../../domain/repositories/IFinanzasRepository';
-import { MetodoPago } from '../../domain/entities/Turno';
 
 export class PostgresFinanzasRepository implements IFinanzasRepository {
   constructor(private pool: Pool) {}
 
-  async getComisionesByProfesional(
+  async getEntradasPaginadas(
     profesionalId: string,
     empresaId: string,
     filters: FinanzasFilters
-  ): Promise<{ data: ComisionConDetalle[]; total: number }> {
+  ): Promise<{ items: EntradaFinanzas[]; total: number }> {
+    const params: any[] = [profesionalId, empresaId, filters.fecha_desde, filters.fecha_hasta];
+    let paramIdx = 5;
 
-    const whereConditions = [
+    // WHERE compartido para ambas fuentes ($1-$4 iguales)
+    const whereTurnos: string[] = [
       'ct.profesional_id = $1',
       'ct.empresa_id = $2',
-      't.fecha BETWEEN $3 AND $4'
+      't.fecha BETWEEN $3 AND $4',
     ];
-    const params: any[] = [profesionalId, empresaId, filters.fecha_desde, filters.fecha_hasta];
-    let paramIndex = 5;
+    const whereVentas: string[] = [
+      'vp.vendedor_id = $1',
+      'vp.empresa_id = $2',
+      "DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $3 AND $4",
+    ];
 
     if (filters.metodo_pago !== 'todos') {
-      whereConditions.push(`t.metodo_pago = $${paramIndex}`);
+      whereTurnos.push(`t.metodo_pago = $${paramIdx}`);
+      whereVentas.push(`vp.metodo_pago = $${paramIdx}`);
       params.push(filters.metodo_pago);
-      paramIndex++;
+      paramIdx++;
     }
+
     if (filters.estado_comision !== 'todos') {
-      whereConditions.push(`ct.estado = $${paramIndex}`);
+      // Solo aplica a comisiones, no a ventas directas
+      whereTurnos.push(`ct.estado = $${paramIdx}`);
       params.push(filters.estado_comision);
-      paramIndex++;
+      paramIdx++;
     }
 
-    const orderByMap: Record<string, string> = {
-      fecha: 't.fecha',
-      total_venta: 'ct.servicio_monto',
-      total_neto_profesional: 'ct.servicio_neto_profesional'
+    const orderMap: Record<string, string> = {
+      fecha: 'sort_fecha',
+      total_venta: 'sort_monto',
+      total_neto_profesional: 'sort_neto',
     };
-    const orderField = orderByMap[filters.ordenar_por] || 't.fecha';
-    const orderDirection = filters.orden.toUpperCase();
+    const orderCol = orderMap[filters.ordenar_por] || 'sort_fecha';
+    const orderDir = filters.orden.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-    const query = `
-      SELECT
-        ct.*,
-        'turno' AS tipo,
-        t.fecha AS turno_fecha,
-        t.hora AS turno_hora,
-        t.estado AS turno_estado,
-        t.metodo_pago,
-        t.precio_original,
-        t.descuento_porcentaje,
-        t.descuento_monto,
-        t.total_final,
-        c.nombre AS cliente_nombre,
-        s.nombre AS servicio_nombre,
-        u.nombre AS profesional_nombre
-      FROM comisiones_turno ct
-      JOIN turnos t ON ct.turno_id = t.id
-      JOIN clientes c ON t.cliente_id = c.id
-      LEFT JOIN servicios s ON t.servicio_id = s.id
-      LEFT JOIN usuarios u ON ct.profesional_id = u.id
-      WHERE ${whereConditions.join(' AND ')}
-      ORDER BY ${orderField} ${orderDirection}, t.hora ${orderDirection}
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
+    const limitIdx = paramIdx++;
+    const offsetIdx = paramIdx++;
     params.push(filters.por_pagina, (filters.pagina - 1) * filters.por_pagina);
 
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM comisiones_turno ct
-      JOIN turnos t ON ct.turno_id = t.id
-      WHERE ${whereConditions.join(' AND ')}
+    const query = `
+      WITH va AS (
+        SELECT
+          COALESCE(vp.venta_grupo_id, vp.id)                            AS grupo_id,
+          MIN(vp.turno_id)                                              AS turno_id,
+          DATE(MIN(vp.created_at) AT TIME ZONE 'America/Argentina/Buenos_Aires') AS fecha,
+          MIN(vp.metodo_pago)                                           AS metodo_pago,
+          SUM(vp.precio_total)                                          AS total,
+          SUM(vp.comision_monto)                                        AS comision_monto,
+          SUM(vp.neto_vendedor)                                         AS neto_vendedor,
+          MIN(c.nombre)                                                 AS cliente_nombre,
+          MIN(u.nombre)                                                 AS vendedor_nombre,
+          vp.empresa_id,
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id',                  vp.id,
+              'nombre_producto',     vp.nombre_producto,
+              'cantidad',            vp.cantidad,
+              'precio_total',        vp.precio_total,
+              'comision_porcentaje', vp.comision_porcentaje,
+              'comision_monto',      vp.comision_monto,
+              'neto_vendedor',       vp.neto_vendedor
+            ) ORDER BY vp.created_at
+          ) AS items
+        FROM venta_productos vp
+        JOIN  usuarios u ON u.id = vp.vendedor_id
+        LEFT JOIN clientes c ON c.id = vp.cliente_id
+        WHERE ${whereVentas.join(' AND ')}
+        GROUP BY COALESCE(vp.venta_grupo_id, vp.id), vp.empresa_id
+      ),
+      combined AS (
+        SELECT
+          t.fecha::text                          AS sort_fecha,
+          t.hora::text                           AS sort_hora,
+          ct.servicio_monto::numeric             AS sort_monto,
+          ct.servicio_neto_profesional::numeric  AS sort_neto,
+          JSONB_BUILD_OBJECT(
+            'tipo',                         'turno',
+            'id',                           ct.id,
+            'turno_id',                     ct.turno_id,
+            'profesional_id',               ct.profesional_id,
+            'empresa_id',                   ct.empresa_id,
+            'turno_fecha',                  t.fecha,
+            'turno_hora',                   t.hora,
+            'turno_estado',                 t.estado,
+            'metodo_pago',                  t.metodo_pago,
+            'precio_original',              t.precio_original,
+            'descuento_porcentaje',         t.descuento_porcentaje,
+            'descuento_monto',              t.descuento_monto,
+            'total_final',                  t.total_final,
+            'servicio_monto',               ct.servicio_monto,
+            'servicio_comision_porcentaje', ct.servicio_comision_porcentaje,
+            'servicio_comision_monto',      ct.servicio_comision_monto,
+            'servicio_neto_profesional',    ct.servicio_neto_profesional,
+            'estado',                       ct.estado,
+            'fecha_pago',                   ct.fecha_pago,
+            'notas',                        ct.notas,
+            'cliente_nombre',               c.nombre,
+            'servicio_nombre',              s.nombre,
+            'profesional_nombre',           u.nombre,
+            'created_at',                   ct.created_at,
+            'updated_at',                   ct.updated_at
+          ) AS entry
+        FROM comisiones_turno ct
+        JOIN  turnos   t ON ct.turno_id    = t.id
+        JOIN  clientes c ON t.cliente_id   = c.id
+        LEFT JOIN servicios s ON t.servicio_id  = s.id
+        LEFT JOIN usuarios  u ON ct.profesional_id = u.id
+        WHERE ${whereTurnos.join(' AND ')}
+
+        UNION ALL
+
+        SELECT
+          va.fecha::text         AS sort_fecha,
+          '00:00'::text          AS sort_hora,
+          va.total::numeric      AS sort_monto,
+          va.neto_vendedor::numeric AS sort_neto,
+          JSONB_BUILD_OBJECT(
+            'tipo',            'venta_producto',
+            'id',              va.grupo_id,
+            'venta_grupo_id',  va.grupo_id,
+            'turno_id',        va.turno_id,
+            'fecha',           va.fecha,
+            'metodo_pago',     va.metodo_pago,
+            'total',           va.total,
+            'comision_monto',  va.comision_monto,
+            'neto_vendedor',   va.neto_vendedor,
+            'cliente_nombre',  va.cliente_nombre,
+            'vendedor_nombre', va.vendedor_nombre,
+            'empresa_id',      va.empresa_id,
+            'items',           va.items
+          ) AS entry
+        FROM va
+      )
+      SELECT entry
+      FROM combined
+      ORDER BY ${orderCol} ${orderDir}
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}
     `;
+
+    // COUNT sobre el mismo UNION (sin LIMIT/OFFSET)
     const countParams = params.slice(0, -2);
+    const countQuery = `
+      WITH va AS (
+        SELECT COALESCE(vp.venta_grupo_id, vp.id) AS grupo_id
+        FROM venta_productos vp
+        WHERE ${whereVentas.join(' AND ')}
+        GROUP BY COALESCE(vp.venta_grupo_id, vp.id), vp.empresa_id
+      )
+      SELECT (
+        SELECT COUNT(*)
+        FROM comisiones_turno ct
+        JOIN turnos t ON ct.turno_id = t.id
+        WHERE ${whereTurnos.join(' AND ')}
+      ) + (
+        SELECT COUNT(*) FROM va
+      ) AS total
+    `;
 
     const [result, countResult] = await Promise.all([
       this.pool.query(query, params),
@@ -79,8 +176,8 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     ]);
 
     return {
-      data: result.rows as ComisionConDetalle[],
-      total: parseInt(countResult.rows[0].total),
+      items: result.rows.map(r => r.entry) as EntradaFinanzas[],
+      total: parseInt(countResult.rows[0].total) || 0,
     };
   }
 
@@ -153,7 +250,6 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     const tnpp = parseFloat(p.total_neto_profesional_productos) || 0;
     const ct   = parseInt(s.cantidad_turnos) || 0;
 
-    // Total pendiente (sin aplicar filtros de metodo_pago/estado)
     const baseParams = [profesionalId, empresaId, filters.fecha_desde, filters.fecha_hasta];
     const [pendTResult, pendVResult] = await Promise.all([
       this.pool.query(`
@@ -190,65 +286,6 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     };
   }
 
-  async getVentasDirectas(
-    vendedorId: string,
-    empresaId: string,
-    filters: FinanzasFilters
-  ): Promise<{ data: VentaDirectaFinanzas[]; total: number }> {
-
-    const whereConditions = [
-      'vp.vendedor_id = $1',
-      'vp.empresa_id = $2',
-      "DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $3 AND $4"
-    ];
-    const params: any[] = [vendedorId, empresaId, filters.fecha_desde, filters.fecha_hasta];
-    let paramIndex = 5;
-
-    if (filters.metodo_pago !== 'todos') {
-      whereConditions.push(`vp.metodo_pago = $${paramIndex}`);
-      params.push(filters.metodo_pago);
-      paramIndex++;
-    }
-
-    const whereClause = whereConditions.join(' AND ');
-
-    const [result, countResult] = await Promise.all([
-      this.pool.query(`
-        SELECT
-          'venta_producto' AS tipo,
-          vp.id,
-          TO_CHAR(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD') AS fecha,
-          vp.turno_id,
-          vp.venta_grupo_id,
-          vp.metodo_pago,
-          vp.precio_total AS total,
-          vp.comision_porcentaje,
-          vp.comision_monto,
-          vp.neto_vendedor,
-          vp.nombre_producto,
-          vp.cantidad,
-          vp.empresa_id,
-          c.nombre AS cliente_nombre,
-          u.nombre AS vendedor_nombre
-        FROM venta_productos vp
-        JOIN usuarios u ON u.id = vp.vendedor_id
-        LEFT JOIN clientes c ON c.id = vp.cliente_id
-        WHERE ${whereClause}
-        ORDER BY vp.created_at DESC
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-      `, [...params, filters.por_pagina, (filters.pagina - 1) * filters.por_pagina]),
-      this.pool.query(
-        `SELECT COUNT(*) AS total FROM venta_productos vp WHERE ${whereClause}`,
-        params
-      ),
-    ]);
-
-    return {
-      data: result.rows as VentaDirectaFinanzas[],
-      total: parseInt(countResult.rows[0].total) || 0,
-    };
-  }
-
   async cobrarPago(
     tipo: 'turno' | 'venta',
     id: string,
@@ -265,7 +302,6 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
         [metodoPago, id, empresaId]
       );
     } else {
-      // id = venta_grupo_id
       await this.pool.query(
         `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW() WHERE venta_grupo_id = $2 AND empresa_id = $3`,
         [metodoPago, id, empresaId]

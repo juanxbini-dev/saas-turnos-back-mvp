@@ -1,4 +1,4 @@
-import { FinanzasFilters, FinanzasResponse, ComisionConDetalle } from '../../../domain/entities/Finanzas';
+import { FinanzasFilters, FinanzasResponse } from '../../../domain/entities/Finanzas';
 import { IFinanzasRepository } from '../../../domain/repositories/IFinanzasRepository';
 
 async function buildFinanzasResponse(
@@ -7,17 +7,13 @@ async function buildFinanzasResponse(
   empresaId: string,
   filters: FinanzasFilters
 ): Promise<FinanzasResponse> {
-  const [{ data, total: totalComisiones }, summary, { data: ventas_directas, total: totalVentas }] = await Promise.all([
-    finanzasRepository.getComisionesByProfesional(profesionalId, empresaId, filters),
+  const [{ items, total }, summary] = await Promise.all([
+    finanzasRepository.getEntradasPaginadas(profesionalId, empresaId, filters),
     finanzasRepository.getFinanzasSummary(profesionalId, empresaId, filters),
-    finanzasRepository.getVentasDirectas(profesionalId, empresaId, filters),
   ]);
 
-  const total = totalComisiones + totalVentas;
-
   return {
-    data,
-    ventas_directas,
+    items,
     summary,
     total,
     pagina: filters.pagina,

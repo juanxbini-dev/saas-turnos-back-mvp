@@ -1,23 +1,17 @@
-import { FinanzasFilters, FinanzasSummary, ComisionConDetalle, VentaDirectaFinanzas } from '../../domain/entities/Finanzas';
+import { FinanzasFilters, FinanzasSummary, EntradaFinanzas } from '../../domain/entities/Finanzas';
 
 export interface IFinanzasRepository {
-  getComisionesByProfesional(
+  getEntradasPaginadas(
     profesionalId: string,
     empresaId: string,
     filters: FinanzasFilters
-  ): Promise<{ data: ComisionConDetalle[]; total: number }>;
+  ): Promise<{ items: EntradaFinanzas[]; total: number }>;
 
   getFinanzasSummary(
     profesionalId: string,
     empresaId: string,
     filters: FinanzasFilters
   ): Promise<FinanzasSummary>;
-
-  getVentasDirectas(
-    vendedorId: string,
-    empresaId: string,
-    filters: FinanzasFilters
-  ): Promise<{ data: VentaDirectaFinanzas[]; total: number }>;
 
   cobrarPago(
     tipo: 'turno' | 'venta',

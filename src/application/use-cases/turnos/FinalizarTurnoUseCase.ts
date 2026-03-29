@@ -44,8 +44,8 @@ export class FinalizarTurnoUseCase {
       montoProductos,
       data.descuentoPorcentaje || 0,
       {
-        comision_turno: profesional.comision_turno || 20,
-        comision_producto: profesional.comision_producto || 20
+        comision_turno: profesional.comision_turno ?? 0,
+        comision_producto: profesional.comision_producto ?? 0
       }
     );
 
@@ -64,7 +64,7 @@ export class FinalizarTurnoUseCase {
     if (data.productos && data.productos.length > 0) {
       await this.productoRepository.deleteByTurno(data.turnoId);
 
-      const comisionProductoPct = profesional.comision_producto || 20;
+      const comisionProductoPct = profesional.comision_producto ?? 0;
 
       for (const producto of data.productos) {
         const comisionMonto = Number(producto.precio_total) * comisionProductoPct / 100;

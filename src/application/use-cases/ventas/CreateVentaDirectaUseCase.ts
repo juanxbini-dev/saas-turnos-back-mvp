@@ -46,7 +46,7 @@ export class CreateVentaDirectaUseCase {
       throw Object.assign(new Error('Vendedor no encontrado'), { statusCode: 404 });
     }
 
-    const comisionPct = Number(vendedor.comision_producto) || 20;
+    const comisionPct = Number(vendedor.comision_producto) ?? 0;
     const creados: VentaProducto[] = [];
     const grupoId = generarId(); // mismo ID para todos los items de esta compra
 

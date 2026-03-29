@@ -276,13 +276,18 @@ export class TurnosController {
 
   async getConfiguracion(req: Request, res: Response) {
     try {
-      const { id: usuarioId } = req.user!;
-      console.log('🔍 [TurnosController] getConfiguracion - usuarioId:', usuarioId);
-      
+      const { id: usuarioId, roles } = req.user!;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && req.query.profesionalId
+        ? req.query.profesionalId as string
+        : usuarioId;
+
+      console.log('🔍 [TurnosController] getConfiguracion - efectivoId:', efectivoId);
+
       const [disponibilidades, vacaciones, excepciones] = await Promise.all([
-        this.disponibilidadRepository.findDisponibilidadByProfesional(usuarioId),
-        this.disponibilidadRepository.findVacacionesByProfesional(usuarioId),
-        this.disponibilidadRepository.findExcepcionesByProfesional(usuarioId)
+        this.disponibilidadRepository.findDisponibilidadByProfesional(efectivoId),
+        this.disponibilidadRepository.findVacacionesByProfesional(efectivoId),
+        this.disponibilidadRepository.findExcepcionesByProfesional(efectivoId)
       ]);
       
       console.log('🔍 [TurnosController] Resultados:', {
@@ -308,18 +313,20 @@ export class TurnosController {
   // CRUD Disponibilidad
   async createDisponibilidad(req: Request, res: Response) {
     try {
-      const { empresaId, id: usuarioId } = req.user!;
+      const { empresaId, id: usuarioId, roles } = req.user!;
       const { dia_inicio, dia_fin, hora_inicio, hora_fin, intervalo_minutos, profesional_id } = req.body;
-      
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && profesional_id ? profesional_id : usuarioId;
+
       const disponibilidad = await this.createDisponibilidadUseCase.execute(
-        profesional_id,
+        efectivoId,
         dia_inicio,
         dia_fin,
         hora_inicio,
         hora_fin,
         intervalo_minutos,
         empresaId,
-        usuarioId
+        efectivoId
       );
       
       res.status(201).json({ success: true, data: disponibilidad });
@@ -335,9 +342,11 @@ export class TurnosController {
   async updateDisponibilidad(req: Request, res: Response) {
     try {
       const id = req.params['id'] as string;
-      const { id: usuarioId } = req.user!;
-      
-      const disponibilidad = await this.updateDisponibilidadUseCase.execute(id, req.body, usuarioId);
+      const { id: usuarioId, roles } = req.user!;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
+
+      const disponibilidad = await this.updateDisponibilidadUseCase.execute(id, req.body, efectivoId);
       
       res.json({ success: true, data: disponibilidad });
     } catch (error: any) {
@@ -352,9 +361,11 @@ export class TurnosController {
   async deleteDisponibilidad(req: Request, res: Response) {
     try {
       const id = req.params['id'] as string;
-      const { id: usuarioId } = req.user!;
-      
-      await this.deleteDisponibilidadUseCase.execute(id, usuarioId);
+      const { id: usuarioId, roles } = req.user!;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
+
+      await this.deleteDisponibilidadUseCase.execute(id, efectivoId);
       
       res.json({ success: true, message: 'Disponibilidad eliminada correctamente' });
     } catch (error: any) {
@@ -369,17 +380,19 @@ export class TurnosController {
   // CRUD Vacaciones
   async createVacacion(req: Request, res: Response) {
     try {
-      const { empresaId, id: usuarioId } = req.user!;
-      const { fecha, fecha_fin, tipo, motivo } = req.body;
-      
+      const { empresaId, id: usuarioId, roles } = req.user!;
+      const { fecha, fecha_fin, tipo, motivo, profesional_id } = req.body;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && profesional_id ? profesional_id : usuarioId;
+
       const vacacion = await this.createVacacionUseCase.execute(
-        usuarioId, // Usar el usuario autenticado, no el del body
+        efectivoId,
         fecha,
         fecha_fin,
         tipo,
         motivo,
         empresaId,
-        usuarioId
+        efectivoId
       );
       
       res.status(201).json({ success: true, data: vacacion });
@@ -395,9 +408,11 @@ export class TurnosController {
   async updateVacacion(req: Request, res: Response) {
     try {
       const id = req.params['id'] as string;
-      const { id: usuarioId } = req.user!;
-      
-      const vacacion = await this.updateVacacionUseCase.execute(id, req.body, usuarioId);
+      const { id: usuarioId, roles } = req.user!;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
+
+      const vacacion = await this.updateVacacionUseCase.execute(id, req.body, efectivoId);
       
       res.json({ success: true, data: vacacion });
     } catch (error: any) {
@@ -412,9 +427,11 @@ export class TurnosController {
   async deleteVacacion(req: Request, res: Response) {
     try {
       const id = req.params['id'] as string;
-      const { id: usuarioId } = req.user!;
-      
-      await this.deleteVacacionUseCase.execute(id, usuarioId);
+      const { id: usuarioId, roles } = req.user!;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
+
+      await this.deleteVacacionUseCase.execute(id, efectivoId);
       
       res.json({ success: true, message: 'Vacación eliminada correctamente' });
     } catch (error: any) {
@@ -429,11 +446,13 @@ export class TurnosController {
   // CRUD Excepciones
   async createExcepcion(req: Request, res: Response) {
     try {
-      const { empresaId, id: usuarioId } = req.user!;
-      const { fecha, disponible, hora_inicio, hora_fin, intervalo_minutos, notas } = req.body;
-      
+      const { empresaId, id: usuarioId, roles } = req.user!;
+      const { fecha, disponible, hora_inicio, hora_fin, intervalo_minutos, notas, profesional_id } = req.body;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && profesional_id ? profesional_id : usuarioId;
+
       const excepcion = await this.createExcepcionUseCase.execute(
-        usuarioId, // Usar el usuario autenticado, no el del body
+        efectivoId,
         fecha,
         disponible,
         hora_inicio,
@@ -441,7 +460,7 @@ export class TurnosController {
         intervalo_minutos,
         notas,
         empresaId,
-        usuarioId
+        efectivoId
       );
       
       res.status(201).json({ success: true, data: excepcion });
@@ -457,9 +476,11 @@ export class TurnosController {
   async updateExcepcion(req: Request, res: Response) {
     try {
       const id = req.params['id'] as string;
-      const { id: usuarioId } = req.user!;
-      
-      const excepcion = await this.updateExcepcionUseCase.execute(id, req.body, usuarioId);
+      const { id: usuarioId, roles } = req.user!;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
+
+      const excepcion = await this.updateExcepcionUseCase.execute(id, req.body, efectivoId);
       
       res.json({ success: true, data: excepcion });
     } catch (error: any) {
@@ -474,9 +495,11 @@ export class TurnosController {
   async deleteExcepcion(req: Request, res: Response) {
     try {
       const id = req.params['id'] as string;
-      const { id: usuarioId } = req.user!;
-      
-      await this.deleteExcepcionUseCase.execute(id, usuarioId);
+      const { id: usuarioId, roles } = req.user!;
+      const isSuperAdmin = roles.includes('super_admin');
+      const efectivoId = isSuperAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
+
+      await this.deleteExcepcionUseCase.execute(id, efectivoId);
       
       res.json({ success: true, message: 'Excepción eliminada correctamente' });
     } catch (error: any) {

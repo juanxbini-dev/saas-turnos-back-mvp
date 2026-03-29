@@ -201,12 +201,16 @@ export class ClientesController {
   async getMisClientes(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user as AuthenticatedUser;
-      
+      const isSuperAdmin = user.roles.includes('super_admin');
+      const efectivoUsuarioId = isSuperAdmin && req.query.usuarioId
+        ? req.query.usuarioId as string
+        : user.id;
+
       console.log('🔍 [ClientesController] getMisClientes - Petición recibida');
       console.log('🔍 [ClientesController] User:', user);
-      
+
       const clientes = await this.getMisClientesUseCase.execute({
-        usuarioId: user.id,
+        usuarioId: efectivoUsuarioId,
         empresaId: user.empresaId
       });
 

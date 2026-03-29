@@ -52,8 +52,22 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction): v
     return;
   }
 
-  if (!req.user.roles.includes('admin')) {
+  if (!req.user.roles.includes('admin') && !req.user.roles.includes('super_admin')) {
     res.status(403).json({ message: 'Se requiere rol de administrador' });
+    return;
+  }
+
+  next();
+};
+
+export const requireSuperAdmin = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    res.status(401).json({ message: 'No autenticado' });
+    return;
+  }
+
+  if (!req.user.roles.includes('super_admin')) {
+    res.status(403).json({ message: 'Acceso denegado' });
     return;
   }
 

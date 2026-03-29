@@ -21,6 +21,7 @@ import productosRoutes from './productos.routes';
 import marcasRoutes from './marcas.routes';
 import ventasRoutes from './ventas.routes';
 import bloqueoSlotRoutes from './bloqueo-slot.routes';
+import adminRoutes from './admin.routes';
 
 const router = Router();
 
@@ -79,6 +80,9 @@ router.use('/api/bloqueo-slots', bloqueoSlotRoutes);
 
 // Mail delivery routes
 router.use('/api/mail-delivery', mailDeliveryRoutes);
+
+// Admin routes (solo super_admin)
+router.use('/admin', adminRoutes);
 
 // Public routes (sin autenticación)
 router.use('/public', publicRoutes);

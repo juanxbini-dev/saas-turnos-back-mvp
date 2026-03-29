@@ -173,9 +173,11 @@ export class ServiciosController {
       if (!servicioId) {
         throw Object.assign(new Error('ID de servicio requerido'), { statusCode: 400 });
       }
-      
+      const isSuperAdmin = user.roles.includes('super_admin');
+      const efectivoUsuarioId = isSuperAdmin && req.body.usuario_id ? req.body.usuario_id : user.id;
+
       const usuarioServicio = await this.suscribirseServicioUseCase.execute(
-        user.id,
+        efectivoUsuarioId,
         servicioId as string,
         user.empresaId
       );
@@ -200,17 +202,18 @@ export class ServiciosController {
       if (!servicioId) {
         throw Object.assign(new Error('ID de servicio requerido'), { statusCode: 400 });
       }
-      
-      // Buscar el usuario_servicio para este usuario y servicio
+      const isSuperAdmin = user.roles.includes('super_admin');
+      const efectivoUsuarioId = isSuperAdmin && req.body.usuario_id ? req.body.usuario_id : user.id;
+
       const usuarioServicioRepository = new PostgresUsuarioServicioRepository();
-      const usuarioServicios = await usuarioServicioRepository.findByUsuario(user.id);
+      const usuarioServicios = await usuarioServicioRepository.findByUsuario(efectivoUsuarioId);
       const miServicio = usuarioServicios.find(us => us.servicio_id === servicioId);
-      
+
       if (!miServicio) {
-        throw Object.assign(new Error('No estás suscripto a este servicio'), { statusCode: 404 });
+        throw Object.assign(new Error('El usuario no está suscripto a este servicio'), { statusCode: 404 });
       }
-      
-      await this.desuscribirseServicioUseCase.execute(miServicio.id, user.id);
+
+      await this.desuscribirseServicioUseCase.execute(miServicio.id, efectivoUsuarioId);
       
       res.json({
         success: true,
@@ -228,7 +231,11 @@ export class ServiciosController {
   async getMisServicios(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user as AuthenticatedUser;
-      const misServicios = await this.getMisServiciosUseCase.execute(user.id);
+      const isSuperAdmin = user.roles.includes('super_admin');
+      const efectivoUsuarioId = isSuperAdmin && req.query.usuarioId
+        ? req.query.usuarioId as string
+        : user.id;
+      const misServicios = await this.getMisServiciosUseCase.execute(efectivoUsuarioId);
       
       res.json({
         success: true,

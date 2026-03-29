@@ -3,6 +3,9 @@ import { CreateTurnoPublicUseCase } from '../../../application/use-cases/public/
 import { PostgresTurnoRepository } from '../../../infrastructure/repositories/PostgresTurnoRepository';
 import { PostgresClienteRepository } from '../../../infrastructure/repositories/PostgresClienteRepository';
 import { PostgresServicioRepository } from '../../../infrastructure/repositories/PostgresServicioRepository';
+import { PostgresDisponibilidadRepository } from '../../../infrastructure/repositories/PostgresDisponibilidadRepository';
+import { PostgresBloqueoSlotRepository } from '../../../infrastructure/repositories/PostgresBloqueoSlotRepository';
+import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
 
 export class TurnoPublicController {
   private createTurnoPublicUseCase: CreateTurnoPublicUseCase;
@@ -11,11 +14,17 @@ export class TurnoPublicController {
     const turnoRepository = new PostgresTurnoRepository();
     const clienteRepository = new PostgresClienteRepository();
     const servicioRepository = new PostgresServicioRepository();
-    
+    const disponibilidadRepository = new PostgresDisponibilidadRepository();
+    const bloqueoSlotRepository = new PostgresBloqueoSlotRepository();
+    const disponibilidadService = new DisponibilidadService();
+
     this.createTurnoPublicUseCase = new CreateTurnoPublicUseCase(
       turnoRepository,
       clienteRepository,
-      servicioRepository
+      servicioRepository,
+      disponibilidadRepository,
+      bloqueoSlotRepository,
+      disponibilidadService
     );
   }
 

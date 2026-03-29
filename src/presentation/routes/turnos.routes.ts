@@ -104,8 +104,10 @@ const turnosController = new TurnosController(
 
 // Routes
 
-// Ruta temporal para debugging sin autenticación (debe ir antes del authenticate)
-router.get('/debug/disponibilidad/:profesionalId/slots', turnosController.getSlotsDisponibles.bind(turnosController));
+// Rutas públicas de disponibilidad (sin autenticación — usadas desde la landing)
+router.get('/disponibilidad/:profesionalId/mes', turnosController.getDisponibilidadMes.bind(turnosController));
+router.get('/disponibilidad/:profesionalId/slots', turnosController.getSlotsDisponibles.bind(turnosController));
+router.get('/disponibilidad/:profesionalId/slots-rango', turnosController.getSlotsRango.bind(turnosController));
 
 router.use(authenticate);
 
@@ -115,11 +117,6 @@ router.post('/', turnosController.createTurno.bind(turnosController));
 router.put('/:id/estado', turnosController.updateEstado.bind(turnosController));
 router.put('/:id/finalizar', turnosController.finalizarTurno.bind(turnosController));
 router.get('/calendario', turnosController.getCalendario.bind(turnosController));
-
-// Disponibilidad
-router.get('/disponibilidad/:profesionalId/mes', turnosController.getDisponibilidadMes.bind(turnosController));
-router.get('/disponibilidad/:profesionalId/slots', turnosController.getSlotsDisponibles.bind(turnosController));
-router.get('/disponibilidad/:profesionalId/slots-rango', turnosController.getSlotsRango.bind(turnosController));
 router.get('/configuracion', turnosController.getConfiguracion.bind(turnosController));
 
 // CRUD Disponibilidad

@@ -1,6 +1,9 @@
 import { ITurnoRepository } from '../../../domain/repositories/ITurnoRepository';
 import { IClienteRepository } from '../../../domain/repositories/IClienteRepository';
 import { IServicioRepository } from '../../../domain/repositories/IServicioRepository';
+import { IDisponibilidadRepository } from '../../../domain/repositories/IDisponibilidadRepository';
+import { IBloqueoSlotRepository } from '../../../domain/repositories/IBloqueoSlotRepository';
+import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
 
 export interface CreateTurnoPublicRequest {
   profesional_id: string;
@@ -30,7 +33,10 @@ export class CreateTurnoPublicUseCase {
   constructor(
     private turnoRepository: ITurnoRepository,
     private clienteRepository: IClienteRepository,
-    private servicioRepository: IServicioRepository
+    private servicioRepository: IServicioRepository,
+    private disponibilidadRepository: IDisponibilidadRepository,
+    private bloqueoSlotRepository: IBloqueoSlotRepository,
+    private disponibilidadService: DisponibilidadService
   ) {}
 
   async execute(request: CreateTurnoPublicRequest): Promise<CreateTurnoPublicResponse> {
@@ -84,8 +90,28 @@ export class CreateTurnoPublicUseCase {
       }
     }
 
-    // Validar disponibilidad (omisión temporal - se asume disponible)
-    // TODO: Implementar validación de disponibilidad
+    // Validar que el slot esté disponible
+    const [disponibilidades, excepciones, turnosExistentes, bloqueosSlots] = await Promise.all([
+      this.disponibilidadRepository.findDisponibilidadByProfesional(profesional_id),
+      this.disponibilidadRepository.findExcepcionesByProfesional(profesional_id),
+      this.turnoRepository.findByFechaYProfesional(profesional_id, fecha),
+      this.bloqueoSlotRepository.findByProfesionalAndFecha(profesional_id, fecha)
+    ]);
+
+    const slotsDisponibles = this.disponibilidadService.calcularSlotsDisponibles(
+      disponibilidades,
+      excepciones,
+      turnosExistentes,
+      fecha,
+      bloqueosSlots
+    );
+
+    if (!slotsDisponibles.includes(hora)) {
+      throw Object.assign(
+        new Error('El horario seleccionado ya no está disponible. Por favor elegí otro.'),
+        { statusCode: 409 }
+      );
+    }
 
     // Crear el turno
     const turnoData: any = {

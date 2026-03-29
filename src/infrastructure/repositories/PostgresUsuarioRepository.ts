@@ -60,8 +60,8 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
       data.empresa_id,
       roles,
       true,
-      data.comision_turno || 20,
-      data.comision_producto || 20
+      data.comision_turno ?? 0,
+      data.comision_producto ?? 0
     ]);
     
     return result.rows[0];

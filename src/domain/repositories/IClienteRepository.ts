@@ -2,8 +2,14 @@ import { Cliente, CreateClienteData, UpdateClienteData } from '../entities/Clien
 
 export { CreateClienteData, UpdateClienteData };
 
+export interface ClientesPaginados {
+  items: Cliente[];
+  total: number;
+}
+
 export interface IClienteRepository {
   findByEmpresa(empresaId: string): Promise<Cliente[]>
+  findByEmpresaPaginado(empresaId: string, pagina: number, porPagina: number, busqueda?: string): Promise<ClientesPaginados>
   findByProfesional(profesionalId: string, empresaId: string): Promise<Cliente[]>
   findById(id: string): Promise<Cliente | null>
   create(data: CreateClienteData): Promise<Cliente>

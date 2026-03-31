@@ -29,16 +29,22 @@ export class ClientesController {
   async getClientes(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user as AuthenticatedUser;
-      const clientes = await this.getClientesUseCase.execute(user.empresaId);
-      
+      const pagina = Math.max(1, parseInt(req.query.pagina as string) || 1);
+      const porPagina = Math.min(100, Math.max(1, parseInt(req.query.por_pagina as string) || 20));
+      const busqueda = (req.query.busqueda as string)?.trim() || undefined;
+
+      const { items, total } = await this.getClientesUseCase.execute(user.empresaId, pagina, porPagina, busqueda);
+      const totalPaginas = Math.ceil(total / porPagina);
+
       res.json({
         success: true,
-        data: clientes
+        data: items,
+        meta: { total, pagina, por_pagina: porPagina, total_paginas: totalPaginas }
       });
     } catch (error) {
       const statusCode = (error as any).statusCode || 500;
       const message = error instanceof Error ? error.message : 'Error al obtener clientes';
-      
+
       res.status(statusCode).json({
         success: false,
         message

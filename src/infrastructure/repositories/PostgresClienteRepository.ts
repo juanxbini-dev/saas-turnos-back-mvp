@@ -1,5 +1,5 @@
 import { pool } from '../database/postgres.connection';
-import { IClienteRepository, CreateClienteData, UpdateClienteData } from '../../domain/repositories/IClienteRepository';
+import { IClienteRepository, CreateClienteData, UpdateClienteData, ClientesPaginados } from '../../domain/repositories/IClienteRepository';
 import { Cliente } from '../../domain/entities/Cliente';
 
 export class PostgresClienteRepository implements IClienteRepository {
@@ -13,6 +13,35 @@ export class PostgresClienteRepository implements IClienteRepository {
     
     const result = await pool.query(query, [empresaId]);
     return result.rows;
+  }
+
+  async findByEmpresaPaginado(empresaId: string, pagina: number, porPagina: number, busqueda?: string): Promise<ClientesPaginados> {
+    const offset = (pagina - 1) * porPagina;
+    const params: any[] = [empresaId];
+    let whereExtra = '';
+
+    if (busqueda) {
+      params.push(`%${busqueda}%`);
+      whereExtra = ` AND (nombre ILIKE $${params.length} OR email ILIKE $${params.length} OR telefono ILIKE $${params.length})`;
+    }
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as total FROM clientes WHERE empresa_id = $1${whereExtra}`,
+      params
+    );
+    const total = parseInt(countResult.rows[0].total);
+
+    params.push(porPagina, offset);
+    const dataResult = await pool.query(
+      `SELECT id, nombre, email, telefono, empresa_id, activo, created_at, updated_at
+       FROM clientes
+       WHERE empresa_id = $1${whereExtra}
+       ORDER BY nombre ASC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+
+    return { items: dataResult.rows, total };
   }
 
   async findByProfesional(profesionalId: string, empresaId: string): Promise<Cliente[]> {

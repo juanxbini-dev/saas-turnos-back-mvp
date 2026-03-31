@@ -1,10 +1,9 @@
-import { IClienteRepository } from '../../../domain/repositories/IClienteRepository';
-import { Cliente } from '../../../domain/entities/Cliente';
+import { IClienteRepository, ClientesPaginados } from '../../../domain/repositories/IClienteRepository';
 
 export class GetClientesUseCase {
   constructor(private clienteRepository: IClienteRepository) {}
 
-  async execute(empresaId: string): Promise<Cliente[]> {
-    return this.clienteRepository.findByEmpresa(empresaId);
+  async execute(empresaId: string, pagina: number, porPagina: number, busqueda?: string): Promise<ClientesPaginados> {
+    return this.clienteRepository.findByEmpresaPaginado(empresaId, pagina, porPagina, busqueda);
   }
 }

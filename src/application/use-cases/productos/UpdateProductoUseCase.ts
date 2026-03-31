@@ -9,8 +9,14 @@ export class UpdateProductoUseCase {
     if (!producto || producto.empresa_id !== empresaId) {
       throw Object.assign(new Error('Producto no encontrado'), { statusCode: 404 });
     }
-    if (data.precio !== undefined && data.precio < 0) {
-      throw Object.assign(new Error('El precio no puede ser negativo'), { statusCode: 400 });
+    if (data.precio_efectivo !== undefined && data.precio_efectivo < 0) {
+      throw Object.assign(new Error('El precio efectivo no puede ser negativo'), { statusCode: 400 });
+    }
+    if (data.precio_transferencia !== undefined && data.precio_transferencia < 0) {
+      throw Object.assign(new Error('El precio transferencia no puede ser negativo'), { statusCode: 400 });
+    }
+    if (data.costo !== undefined && data.costo !== null && data.costo < 0) {
+      throw Object.assign(new Error('El costo no puede ser negativo'), { statusCode: 400 });
     }
     if (data.nombre !== undefined) {
       const existe = await this.productoRepository.findByNombre(empresaId, data.nombre.trim(), id);

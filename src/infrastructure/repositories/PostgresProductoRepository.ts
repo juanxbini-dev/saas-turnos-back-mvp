@@ -1,6 +1,6 @@
 import { pool } from '../database/postgres.connection';
 import { IProductoRepository } from '../../domain/repositories/IProductoRepository';
-import { Producto, CreateProductoData, UpdateProductoData, TopProducto, TopVendedor } from '../../domain/entities/Producto';
+import { Producto, CreateProductoData, UpdateProductoData, TopProducto, TopVendedor, ProductoVentaFinanzas } from '../../domain/entities/Producto';
 import { generarId } from '../../shared/utils/calculos.utils';
 
 export class PostgresProductoRepository implements IProductoRepository {
@@ -28,10 +28,10 @@ export class PostgresProductoRepository implements IProductoRepository {
 
   async create(data: CreateProductoData): Promise<Producto> {
     const result = await pool.query(
-      `INSERT INTO productos (id, empresa_id, nombre, descripcion, precio, stock, marca_id, activo, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW(), NOW())
+      `INSERT INTO productos (id, empresa_id, nombre, descripcion, precio_efectivo, precio_transferencia, costo, stock, marca_id, activo, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW(), NOW())
        RETURNING *`,
-      [generarId(), data.empresa_id, data.nombre, data.descripcion || null, data.precio, data.stock, data.marca_id || null]
+      [generarId(), data.empresa_id, data.nombre, data.descripcion || null, data.precio_efectivo, data.precio_transferencia, data.costo ?? null, data.stock, data.marca_id || null]
     );
     const inserted = result.rows[0];
     return (await this.findById(inserted.id))!;
@@ -44,7 +44,9 @@ export class PostgresProductoRepository implements IProductoRepository {
 
     if (data.nombre !== undefined) { fields.push(`nombre = $${i++}`); values.push(data.nombre); }
     if (data.descripcion !== undefined) { fields.push(`descripcion = $${i++}`); values.push(data.descripcion); }
-    if (data.precio !== undefined) { fields.push(`precio = $${i++}`); values.push(data.precio); }
+    if (data.precio_efectivo !== undefined) { fields.push(`precio_efectivo = $${i++}`); values.push(data.precio_efectivo); }
+    if (data.precio_transferencia !== undefined) { fields.push(`precio_transferencia = $${i++}`); values.push(data.precio_transferencia); }
+    if (data.costo !== undefined) { fields.push(`costo = $${i++}`); values.push(data.costo); }
     if (data.activo !== undefined) { fields.push(`activo = $${i++}`); values.push(data.activo); }
     if (data.marca_id !== undefined) { fields.push(`marca_id = $${i++}`); values.push(data.marca_id); }
 
@@ -133,6 +135,39 @@ export class PostgresProductoRepository implements IProductoRepository {
        ORDER BY total_vendido DESC
        LIMIT $2`,
       [empresaId, limit]
+    );
+    return result.rows;
+  }
+
+  async getVentasFinanzas(empresaId: string, fechaDesde?: string, fechaHasta?: string): Promise<ProductoVentaFinanzas[]> {
+    const params: unknown[] = [empresaId];
+    let fechaFiltro = '';
+    if (fechaDesde) { params.push(fechaDesde); fechaFiltro += ` AND vp.created_at >= $${params.length}`; }
+    if (fechaHasta) { params.push(fechaHasta); fechaFiltro += ` AND vp.created_at < ($${params.length}::date + interval '1 day')`; }
+
+    const result = await pool.query(
+      `SELECT
+         p.id AS producto_id,
+         p.nombre,
+         p.precio_efectivo,
+         p.precio_transferencia,
+         p.costo,
+         COALESCE(SUM(vp.cantidad), 0)::int AS total_unidades,
+         COALESCE(SUM(CASE WHEN vp.metodo_pago = 'efectivo' THEN vp.cantidad ELSE 0 END), 0)::int AS unidades_efectivo,
+         COALESCE(SUM(CASE WHEN vp.metodo_pago = 'transferencia' THEN vp.cantidad ELSE 0 END), 0)::int AS unidades_transferencia,
+         COALESCE(SUM(CASE WHEN vp.metodo_pago = 'pendiente' THEN vp.cantidad ELSE 0 END), 0)::int AS unidades_pendiente,
+         COALESCE(SUM(CASE WHEN vp.metodo_pago = 'efectivo' THEN vp.precio_total ELSE 0 END), 0) AS total_efectivo,
+         COALESCE(SUM(CASE WHEN vp.metodo_pago = 'transferencia' THEN vp.precio_total ELSE 0 END), 0) AS total_transferencia,
+         COALESCE(SUM(CASE WHEN vp.metodo_pago = 'pendiente' THEN vp.precio_total ELSE 0 END), 0) AS total_pendiente,
+         COALESCE(SUM(vp.comision_monto), 0) AS total_comision,
+         COALESCE(SUM(vp.neto_vendedor), 0) AS total_neto_vendedor
+       FROM productos p
+       LEFT JOIN venta_productos vp ON vp.producto_id = p.id AND vp.empresa_id = p.empresa_id ${fechaFiltro}
+       WHERE p.empresa_id = $1 AND p.activo = true
+       GROUP BY p.id, p.nombre, p.precio_efectivo, p.precio_transferencia, p.costo
+       HAVING COALESCE(SUM(vp.cantidad), 0) > 0
+       ORDER BY total_unidades DESC`,
+      params
     );
     return result.rows;
   }

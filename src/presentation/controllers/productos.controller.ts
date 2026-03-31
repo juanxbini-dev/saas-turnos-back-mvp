@@ -39,11 +39,13 @@ export class ProductosController {
   async createProducto(req: Request, res: Response): Promise<void> {
     try {
       const { empresaId } = req.user as AuthenticatedUser;
-      const { nombre, descripcion, precio, stock, marca_id } = req.body;
+      const { nombre, descripcion, precio_efectivo, precio_transferencia, costo, stock, marca_id } = req.body;
       const producto = await this.createProductoUseCase.execute(empresaId, {
         nombre,
         descripcion,
-        precio: Number(precio),
+        precio_efectivo: Number(precio_efectivo),
+        precio_transferencia: Number(precio_transferencia),
+        costo: costo != null ? Number(costo) : null,
         stock: Number(stock),
         marca_id: marca_id || null,
       });
@@ -58,11 +60,13 @@ export class ProductosController {
     try {
       const { empresaId } = req.user as AuthenticatedUser;
       const id = req.params.id as string;
-      const { nombre, descripcion, precio, activo, marca_id } = req.body;
+      const { nombre, descripcion, precio_efectivo, precio_transferencia, costo, activo, marca_id } = req.body;
       const updateData: import('../../domain/entities/Producto').UpdateProductoData = {};
       if (nombre !== undefined) updateData.nombre = nombre;
       if (descripcion !== undefined) updateData.descripcion = descripcion;
-      if (precio !== undefined) updateData.precio = Number(precio);
+      if (precio_efectivo !== undefined) updateData.precio_efectivo = Number(precio_efectivo);
+      if (precio_transferencia !== undefined) updateData.precio_transferencia = Number(precio_transferencia);
+      if (costo !== undefined) updateData.costo = costo != null ? Number(costo) : null;
       if (activo !== undefined) updateData.activo = activo;
       if (marca_id !== undefined) updateData.marca_id = marca_id || null;
       const producto = await this.updateProductoUseCase.execute(id, empresaId, updateData);
@@ -105,6 +109,18 @@ export class ProductosController {
       res.json({ success: true, data: stats });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Error al obtener estadísticas' });
+    }
+  }
+
+  async getVentasFinanzas(req: Request, res: Response): Promise<void> {
+    try {
+      const { empresaId } = req.user as AuthenticatedUser;
+      const { fecha_desde, fecha_hasta } = req.query as { fecha_desde?: string; fecha_hasta?: string };
+      const repo = new PostgresProductoRepository();
+      const data = await repo.getVentasFinanzas(empresaId, fecha_desde, fecha_hasta);
+      res.json({ success: true, data });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error al obtener finanzas de productos' });
     }
   }
 }

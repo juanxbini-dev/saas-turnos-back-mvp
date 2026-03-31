@@ -1,4 +1,4 @@
-import { Producto, CreateProductoData, UpdateProductoData, TopProducto, TopVendedor } from '../entities/Producto';
+import { Producto, CreateProductoData, UpdateProductoData, TopProducto, TopVendedor, ProductoVentaFinanzas } from '../entities/Producto';
 
 export interface IProductoRepository {
   findAll(empresaId: string): Promise<Producto[]>;
@@ -12,4 +12,5 @@ export interface IProductoRepository {
   findBajoStock(empresaId: string, umbral?: number): Promise<Producto[]>;
   getTopVendidos(empresaId: string, limit?: number): Promise<TopProducto[]>;
   getTopVendedores(empresaId: string, limit?: number): Promise<TopVendedor[]>;
+  getVentasFinanzas(empresaId: string, fechaDesde?: string, fechaHasta?: string): Promise<ProductoVentaFinanzas[]>;
 }

@@ -18,8 +18,7 @@ export class FinalizarTurnoUseCase {
 
   async execute(data: FinalizarTurnoData): Promise<Turno> {
     // 1. Validar que el turno exista y esté en estado 'confirmado'
-    const turnos = await this.turnoRepository.findByProfesional(data.profesionalId);
-    const turno = turnos.find(t => t.id === data.turnoId);
+    const turno = await this.turnoRepository.findById(data.turnoId);
 
     if (!turno) {
       throw Object.assign(new Error('Turno no encontrado'), { statusCode: 404 });

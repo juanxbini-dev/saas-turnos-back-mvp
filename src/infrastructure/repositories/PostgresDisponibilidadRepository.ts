@@ -188,7 +188,7 @@ export class PostgresDisponibilidadRepository implements IDisponibilidadReposito
   // Excepciones
   async findExcepcionesByProfesional(profesionalId: string): Promise<ExcepcionDia[]> {
     const query = `
-      SELECT id, profesional_id, fecha, disponible, hora_inicio, hora_fin, 
+      SELECT id, profesional_id, fecha, disponible, tipo, hora_inicio, hora_fin,
              intervalo_minutos, notas, created_at, updated_at
       FROM excepciones_dia
       WHERE profesional_id = $1
@@ -209,19 +209,20 @@ export class PostgresDisponibilidadRepository implements IDisponibilidadReposito
   async createExcepcion(data: CreateExcepcionData): Promise<ExcepcionDia> {
     const query = `
       INSERT INTO excepciones_dia (
-        id, profesional_id, fecha, disponible, hora_inicio, hora_fin, 
+        id, profesional_id, fecha, disponible, tipo, hora_inicio, hora_fin,
         intervalo_minutos, notas, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-      RETURNING id, profesional_id, fecha, disponible, hora_inicio, hora_fin, 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      RETURNING id, profesional_id, fecha, disponible, tipo, hora_inicio, hora_fin,
                 intervalo_minutos, notas, created_at, updated_at
     `;
-    
+
     const result = await pool.query(query, [
       data.id,
       data.profesional_id,
       data.fecha,
       data.disponible,
+      data.tipo || 'reemplazo',
       data.hora_inicio || null,
       data.hora_fin || null,
       data.intervalo_minutos || null,
@@ -244,6 +245,11 @@ export class PostgresDisponibilidadRepository implements IDisponibilidadReposito
     if (data.disponible !== undefined) {
       fields.push(`disponible = $${paramIndex++}`);
       values.push(data.disponible);
+    }
+
+    if (data.tipo !== undefined) {
+      fields.push(`tipo = $${paramIndex++}`);
+      values.push(data.tipo);
     }
 
     if (data.hora_inicio !== undefined) {
@@ -273,10 +279,10 @@ export class PostgresDisponibilidadRepository implements IDisponibilidadReposito
       UPDATE excepciones_dia
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, profesional_id, fecha, disponible, hora_inicio, hora_fin, 
+      RETURNING id, profesional_id, fecha, disponible, tipo, hora_inicio, hora_fin,
                 intervalo_minutos, notas, created_at, updated_at
     `;
-    
+
     const result = await pool.query(query, values);
     return result.rows[0];
   }

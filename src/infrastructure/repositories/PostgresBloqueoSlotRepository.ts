@@ -43,9 +43,12 @@ export class PostgresBloqueoSlotRepository implements IBloqueoSlotRepository {
     return result.rows[0];
   }
 
-  async delete(id: string, profesionalId: string): Promise<void> {
-    const query = `DELETE FROM bloqueos_slots WHERE id = $1 AND profesional_id = $2`;
-    const result = await pool.query(query, [id, profesionalId]);
+  async delete(id: string, profesionalId: string | null): Promise<void> {
+    const query = profesionalId
+      ? `DELETE FROM bloqueos_slots WHERE id = $1 AND profesional_id = $2`
+      : `DELETE FROM bloqueos_slots WHERE id = $1`;
+    const params = profesionalId ? [id, profesionalId] : [id];
+    const result = await pool.query(query, params);
     if (result.rowCount === 0) {
       throw Object.assign(new Error('Bloqueo no encontrado'), { statusCode: 404 });
     }

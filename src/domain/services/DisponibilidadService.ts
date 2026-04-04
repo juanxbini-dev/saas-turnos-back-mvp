@@ -159,27 +159,13 @@ export class DisponibilidadService {
     
     const fechaObj = useNewUtils ? DateUtils.combineDateTime(fecha, '00:00') : new Date(fecha + 'T00:00:00');
     const diaSemana = fechaObj.getDay();
-    const ahora = new Date();
-    
-    // Usar hora local para que coincida con la zona horaria del servidor
-    const esHoy = useNewUtils ? DateUtils.isToday(fechaObj) : (
-      fechaObj.getFullYear() === ahora.getFullYear() &&
-      fechaObj.getMonth() === ahora.getMonth() &&
-      fechaObj.getDate() === ahora.getDate()
-    );
-    
-    logDate('Fecha procesada:', { 
+
+    logDate('Fecha procesada:', {
       fechaParametro: fecha,
       fechaObj,
       fechaObjLocal: useNewUtils ? DateUtils.normalizeDate(fechaObj) : `${fechaObj.getFullYear()}-${fechaObj.getMonth() + 1}-${fechaObj.getDate()}`,
-      ahora,
-      ahoraLocal: useNewUtils ? DateUtils.normalizeDate(ahora) : `${ahora.getFullYear()}-${ahora.getMonth() + 1}-${ahora.getDate()}`,
-      esHoy,
       diaSemana,
       diaSemanaTexto: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][diaSemana],
-      horaActual: `${ahora.getHours().toString().padStart(2, '0')}:${ahora.getMinutes().toString().padStart(2, '0')} LOCAL`,
-      horaUTC: `${ahora.getUTCHours().toString().padStart(2, '0')}:${ahora.getUTCMinutes().toString().padStart(2, '0')} UTC`,
-      timestamp: Date.now(),
       useNewUtils
     });
 
@@ -278,12 +264,7 @@ export class DisponibilidadService {
         const minutos = cur % 60;
         const slot = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
 
-        const slotDateTime = useNewUtils
-          ? DateUtils.combineDateTime(fecha, slot)
-          : new Date(fechaObj.getFullYear(), fechaObj.getMonth(), fechaObj.getDate(), horas, minutos);
-
-        const debeIncluirse = !esHoy || slotDateTime.getTime() > ahora.getTime();
-        if (debeIncluirse && !destino.includes(slot)) destino.push(slot);
+        if (!destino.includes(slot)) destino.push(slot);
 
         cur += intervalo;
       }
@@ -308,40 +289,9 @@ export class DisponibilidadService {
       const minutos = currentMinutos % 60;
       const slot = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
       
-      // No incluir slots anteriores a hora actual si es hoy
-      const slotDateTime = useNewUtils ? DateUtils.combineDateTime(fecha, slot) : new Date(
-        fechaObj.getFullYear(),
-        fechaObj.getMonth(), 
-        fechaObj.getDate(),
-        horas,
-        minutos
-      );
-      
-      // Usar hora local para comparación
-      const slotTimestamp = slotDateTime.getTime();
-      const ahoraTimestamp = ahora.getTime();
-      const debeIncluirse = !esHoy || slotTimestamp > ahoraTimestamp;
-      
-      logDate('Evaluando slot:', {
-        slot,
-        esHoy,
-        slotDateTime,
-        slotTimestamp,
-        ahora,
-        ahoraTimestamp,
-        debeIncluirse,
-        diferenciaMinutos: Math.round((slotTimestamp - ahoraTimestamp) / (1000 * 60)),
-        razon: esHoy 
-          ? (slotTimestamp > ahoraTimestamp 
-              ? `Futuro (+${Math.round((slotTimestamp - ahoraTimestamp) / (1000 * 60))} min) - Incluir` 
-              : `Pasado (${Math.round((ahoraTimestamp - slotTimestamp) / (1000 * 60))} min) - Excluir`)
-          : 'No es hoy - Incluir',
-        useNewUtils
-      });
-      
-      if (debeIncluirse) {
-        slots.push(slot);
-      }
+      // El filtrado de slots pasados se delega al frontend (usa hora local del browser).
+      // El servidor corre en UTC y no puede conocer la timezone del cliente.
+      slots.push(slot);
 
       currentMinutos += intervaloMinutos;
     }

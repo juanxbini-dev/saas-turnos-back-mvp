@@ -20,11 +20,6 @@ export class CreateExcepcionUseCase {
     usuarioAutenticadoId: string,
     tipo: 'reemplazo' | 'adicional' = 'reemplazo'
   ): Promise<ExcepcionDia> {
-    // Verificar que el registro pertenezca al profesionalId autenticado
-    if (profesionalId !== usuarioAutenticadoId) {
-      throw Object.assign(new Error('No puedes crear excepciones para otro profesional'), { statusCode: 403 });
-    }
-
     const id = this.cryptoService.generateUUID();
 
     const data: CreateExcepcionData = {

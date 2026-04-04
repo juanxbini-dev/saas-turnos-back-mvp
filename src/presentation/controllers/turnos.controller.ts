@@ -448,8 +448,8 @@ export class TurnosController {
     try {
       const { empresaId, id: usuarioId, roles } = req.user!;
       const { fecha, disponible, tipo, hora_inicio, hora_fin, intervalo_minutos, notas, profesional_id } = req.body;
-      const isSuperAdmin = roles.includes('super_admin');
-      const efectivoId = isSuperAdmin && profesional_id ? profesional_id : usuarioId;
+      const isAdmin = roles?.includes('super_admin') || roles?.includes('admin');
+      const efectivoId = isAdmin && profesional_id ? profesional_id : usuarioId;
 
       const excepcion = await this.createExcepcionUseCase.execute(
         efectivoId,
@@ -478,8 +478,8 @@ export class TurnosController {
     try {
       const id = req.params['id'] as string;
       const { id: usuarioId, roles } = req.user!;
-      const isSuperAdmin = roles.includes('super_admin');
-      const efectivoId = isSuperAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
+      const isAdmin = roles?.includes('super_admin') || roles?.includes('admin');
+      const efectivoId = isAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
 
       const excepcion = await this.updateExcepcionUseCase.execute(id, req.body, efectivoId);
       
@@ -497,8 +497,8 @@ export class TurnosController {
     try {
       const id = req.params['id'] as string;
       const { id: usuarioId, roles } = req.user!;
-      const isSuperAdmin = roles.includes('super_admin');
-      const efectivoId = isSuperAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
+      const isAdmin = roles?.includes('super_admin') || roles?.includes('admin');
+      const efectivoId = isAdmin && req.body.profesional_id ? req.body.profesional_id : usuarioId;
 
       await this.deleteExcepcionUseCase.execute(id, efectivoId);
       

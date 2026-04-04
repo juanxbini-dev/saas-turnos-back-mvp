@@ -70,19 +70,38 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
   async updateDatos(id: string, data: UpdateDatosData): Promise<UsuarioPublico> {
     const query = `
       UPDATE usuarios
-      SET nombre = $1, username = $2, comision_turno = $3, comision_producto = $4, updated_at = NOW()
-      WHERE id = $5
-      RETURNING id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at, comision_turno, comision_producto
+      SET nombre = $1, username = $2, email = $3, comision_turno = $4, comision_producto = $5, updated_at = NOW()
+      WHERE id = $6
+      RETURNING id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at, comision_turno, comision_producto, avatar_url
     `;
-    
+
     const result = await pool.query(query, [
-      data.nombre, 
-      data.username, 
-      data.comision_turno, 
-      data.comision_producto, 
+      data.nombre,
+      data.username,
+      data.email,
+      data.comision_turno,
+      data.comision_producto,
       id
     ]);
     return result.rows[0];
+  }
+
+  async existeEmail(email: string, empresaId: string, excludeId?: string): Promise<boolean> {
+    let query = `
+      SELECT COUNT(*) as count
+      FROM usuarios u
+      WHERE LOWER(u.email) = LOWER($1) AND u.empresa_id = $2
+    `;
+
+    const params: any[] = [email, empresaId];
+
+    if (excludeId) {
+      query += ` AND u.id != $3`;
+      params.push(excludeId);
+    }
+
+    const result = await pool.query(query, params);
+    return parseInt(result.rows[0].count) > 0;
   }
 
   async updatePassword(id: string, hashedPassword: string): Promise<void> {

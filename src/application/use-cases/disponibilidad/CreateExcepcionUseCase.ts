@@ -17,7 +17,8 @@ export class CreateExcepcionUseCase {
     intervaloMinutos: number | null,
     notas: string | null,
     empresaId: string,
-    usuarioAutenticadoId: string
+    usuarioAutenticadoId: string,
+    tipo: 'reemplazo' | 'adicional' = 'reemplazo'
   ): Promise<ExcepcionDia> {
     // Verificar que el registro pertenezca al profesionalId autenticado
     if (profesionalId !== usuarioAutenticadoId) {
@@ -31,6 +32,7 @@ export class CreateExcepcionUseCase {
       profesional_id: profesionalId,
       fecha,
       disponible,
+      tipo,
       ...(horaInicio && { hora_inicio: horaInicio }),
       ...(horaFin && { hora_fin: horaFin }),
       ...(intervaloMinutos && { intervalo_minutos: intervaloMinutos }),

@@ -447,7 +447,7 @@ export class TurnosController {
   async createExcepcion(req: Request, res: Response) {
     try {
       const { empresaId, id: usuarioId, roles } = req.user!;
-      const { fecha, disponible, hora_inicio, hora_fin, intervalo_minutos, notas, profesional_id } = req.body;
+      const { fecha, disponible, tipo, hora_inicio, hora_fin, intervalo_minutos, notas, profesional_id } = req.body;
       const isSuperAdmin = roles.includes('super_admin');
       const efectivoId = isSuperAdmin && profesional_id ? profesional_id : usuarioId;
 
@@ -460,7 +460,8 @@ export class TurnosController {
         intervalo_minutos,
         notas,
         empresaId,
-        efectivoId
+        efectivoId,
+        tipo || 'reemplazo'
       );
       
       res.status(201).json({ success: true, data: excepcion });

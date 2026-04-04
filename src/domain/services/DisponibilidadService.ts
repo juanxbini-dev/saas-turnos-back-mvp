@@ -428,7 +428,8 @@ export class DisponibilidadService {
     bloqueosSlots: BloqueoSlot[] = []
   ): boolean {
     const useNewUtils = isFeatureEnabled('USE_DATE_UTILS_IN_DISPONIBILIDAD');
-    const fechaObj = useNewUtils ? DateUtils.combineDateTime(fecha, '00:00') : new Date(fecha);
+    // Parsear como medianoche LOCAL (no UTC) para que getMonth/getDay sean correctos en cualquier timezone
+    const fechaObj = useNewUtils ? DateUtils.combineDateTime(fecha, '00:00') : new Date(fecha + 'T00:00:00');
     const diaSemana = fechaObj.getDay();
 
     // Verificar que la fecha esté disponible

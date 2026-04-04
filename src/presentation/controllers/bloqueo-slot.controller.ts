@@ -12,17 +12,19 @@ export class BloqueoSlotController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { empresaId, id: usuarioId } = req.user!;
-      const { fecha, hora_inicio, hora_fin, motivo } = req.body;
+      const { empresaId, id: usuarioId, roles } = req.user!;
+      const { fecha, hora_inicio, hora_fin, motivo, profesional_id } = req.body;
+
+      const isSuperAdmin = roles?.includes('super_admin') || roles?.includes('admin');
+      const efectivoId = isSuperAdmin && profesional_id ? profesional_id : usuarioId;
 
       const bloqueo = await this.createBloqueoSlotUseCase.execute(
-        usuarioId,
+        efectivoId,
         empresaId,
         fecha,
         hora_inicio,
         hora_fin,
-        motivo ?? null,
-        usuarioId
+        motivo ?? null
       );
 
       res.status(201).json({ success: true, data: bloqueo });
@@ -33,10 +35,10 @@ export class BloqueoSlotController {
 
   async remove(req: Request, res: Response): Promise<void> {
     try {
-      const { id: usuarioId } = req.user!;
+      const { id: usuarioId, roles } = req.user!;
       const { id } = req.params;
 
-      await this.deleteBloqueoSlotUseCase.execute(id as string, usuarioId, usuarioId);
+      await this.deleteBloqueoSlotUseCase.execute(id as string, usuarioId, roles || []);
 
       res.status(200).json({ success: true });
     } catch (error: any) {
@@ -46,16 +48,19 @@ export class BloqueoSlotController {
 
   async getByRango(req: Request, res: Response): Promise<void> {
     try {
-      const { id: usuarioId } = req.user!;
-      const { fecha_inicio, fecha_fin } = req.query;
+      const { id: usuarioId, roles } = req.user!;
+      const { fecha_inicio, fecha_fin, profesional_id } = req.query;
 
       if (!fecha_inicio || !fecha_fin) {
         res.status(400).json({ success: false, message: 'fecha_inicio y fecha_fin son requeridos' });
         return;
       }
 
+      const isSuperAdmin = roles?.includes('super_admin') || roles?.includes('admin');
+      const efectivoId = isSuperAdmin && profesional_id ? profesional_id as string : usuarioId;
+
       const bloqueos = await this.getBloqueosSlotUseCase.executeByRango(
-        usuarioId,
+        efectivoId,
         fecha_inicio as string,
         fecha_fin as string
       );

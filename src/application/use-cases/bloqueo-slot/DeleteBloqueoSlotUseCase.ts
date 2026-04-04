@@ -3,11 +3,8 @@ import { IBloqueoSlotRepository } from '../../../domain/repositories/IBloqueoSlo
 export class DeleteBloqueoSlotUseCase {
   constructor(private bloqueoSlotRepository: IBloqueoSlotRepository) {}
 
-  async execute(id: string, profesionalId: string, usuarioAutenticadoId: string): Promise<void> {
-    if (profesionalId !== usuarioAutenticadoId) {
-      throw Object.assign(new Error('No puedes eliminar bloqueos de otro profesional'), { statusCode: 403 });
-    }
-
-    return this.bloqueoSlotRepository.delete(id, profesionalId);
+  async execute(id: string, usuarioAutenticadoId: string, roles: string[]): Promise<void> {
+    const isSuperAdmin = roles.includes('super_admin') || roles.includes('admin');
+    return this.bloqueoSlotRepository.delete(id, isSuperAdmin ? null : usuarioAutenticadoId);
   }
 }

@@ -210,65 +210,98 @@ export class DisponibilidadService {
       return [];
     }
 
-    // Determinar hora_inicio, hora_fin e intervalo del día (excepción tiene prioridad)
-    const excepcionDia = excepciones.find(exc => {
-      const fechaExcepcion = useNewUtils ? DateUtils.normalizeDate(exc.fecha) : (() => {
-        if (typeof exc.fecha === 'string') {
-          return exc.fecha.slice(0, 10);
-        }
-        const d = exc.fecha as Date;
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-      })();
-      logDate('Buscando excepción CON disponibilidad:', { 
-        excFecha: exc.fecha, 
-        fechaExcepcion, 
-        fechaParametro: fecha, 
-        disponible: exc.disponible,
-        coincide: fechaExcepcion === fecha
-      });
-      return fechaExcepcion === fecha && exc.disponible;
-    });
-    
-    logDate('Excepción encontrada para el día:', excepcionDia);
-    
+    // Normalizar fecha de una excepción (helper inline reutilizable)
+    const normalizarFechaExc = (excFecha: string | Date): string => {
+      if (useNewUtils) return DateUtils.normalizeDate(excFecha as string);
+      if (typeof excFecha === 'string') return excFecha.slice(0, 10);
+      const d = excFecha as Date;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    // Excepción de tipo reemplazo: sustituye el horario semanal del día
+    const excepcionReemplazo = excepciones.find(exc =>
+      normalizarFechaExc(exc.fecha) === fecha &&
+      exc.disponible &&
+      (!exc.tipo || exc.tipo === 'reemplazo')
+    );
+
+    // Excepciones de tipo adicional: agregan slots fuera del horario semanal
+    const excepcionesAdicionales = excepciones.filter(exc =>
+      normalizarFechaExc(exc.fecha) === fecha &&
+      exc.disponible &&
+      exc.tipo === 'adicional'
+    );
+
+    logDate('Excepción reemplazo encontrada:', excepcionReemplazo);
+    logDate('Excepciones adicionales encontradas:', excepcionesAdicionales.length);
+
     let horaInicio: string;
     let horaFin: string;
     let intervaloMinutos: number;
 
-    if (excepcionDia?.hora_inicio && excepcionDia?.hora_fin && excepcionDia?.intervalo_minutos) {
-      horaInicio = excepcionDia.hora_inicio;
-      horaFin = excepcionDia.hora_fin;
-      intervaloMinutos = excepcionDia.intervalo_minutos;
+    if (excepcionReemplazo?.hora_inicio && excepcionReemplazo?.hora_fin && excepcionReemplazo?.intervalo_minutos) {
+      horaInicio = excepcionReemplazo.hora_inicio;
+      horaFin = excepcionReemplazo.hora_fin;
+      intervaloMinutos = excepcionReemplazo.intervalo_minutos;
     } else {
-      const disponibilidad = disponibilidades.find(disp => 
-        disp.activo && 
-        diaSemana >= disp.dia_inicio && 
+      const disponibilidad = disponibilidades.find(disp =>
+        disp.activo &&
+        diaSemana >= disp.dia_inicio &&
         diaSemana <= disp.dia_fin
       );
 
-      if (!disponibilidad) {
+      if (!disponibilidad && excepcionesAdicionales.length === 0) {
         return [];
       }
 
-      horaInicio = disponibilidad.hora_inicio;
-      horaFin = disponibilidad.hora_fin;
-      intervaloMinutos = disponibilidad.intervalo_minutos;
+      if (!disponibilidad) {
+        // Solo hay excepciones adicionales, sin horario base
+        horaInicio = '';
+        horaFin = '';
+        intervaloMinutos = 0;
+      } else {
+        horaInicio = disponibilidad.hora_inicio;
+        horaFin = disponibilidad.hora_fin;
+        intervaloMinutos = disponibilidad.intervalo_minutos;
+      }
     }
+
+    // Helper para generar slots de un rango y agregarlos al array (sin duplicados)
+    const generarSlotsDeRango = (inicio: string, fin: string, intervalo: number, destino: string[]) => {
+      const [ih, im] = inicio.split(':').map(Number);
+      const [fh, fm] = fin.split(':').map(Number);
+      let cur = (ih ?? 0) * 60 + (im ?? 0);
+      const finTotal = (fh ?? 0) * 60 + (fm ?? 0);
+
+      while (cur < finTotal) {
+        const horas = Math.floor(cur / 60);
+        const minutos = cur % 60;
+        const slot = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
+
+        const slotDateTime = useNewUtils
+          ? DateUtils.combineDateTime(fecha, slot)
+          : new Date(fechaObj.getFullYear(), fechaObj.getMonth(), fechaObj.getDate(), horas, minutos);
+
+        const debeIncluirse = !esHoy || slotDateTime.getTime() > ahora.getTime();
+        if (debeIncluirse && !destino.includes(slot)) destino.push(slot);
+
+        cur += intervalo;
+      }
+    };
 
     // Generar todos los slots según el intervalo
     const slots: string[] = [];
-    const inicioParts = horaInicio.split(':');
-    const finParts = horaFin.split(':');
-    const inicioHoras = Number(inicioParts[0]);
-    const inicioMinutos = Number(inicioParts[1]);
-    const finHoras = Number(finParts[0]);
-    const finMinutos = Number(finParts[1]);
 
-    let currentMinutos = inicioHoras * 60 + inicioMinutos;
-    const finMinutosTotal = finHoras * 60 + finMinutos;
+    if (horaInicio && horaFin && intervaloMinutos > 0) {
+      const inicioParts = horaInicio.split(':');
+      const finParts = horaFin.split(':');
+      const inicioHoras = Number(inicioParts[0]);
+      const inicioMinutos = Number(inicioParts[1]);
+      const finHoras = Number(finParts[0]);
+      const finMinutos = Number(finParts[1]);
+
+      let currentMinutos = inicioHoras * 60 + inicioMinutos;
+      const finMinutosTotal = finHoras * 60 + finMinutos;
 
     while (currentMinutos < finMinutosTotal) {
       const horas = Math.floor(currentMinutos / 60);
@@ -309,9 +342,20 @@ export class DisponibilidadService {
       if (debeIncluirse) {
         slots.push(slot);
       }
-      
+
       currentMinutos += intervaloMinutos;
     }
+    } // fin if (horaInicio && horaFin)
+
+    // Agregar slots de excepciones adicionales (se suman al horario base)
+    for (const exc of excepcionesAdicionales) {
+      if (exc.hora_inicio && exc.hora_fin && exc.intervalo_minutos) {
+        generarSlotsDeRango(exc.hora_inicio, exc.hora_fin, exc.intervalo_minutos, slots);
+      }
+    }
+
+    // Ordenar slots cronológicamente tras el merge
+    slots.sort();
 
     // Restar slots ocupados por turnos con estado pendiente o confirmado
     const slotsOcupados = turnosExistentes

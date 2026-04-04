@@ -14,13 +14,8 @@ export class CreateBloqueoSlotUseCase {
     fecha: string,
     horaInicio: string,
     horaFin: string,
-    motivo: string | null,
-    usuarioAutenticadoId: string
+    motivo: string | null
   ): Promise<BloqueoSlot> {
-    if (profesionalId !== usuarioAutenticadoId) {
-      throw Object.assign(new Error('No puedes crear bloqueos para otro profesional'), { statusCode: 403 });
-    }
-
     const id = this.cryptoService.generateUUID();
 
     return this.bloqueoSlotRepository.create({

@@ -15,9 +15,19 @@ export class UpdateUsuarioDatosUseCase {
       usuario.empresa_id,
       id
     );
-    
+
     if (usernameExists) {
       throw Object.assign(new Error('El username ya está en uso'), { statusCode: 400 });
+    }
+
+    const emailExists = await this.usuarioRepository.existeEmail(
+      data.email,
+      usuario.empresa_id,
+      id
+    );
+
+    if (emailExists) {
+      throw Object.assign(new Error('El email ya está en uso'), { statusCode: 400 });
     }
 
     return this.usuarioRepository.updateDatos(id, data);

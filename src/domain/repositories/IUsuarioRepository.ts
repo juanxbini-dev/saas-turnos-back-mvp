@@ -15,6 +15,7 @@ export interface CreateUsuarioData {
 export interface UpdateDatosData {
   nombre: string;
   username: string;
+  email: string;
   comision_turno?: number;
   comision_producto?: number;
 }
@@ -29,6 +30,7 @@ export interface IUsuarioRepository {
   updateRol(id: string, roles: string[]): Promise<UsuarioPublico>;
   toggleActivo(id: string, activo: boolean): Promise<UsuarioPublico>;
   existeUsername(username: string, empresaId: string, excludeId?: string): Promise<boolean>;
+  existeEmail(email: string, empresaId: string, excludeId?: string): Promise<boolean>;
   findProfesionalesByEmpresa(empresaId: string, params?: {
     page?: number;
     limit?: number;

@@ -6,8 +6,11 @@ import { UpdateUsuarioPasswordUseCase } from '../../application/use-cases/usuari
 import { UpdateUsuarioRolUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioRolUseCase';
 import { ToggleUsuarioActivoUseCase } from '../../application/use-cases/usuarios/ToggleUsuarioActivoUseCase';
 import { GetProfesionalesUseCase } from '../../application/use-cases/usuarios/GetProfesionalesUseCase';
+import { UpdateUsuarioAvatarUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioAvatarUseCase';
+import { DeleteUsuarioAvatarUseCase } from '../../application/use-cases/usuarios/DeleteUsuarioAvatarUseCase';
 import { PostgresUsuarioRepository } from '../../infrastructure/repositories/PostgresUsuarioRepository';
 import { PostgresUsuarioServicioRepository } from '../../infrastructure/repositories/PostgresUsuarioServicioRepository';
+import { CloudinaryImageRepository } from '../../infrastructure/repositories/CloudinaryImageRepository';
 import { PasswordService } from '../../infrastructure/security/password.service';
 import { CryptoService } from '../../infrastructure/security/crypto.service';
 import { AuthenticatedUser } from '../middlewares/auth.middleware';
@@ -20,10 +23,13 @@ export class UsuariosController {
   private updateUsuarioRolUseCase: UpdateUsuarioRolUseCase;
   private toggleUsuarioActivoUseCase: ToggleUsuarioActivoUseCase;
   private getProfesionalesUseCase: GetProfesionalesUseCase;
+  private updateUsuarioAvatarUseCase: UpdateUsuarioAvatarUseCase;
+  private deleteUsuarioAvatarUseCase: DeleteUsuarioAvatarUseCase;
   private usuarioServicioRepository: PostgresUsuarioServicioRepository;
 
   constructor() {
     const usuarioRepository = new PostgresUsuarioRepository();
+    const imageRepository = new CloudinaryImageRepository();
     this.usuarioServicioRepository = new PostgresUsuarioServicioRepository();
     const passwordService = new PasswordService();
     const cryptoService = new CryptoService();
@@ -42,6 +48,8 @@ export class UsuariosController {
     this.updateUsuarioRolUseCase = new UpdateUsuarioRolUseCase(usuarioRepository);
     this.toggleUsuarioActivoUseCase = new ToggleUsuarioActivoUseCase(usuarioRepository);
     this.getProfesionalesUseCase = new GetProfesionalesUseCase(usuarioRepository);
+    this.updateUsuarioAvatarUseCase = new UpdateUsuarioAvatarUseCase(imageRepository, usuarioRepository);
+    this.deleteUsuarioAvatarUseCase = new DeleteUsuarioAvatarUseCase(imageRepository, usuarioRepository);
   }
 
   async getUsuarios(req: Request, res: Response): Promise<void> {
@@ -104,12 +112,12 @@ export class UsuariosController {
   async updateDatos(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { nombre, username } = req.body;
+      const { nombre, username, email, comision_turno, comision_producto } = req.body;
 
-      if (!nombre || !username) {
+      if (!nombre || !username || !email) {
         res.status(400).json({
           success: false,
-          message: 'Nombre y username son requeridos'
+          message: 'Nombre, username y email son requeridos'
         });
         return;
       }
@@ -122,7 +130,13 @@ export class UsuariosController {
         return;
       }
 
-      const usuario = await this.updateUsuarioDatosUseCase.execute(id as string, { nombre, username });
+      const usuario = await this.updateUsuarioDatosUseCase.execute(id as string, {
+        nombre,
+        username,
+        email,
+        comision_turno,
+        comision_producto
+      });
 
       res.json({
         success: true,
@@ -131,7 +145,59 @@ export class UsuariosController {
     } catch (error) {
       const statusCode = (error as any).statusCode || 500;
       const message = error instanceof Error ? error.message : 'Error al actualizar datos del usuario';
-      
+
+      res.status(statusCode).json({
+        success: false,
+        message
+      });
+    }
+  }
+
+  async uploadAvatar(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const adminUser = req.user as AuthenticatedUser;
+
+      if (!req.file) {
+        res.status(400).json({
+          success: false,
+          message: 'No se envió ninguna imagen'
+        });
+        return;
+      }
+
+      const usuario = await this.updateUsuarioAvatarUseCase.execute(id as string, adminUser.empresaId, req.file.buffer);
+
+      res.json({
+        success: true,
+        data: usuario
+      });
+    } catch (error) {
+      const statusCode = (error as any).statusCode || 500;
+      const message = error instanceof Error ? error.message : 'Error al subir avatar';
+
+      res.status(statusCode).json({
+        success: false,
+        message
+      });
+    }
+  }
+
+  async deleteAvatar(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const adminUser = req.user as AuthenticatedUser;
+
+      const usuario = await this.deleteUsuarioAvatarUseCase.execute(id as string, adminUser.empresaId);
+
+      res.json({
+        success: true,
+        data: usuario
+      });
+    } catch (error) {
+      const statusCode = (error as any).statusCode || 500;
+      const message = error instanceof Error ? error.message : 'Error al eliminar avatar';
+
       res.status(statusCode).json({
         success: false,
         message

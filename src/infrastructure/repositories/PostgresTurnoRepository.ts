@@ -3,6 +3,26 @@ import { ITurnoRepository, CreateTurnoData } from '../../domain/repositories/ITu
 import { Turno, TurnoConDetalle } from '../../domain/entities/Turno';
 
 export class PostgresTurnoRepository implements ITurnoRepository {
+  async findById(id: string): Promise<TurnoConDetalle | null> {
+    const query = `
+      SELECT
+        t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora,
+        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
+        t.empresa_id, t.created_at, t.updated_at,
+        c.nombre as cliente_nombre, c.email as cliente_email,
+        u.nombre as usuario_nombre, u.username as usuario_username
+      FROM turnos t
+      LEFT JOIN clientes c ON t.cliente_id = c.id
+      LEFT JOIN usuarios u ON t.usuario_id = u.id
+      WHERE t.id = $1
+    `;
+
+    const result = await pool.query(query, [id]);
+    if (!result.rows[0]) return null;
+    const row = result.rows[0];
+    return { ...row, duracion_minutos: row.duracion, precio: row.servicio_precio };
+  }
+
   async findByEmpresa(empresaId: string): Promise<TurnoConDetalle[]> {
     const query = `
       SELECT 

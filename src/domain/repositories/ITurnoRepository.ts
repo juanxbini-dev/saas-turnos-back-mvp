@@ -3,6 +3,7 @@ import { Turno, TurnoConDetalle, CreateTurnoData, FinalizarTurnoData } from '../
 export { CreateTurnoData };
 
 export interface ITurnoRepository {
+  findById(id: string): Promise<TurnoConDetalle | null>;
   findByEmpresa(empresaId: string): Promise<TurnoConDetalle[]>;
   findByProfesional(profesionalId: string): Promise<TurnoConDetalle[]>;
   findByFechaYProfesional(profesionalId: string, fecha: string): Promise<Turno[]>;

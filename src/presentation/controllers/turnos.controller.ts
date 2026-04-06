@@ -1,4 +1,7 @@
 import { Request, Response } from 'express';
+import { N8nService } from '../../infrastructure/services/n8n.service';
+import { PostgresClienteRepository } from '../../infrastructure/repositories/PostgresClienteRepository';
+import { PostgresUsuarioRepository } from '../../infrastructure/repositories/PostgresUsuarioRepository';
 import { GetTurnosUseCase } from '../../application/use-cases/turnos/GetTurnosUseCase';
 import { CreateTurnoUseCase } from '../../application/use-cases/turnos/CreateTurnoUseCase';
 import { UpdateTurnoEstadoUseCase } from '../../application/use-cases/turnos/UpdateTurnoEstadoUseCase';
@@ -40,6 +43,8 @@ export class TurnosController {
     private disponibilidadRepository: IDisponibilidadRepository
   ) {}
 
+  private n8nService = new N8nService();
+
   async getTurnos(req: Request, res: Response) {
     try {
       const { empresaId, id: usuarioId, roles } = req.user!;
@@ -61,16 +66,68 @@ export class TurnosController {
     try {
       const { empresaId, id: usuarioId, roles } = req.user!;
       const isAdmin = roles.includes('admin');
-      
+
       const turno = await this.createTurnoUseCase.execute(req.body, usuarioId, isAdmin);
-      
+
+      // Responder al usuario inmediatamente — n8n va en background
       res.status(201).json({ success: true, data: turno });
+
+      // Fire-and-forget: notificar a n8n sin bloquear la respuesta
+      this.notificarN8nTurnoInterno(turno).catch((err) => {
+        console.error('[n8n] ❌ Error inesperado en notificación (flujo interno):', err);
+      });
+
     } catch (error: any) {
       const statusCode = error.statusCode || 500;
-      res.status(statusCode).json({ 
-        success: false, 
-        message: error.message || 'Error al crear turno' 
+      res.status(statusCode).json({
+        success: false,
+        message: error.message || 'Error al crear turno'
       });
+    }
+  }
+
+  /**
+   * Obtiene los datos enriquecidos del turno (cliente + profesional) y llama a n8n.
+   * Privado — solo para notificaciones post-creación.
+   */
+  private async notificarN8nTurnoInterno(turno: any): Promise<void> {
+    try {
+      const clienteRepo = new PostgresClienteRepository();
+      const usuarioRepo = new PostgresUsuarioRepository();
+
+      const [cliente, profesional] = await Promise.all([
+        clienteRepo.findById(turno.cliente_id),
+        usuarioRepo.findById(turno.usuario_id)
+      ]);
+
+      if (!cliente || !profesional) {
+        console.error('[TurnosController] No se encontró cliente o profesional para notificar n8n', {
+          turnoId: turno.id, clienteId: turno.cliente_id, profesionalId: turno.usuario_id
+        });
+        return;
+      }
+
+      // TODO: Reemplazar N8nService.getTelefonoPrueba() por N8nService.normalizarTelefono(cliente.telefono)
+      // cuando se pase a producción real con los teléfonos de los clientes.
+      const resultado = await this.n8nService.notificarTurnoCreado({
+        appointment_id: turno.id,
+        customer_name: cliente.nombre,
+        customer_email: cliente.email,
+        customer_phone: N8nService.getTelefonoPrueba(),
+        service_id: turno.servicio_id,
+        service_name: turno.servicio,
+        professional_id: turno.usuario_id,
+        professional_name: profesional.nombre,
+        appointment_date: N8nService.formatearAppointmentDate(turno.fecha, turno.hora)
+      });
+
+      if (resultado.success) {
+        console.log(`[n8n] ✅ Notificaciones enviadas — turno: ${turno.id} | WhatsApp: ${resultado.whatsapp_enviado ? '✅' : '❌'} | Email: ${resultado.email_enviado ? '✅' : '❌'}`);
+      } else {
+        console.warn(`[n8n] ⚠️ Notificación fallida — turno: ${turno.id} (el cron reintentará en 15 min)`);
+      }
+    } catch (error) {
+      console.error('[n8n] ❌ Error preparando payload para n8n:', error);
     }
   }
 

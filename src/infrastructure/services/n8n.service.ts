@@ -72,10 +72,26 @@ export class N8nService {
         return resultado;
       }
 
-      const data = await response.json() as any;
-      resultado.success = data.success === true;
-      resultado.whatsapp_enviado = data.detalles?.whatsapp_enviado === true;
-      resultado.email_enviado = data.detalles?.email_enviado === true;
+      // n8n puede devolver body vacío — en ese caso tratamos el 2xx como éxito parcial
+      const text = await response.text();
+      if (text) {
+        try {
+          const data = JSON.parse(text) as any;
+          resultado.success = data.success === true;
+          resultado.whatsapp_enviado = data.detalles?.whatsapp_enviado === true;
+          resultado.email_enviado = data.detalles?.email_enviado === true;
+        } catch {
+          // n8n respondió con algo que no es JSON válido — lo tratamos como éxito genérico
+          logger.info('n8n respondió con body no-JSON (respuesta vacía o texto plano)', {
+            turnoId: payload.appointment_id, body: text.slice(0, 100)
+          });
+          resultado.success = true;
+        }
+      } else {
+        // Body vacío con 2xx = n8n recibió el webhook correctamente
+        resultado.success = true;
+        logger.info('n8n respondió con body vacío (2xx) — webhook recibido', { turnoId: payload.appointment_id });
+      }
 
       logger.info('n8n respondió OK', { turnoId: payload.appointment_id, resultado });
 

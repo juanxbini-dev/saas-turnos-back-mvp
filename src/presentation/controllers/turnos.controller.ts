@@ -118,7 +118,7 @@ export class TurnosController {
         service_name: turno.servicio,
         professional_id: turno.usuario_id,
         professional_name: profesional.nombre,
-        appointment_date: `${turno.fecha} ${turno.hora}`
+        appointment_date: N8nService.formatearAppointmentDate(turno.fecha, turno.hora)
       });
 
       if (resultado.success) {

@@ -99,7 +99,7 @@ export class TurnoPublicController {
         service_name: turno.servicio_nombre,
         professional_id: profesional_id,
         professional_name: turno.profesional_nombre || '',
-        appointment_date: `${fecha} ${hora}`
+        appointment_date: N8nService.formatearAppointmentDate(fecha, hora)
       }).then((resultado) => {
         if (resultado.success) {
           console.log(`[n8n] ✅ Notificaciones enviadas — turno: ${turno.id} | WhatsApp: ${resultado.whatsapp_enviado ? '✅' : '❌'} | Email: ${resultado.email_enviado ? '✅' : '❌'}`);

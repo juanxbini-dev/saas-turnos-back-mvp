@@ -55,7 +55,7 @@ export const initTurnosCron = () => {
           service_name: row.servicio,
           professional_id: row.usuario_id,
           professional_name: row.profesional_nombre,
-          appointment_date: `${row.fecha} ${row.hora}`
+          appointment_date: N8nService.formatearAppointmentDate(row.fecha, row.hora)
         });
       }
     } catch (error) {

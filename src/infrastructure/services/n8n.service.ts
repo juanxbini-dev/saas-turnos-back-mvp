@@ -127,4 +127,29 @@ export class N8nService {
   static getTelefonoPrueba(): string {
     return TELEFONO_PRUEBA;
   }
+
+  /**
+   * Formatea fecha y hora para n8n en formato YYYY-MM-DD HH:MM:SS.
+   * Necesario porque PostgreSQL devuelve `fecha` como objeto Date de JS,
+   * y al interpolarlo en un template string produce un toString() ilegible.
+   */
+  static formatearAppointmentDate(fecha: Date | string, hora: string): string {
+    let fechaStr: string;
+
+    if (fecha instanceof Date) {
+      // Extraer YYYY-MM-DD en hora local (no UTC) para evitar desfase de zona horaria
+      const y = fecha.getFullYear();
+      const m = String(fecha.getMonth() + 1).padStart(2, '0');
+      const d = String(fecha.getDate()).padStart(2, '0');
+      fechaStr = `${y}-${m}-${d}`;
+    } else {
+      // Si ya es string, tomar solo la parte de fecha (YYYY-MM-DD)
+      fechaStr = String(fecha).split('T')[0].substring(0, 10);
+    }
+
+    // hora viene como "HH:MM:SS" desde PostgreSQL — tomar solo HH:MM:SS
+    const horaStr = String(hora).substring(0, 8);
+
+    return `${fechaStr} ${horaStr}`;
+  }
 }

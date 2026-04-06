@@ -121,36 +121,12 @@ export class CreateTurnoUseCase {
     });
 
     const turno = await this.turnoRepository.create(turnoData);
-    turnoLogger.info('Turno creado con estado pendiente', { turnoId: turno.id });
+    turnoLogger.info('Turno creado', { turnoId: turno.id });
 
-    // Simular envío de email con mail delivery
-    turnoLogger.info('Iniciando envío de email', { 
-      turnoId: id,
-      fecha: data.fecha, 
-      hora: data.hora
-    });
+    // Confirmar el turno inmediatamente — las notificaciones se manejan en el controller (n8n)
+    await this.turnoRepository.updateEstado(id, 'confirmado');
+    turnoLogger.info('Turno confirmado', { turnoId: id });
 
-    // Simular respuesta del mail delivery (async)
-    setTimeout(async () => {
-      try {
-        // Simular mail delivery OK
-        turnoLogger.info('Email enviado exitosamente', { turnoId: id });
-        
-        // Cuando el mail delivery confirma, actualizar estado a confirmado
-        turnoLogger.debug('Actualizando estado a confirmado', { turnoId: id });
-        const turnoConfirmado = await this.turnoRepository.updateEstado(id, 'confirmado');
-        turnoLogger.info('Turno confirmado', { turnoId: id });
-        
-        // Aquí iría la lógica real del mail delivery callback
-        // mailDeliveryService.onSuccess(id, () => { ... });
-        
-      } catch (error) {
-        turnoLogger.error('Error al confirmar turno', error as Error, { turnoId: id });
-        // Manejar error del mail delivery - podría quedar como pendiente o cancelarse
-      }
-    }, 1000); // Simular 1 segundo de delay del mail delivery
-
-    // Devolver turno como pendiente (esperando confirmación del mail delivery)
     return turno;
   }
 }

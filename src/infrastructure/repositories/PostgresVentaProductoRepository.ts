@@ -35,6 +35,20 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
     return result.rows;
   }
 
+  async findByTurnoWithPrices(turnoId: string, empresaId: string): Promise<any[]> {
+    const result = await pool.query(
+      `SELECT vp.id, vp.producto_id, vp.nombre_producto, vp.cantidad,
+              vp.precio_unitario, vp.precio_total, vp.metodo_pago,
+              p.precio_efectivo, p.precio_transferencia
+       FROM venta_productos vp
+       LEFT JOIN productos p ON p.id = vp.producto_id
+       WHERE vp.turno_id = $1 AND vp.empresa_id = $2
+       ORDER BY vp.created_at ASC`,
+      [turnoId, empresaId]
+    );
+    return result.rows;
+  }
+
   async deleteByTurno(turnoId: string): Promise<void> {
     await pool.query(`DELETE FROM venta_productos WHERE turno_id = $1`, [turnoId]);
   }

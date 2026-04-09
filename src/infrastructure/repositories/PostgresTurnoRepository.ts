@@ -105,7 +105,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
           FROM venta_productos vp
           WHERE vp.turno_id = t.id
         ), 0) AS total_productos,
-        c.nombre as cliente_nombre, c.email as cliente_email,
+        c.nombre as cliente_nombre, c.email as cliente_email, c.telefono as cliente_telefono,
         u.nombre as usuario_nombre, u.username as usuario_username
       FROM turnos t
       JOIN clientes c ON t.cliente_id = c.id

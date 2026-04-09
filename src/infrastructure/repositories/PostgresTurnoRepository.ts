@@ -93,13 +93,19 @@ export class PostgresTurnoRepository implements ITurnoRepository {
     fechaFin: string
   ): Promise<TurnoConDetalle[]> {
     const query = `
-      SELECT 
-        t.id, t.cliente_id, t.usuario_id, t.servicio_id, 
-        TO_CHAR(t.fecha::date, 'YYYY-MM-DD') as fecha, 
+      SELECT
+        t.id, t.cliente_id, t.usuario_id, t.servicio_id,
+        TO_CHAR(t.fecha::date, 'YYYY-MM-DD') as fecha,
         TO_CHAR(t.hora::time, 'HH24:MI') as hora,
-        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion, 
+        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
         t.empresa_id, t.created_at, t.updated_at,
-        c.nombre as cliente_nombre, c.email as cliente_email,
+        t.metodo_pago, t.descuento_porcentaje, t.total_final,
+        COALESCE((
+          SELECT SUM(vp.precio_total)
+          FROM venta_productos vp
+          WHERE vp.turno_id = t.id
+        ), 0) AS total_productos,
+        c.nombre as cliente_nombre, c.email as cliente_email, c.telefono as cliente_telefono,
         u.nombre as usuario_nombre, u.username as usuario_username
       FROM turnos t
       JOIN clientes c ON t.cliente_id = c.id

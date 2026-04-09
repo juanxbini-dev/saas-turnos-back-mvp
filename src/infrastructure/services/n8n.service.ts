@@ -4,7 +4,7 @@ const logger = createLogger('N8nService');
 
 // TODO: Reemplazar este número por el teléfono real del cliente (campo `telefono` de la tabla clientes).
 // Mientras tanto se usa este número de prueba para todas las notificaciones de WhatsApp.
-const TELEFONO_PRUEBA = '+542915705322';
+const TELEFONO_PRUEBA = '542915705322';
 
 export interface N8nTurnoPayload {
   appointment_id: string;
@@ -116,11 +116,10 @@ export class N8nService {
    */
   static normalizarTelefono(telefono?: string): string {
     if (!telefono) return TELEFONO_PRUEBA;
-    const limpio = telefono.replace(/[\s\-().]/g, '');
-    if (limpio.startsWith('+')) return limpio;
-    if (limpio.startsWith('54')) return `+${limpio}`;
-    // Si no tiene código de país, asumir Argentina (+54)
-    return `+54${limpio}`;
+    const limpio = telefono.replace(/[\s\-().+]/g, '');
+    if (limpio.startsWith('54')) return limpio;
+    // Si no tiene código de país, asumir Argentina (54)
+    return `54${limpio}`;
   }
 
   /** Devuelve el teléfono de prueba hardcodeado. Usar hasta tener el teléfono real del cliente. */

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { GetMyFinanzasUseCase } from '../../application/use-cases/finanzas/GetFinanzasUseCase';
 import { GetFinanzasByProfesionalUseCase } from '../../application/use-cases/finanzas/GetFinanzasUseCase';
 import { PostgresFinanzasRepository } from '../../infrastructure/repositories/PostgresFinanzasRepository';
+import { PostgresVentaProductoRepository } from '../../infrastructure/repositories/PostgresVentaProductoRepository';
 import { pool } from '../../infrastructure/database/postgres.connection';
 import { FinanzasFilters } from '../../domain/entities/Finanzas';
 
@@ -10,6 +11,7 @@ const finanzasRepository = new PostgresFinanzasRepository(pool);
 const getMyFinanzasUseCase = new GetMyFinanzasUseCase(finanzasRepository);
 const getFinanzasByProfesionalUseCase = new GetFinanzasByProfesionalUseCase(finanzasRepository);
 const cobrarPagoRepo = finanzasRepository;
+const ventaProductoRepo = new PostgresVentaProductoRepository();
 
 export class FinanzasController {
   async getMyFinanzas(req: Request, res: Response): Promise<Response | void> {
@@ -146,6 +148,18 @@ export class FinanzasController {
         message: 'Error interno del servidor',
         error: error instanceof Error ? error.message : 'Error desconocido'
       });
+    }
+  }
+
+  async getProductosTurno(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const authUser = (req as any).user;
+      if (!authUser) return res.status(401).json({ message: 'No autenticado' });
+      const { turnoId } = req.params;
+      const productos = await ventaProductoRepo.findByTurnoWithPrices(turnoId, authUser.empresaId);
+      res.json({ success: true, data: productos });
+    } catch (error) {
+      res.status(500).json({ message: 'Error al obtener productos del turno' });
     }
   }
 

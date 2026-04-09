@@ -290,16 +290,19 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     tipo: 'turno' | 'venta',
     id: string,
     empresaId: string,
-    metodoPago: 'efectivo' | 'transferencia'
+    metodoPago: 'efectivo' | 'transferencia',
+    metodoPagoProductos?: 'efectivo' | 'transferencia'
   ): Promise<void> {
     if (tipo === 'turno') {
       await this.pool.query(
         `UPDATE turnos SET metodo_pago = $1, updated_at = NOW() WHERE id = $2 AND empresa_id = $3`,
         [metodoPago, id, empresaId]
       );
+      // Si se especifica método para productos, usarlo; si no, usar el mismo del servicio
+      const metodoProd = metodoPagoProductos ?? metodoPago;
       await this.pool.query(
         `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW() WHERE turno_id = $2 AND empresa_id = $3`,
-        [metodoPago, id, empresaId]
+        [metodoProd, id, empresaId]
       );
     } else {
       await this.pool.query(

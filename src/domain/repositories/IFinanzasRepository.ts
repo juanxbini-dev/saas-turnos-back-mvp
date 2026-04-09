@@ -17,6 +17,7 @@ export interface IFinanzasRepository {
     tipo: 'turno' | 'venta',
     id: string,
     empresaId: string,
-    metodoPago: 'efectivo' | 'transferencia'
+    metodoPago: 'efectivo' | 'transferencia',
+    metodoPagoProductos?: 'efectivo' | 'transferencia'
   ): Promise<void>;
 }

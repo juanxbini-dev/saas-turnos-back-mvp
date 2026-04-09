@@ -154,7 +154,7 @@ export class FinanzasController {
       const authUser = (req as any).user;
       if (!authUser) return res.status(401).json({ message: 'No autenticado' });
 
-      const { tipo, id, metodo_pago } = req.body;
+      const { tipo, id, metodo_pago, metodo_pago_productos } = req.body;
 
       if (!tipo || !id || !metodo_pago) {
         return res.status(400).json({ message: 'tipo, id y metodo_pago son requeridos' });
@@ -165,8 +165,11 @@ export class FinanzasController {
       if (!['efectivo', 'transferencia'].includes(metodo_pago)) {
         return res.status(400).json({ message: 'metodo_pago debe ser "efectivo" o "transferencia"' });
       }
+      if (metodo_pago_productos && !['efectivo', 'transferencia'].includes(metodo_pago_productos)) {
+        return res.status(400).json({ message: 'metodo_pago_productos debe ser "efectivo" o "transferencia"' });
+      }
 
-      await cobrarPagoRepo.cobrarPago(tipo, id, authUser.empresaId, metodo_pago);
+      await cobrarPagoRepo.cobrarPago(tipo, id, authUser.empresaId, metodo_pago, metodo_pago_productos);
       res.json({ success: true });
     } catch (error) {
       console.error('Error en cobrarPago:', error);

@@ -173,8 +173,8 @@ export class FinanzasController {
       if (!tipo || !id || !metodo_pago) {
         return res.status(400).json({ message: 'tipo, id y metodo_pago son requeridos' });
       }
-      if (!['turno', 'venta'].includes(tipo)) {
-        return res.status(400).json({ message: 'tipo debe ser "turno" o "venta"' });
+      if (!['turno', 'turno_solo_servicio', 'venta_turno', 'venta'].includes(tipo)) {
+        return res.status(400).json({ message: 'tipo debe ser "turno", "turno_solo_servicio", "venta_turno" o "venta"' });
       }
       if (!['efectivo', 'transferencia'].includes(metodo_pago)) {
         return res.status(400).json({ message: 'metodo_pago debe ser "efectivo" o "transferencia"' });

@@ -77,7 +77,7 @@ export class FinalizarTurnoUseCase {
           cantidad: producto.cantidad,
           precio_unitario: producto.precio_unitario,
           precio_total: producto.precio_total,
-          metodo_pago: data.metodoPago,
+          metodo_pago: producto.metodo_pago ?? data.metodoPago,
           comision_porcentaje: comisionProductoPct,
           comision_monto: comisionMonto,
           neto_vendedor: Number(producto.precio_total) - comisionMonto,

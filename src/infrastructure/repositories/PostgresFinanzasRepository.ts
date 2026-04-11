@@ -19,10 +19,11 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       'ct.empresa_id = $2',
       't.fecha BETWEEN $3 AND $4',
     ];
+    // Para ventas vinculadas a un turno se usa la fecha del turno; para ventas directas, created_at
     const whereVentas: string[] = [
       'vp.vendedor_id = $1',
       'vp.empresa_id = $2',
-      "DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $3 AND $4",
+      "COALESCE(trn.fecha, DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires')) BETWEEN $3 AND $4",
     ];
 
     if (filters.metodo_pago !== 'todos') {
@@ -54,15 +55,15 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     const query = `
       WITH va AS (
         SELECT
-          COALESCE(vp.venta_grupo_id, vp.id)                            AS grupo_id,
-          MIN(vp.turno_id)                                              AS turno_id,
-          DATE(MIN(vp.created_at) AT TIME ZONE 'America/Argentina/Buenos_Aires') AS fecha,
-          MIN(vp.metodo_pago)                                           AS metodo_pago,
-          SUM(vp.precio_total)                                          AS total,
-          SUM(vp.comision_monto)                                        AS comision_monto,
-          SUM(vp.neto_vendedor)                                         AS neto_vendedor,
-          MIN(c.nombre)                                                 AS cliente_nombre,
-          MIN(u.nombre)                                                 AS vendedor_nombre,
+          COALESCE(vp.venta_grupo_id, vp.id)                                                         AS grupo_id,
+          MIN(vp.turno_id)                                                                            AS turno_id,
+          COALESCE(MIN(trn.fecha), DATE(MIN(vp.created_at) AT TIME ZONE 'America/Argentina/Buenos_Aires')) AS fecha,
+          MIN(vp.metodo_pago)                                                                         AS metodo_pago,
+          SUM(vp.precio_total)                                                                        AS total,
+          SUM(vp.comision_monto)                                                                      AS comision_monto,
+          SUM(vp.neto_vendedor)                                                                       AS neto_vendedor,
+          MIN(c.nombre)                                                                               AS cliente_nombre,
+          MIN(u.nombre)                                                                               AS vendedor_nombre,
           vp.empresa_id,
           JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -78,6 +79,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
         FROM venta_productos vp
         JOIN  usuarios u ON u.id = vp.vendedor_id
         LEFT JOIN clientes c ON c.id = vp.cliente_id
+        LEFT JOIN turnos trn ON trn.id = vp.turno_id
         WHERE ${whereVentas.join(' AND ')}
         GROUP BY COALESCE(vp.venta_grupo_id, vp.id), vp.empresa_id
       ),
@@ -157,6 +159,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       WITH va AS (
         SELECT COALESCE(vp.venta_grupo_id, vp.id) AS grupo_id
         FROM venta_productos vp
+        LEFT JOIN turnos trn ON trn.id = vp.turno_id
         WHERE ${whereVentas.join(' AND ')}
         GROUP BY COALESCE(vp.venta_grupo_id, vp.id), vp.empresa_id
       )
@@ -208,7 +211,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     const whereProductos = [
       'vp.vendedor_id = $1',
       'vp.empresa_id = $2',
-      "DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $3 AND $4"
+      "COALESCE(trn.fecha, DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires')) BETWEEN $3 AND $4"
     ];
     const pParams: any[] = [profesionalId, empresaId, filters.fecha_desde, filters.fecha_hasta];
     if (filters.metodo_pago !== 'todos') {
@@ -235,6 +238,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
           COALESCE(SUM(vp.neto_vendedor), 0)  AS total_neto_profesional_productos,
           COUNT(*)                            AS cantidad_productos_vendidos
         FROM venta_productos vp
+        LEFT JOIN turnos trn ON trn.id = vp.turno_id
         WHERE ${whereProductos.join(' AND ')}
       `, pParams),
     ]);
@@ -262,8 +266,9 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       this.pool.query(`
         SELECT COALESCE(SUM(vp.precio_total), 0) AS total_pendiente
         FROM venta_productos vp
+        LEFT JOIN turnos trn ON trn.id = vp.turno_id
         WHERE vp.vendedor_id = $1 AND vp.empresa_id = $2
-          AND DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $3 AND $4
+          AND COALESCE(trn.fecha, DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires')) BETWEEN $3 AND $4
           AND vp.metodo_pago = 'pendiente'
       `, baseParams),
     ]);
@@ -300,8 +305,42 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       );
       // Si se especifica método para productos, usarlo; si no, usar el mismo del servicio
       const metodoProd = metodoPagoProductos ?? metodoPago;
+
+      // Productos con catálogo: recalcular precio según método de pago
+      // $1 = metodo (para SET), $2 = turno_id, $3 = empresa_id, $4 = metodo (para CASE, evita conflicto de tipos)
       await this.pool.query(
-        `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW() WHERE turno_id = $2 AND empresa_id = $3`,
+        `UPDATE venta_productos vp
+         SET metodo_pago   = $1,
+             precio_unitario = CASE
+               WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia
+               WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo
+               ELSE vp.precio_unitario
+             END,
+             precio_total = CASE
+               WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
+               WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
+               ELSE vp.precio_total
+             END,
+             comision_monto = (CASE
+               WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
+               WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
+               ELSE vp.precio_total
+             END) * vp.comision_porcentaje / 100,
+             neto_vendedor = (CASE
+               WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
+               WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
+               ELSE vp.precio_total
+             END) * (1 - vp.comision_porcentaje / 100),
+             updated_at = NOW()
+         FROM productos p
+         WHERE vp.turno_id = $2 AND vp.empresa_id = $3 AND vp.producto_id = p.id`,
+        [metodoProd, id, empresaId, metodoProd]
+      );
+
+      // Productos sin catálogo (custom): solo actualizar método, el precio queda igual
+      await this.pool.query(
+        `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW()
+         WHERE turno_id = $2 AND empresa_id = $3 AND producto_id IS NULL`,
         [metodoProd, id, empresaId]
       );
     } else {

@@ -69,6 +69,7 @@ export interface VentaProductoData {
   cantidad: number;
   precio_unitario: number;
   precio_total: number;
+  metodo_pago?: 'efectivo' | 'transferencia' | 'pendiente';
 }
 
 export interface ComisionesCalculadas {

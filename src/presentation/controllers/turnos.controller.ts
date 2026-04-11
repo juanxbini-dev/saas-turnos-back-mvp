@@ -179,7 +179,7 @@ export class TurnosController {
 
       const turno = await finalizarUseCase.execute({
         turnoId: id,
-        profesionalId: turnoExistente.profesional_id,
+        profesionalId: turnoExistente.usuario_id,
         empresaId: empresaId,
         metodoPago,
         precioModificado,

@@ -202,6 +202,9 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       whereServicios.push(`t.metodo_pago = $${si}`);
       sParams.push(filters.metodo_pago);
       si++;
+    } else {
+      // Los pendientes no cuentan como vendido hasta que se cobren
+      whereServicios.push(`t.metodo_pago != 'pendiente'`);
     }
     if (filters.estado_comision !== 'todos') {
       whereServicios.push(`ct.estado = $${si}`);
@@ -217,6 +220,9 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     if (filters.metodo_pago !== 'todos') {
       whereProductos.push(`vp.metodo_pago = $${pParams.length + 1}`);
       pParams.push(filters.metodo_pago);
+    } else {
+      // Los pendientes no cuentan como vendido hasta que se cobren
+      whereProductos.push(`vp.metodo_pago != 'pendiente'`);
     }
 
     const [sResult, pResult] = await Promise.all([

@@ -151,9 +151,9 @@ export class TurnosController {
   async finalizarTurno(req: Request, res: Response) {
     try {
       const id = req.params['id'] as string;
-      const { empresaId, id: usuarioId } = req.user!;
+      const { empresaId } = req.user!;
       const { metodoPago, precioModificado, descuentoPorcentaje, productos } = req.body;
-      
+
       // Importamos dinámicamente para evitar dependencia circular
       const { FinalizarTurnoUseCase } = await import('../../application/use-cases/turnos/FinalizarTurnoUseCase');
       const { PostgresComisionRepository } = await import('../../infrastructure/repositories/PostgresComisionRepository');
@@ -161,17 +161,25 @@ export class TurnosController {
       const { PostgresUsuarioRepository } = await import('../../infrastructure/repositories/PostgresUsuarioRepository');
       const { PostgresProductoRepository } = await import('../../infrastructure/repositories/PostgresProductoRepository');
 
+      // Obtener el turno para usar el profesional_id real del dueño del turno,
+      // no el id del usuario autenticado (que puede ser un admin actuando en nombre del profesional)
+      const turnoRepository = this.getTurnosUseCase['turnoRepository'];
+      const turnoExistente = await turnoRepository.findById(id);
+      if (!turnoExistente) {
+        return res.status(404).json({ success: false, message: 'Turno no encontrado' });
+      }
+
       const finalizarUseCase = new FinalizarTurnoUseCase(
-        this.getTurnosUseCase['turnoRepository'], // Acceder al repository interno
+        turnoRepository,
         new PostgresUsuarioRepository(),
         new PostgresComisionRepository(),
         new PostgresVentaProductoRepository(),
         new PostgresProductoRepository()
       );
-      
+
       const turno = await finalizarUseCase.execute({
         turnoId: id,
-        profesionalId: usuarioId,
+        profesionalId: turnoExistente.profesional_id,
         empresaId: empresaId,
         metodoPago,
         precioModificado,

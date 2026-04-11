@@ -298,62 +298,80 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
   }
 
   async cobrarPago(
-    tipo: 'turno' | 'venta',
+    tipo: 'turno' | 'turno_solo_servicio' | 'venta_turno' | 'venta',
     id: string,
     empresaId: string,
     metodoPago: 'efectivo' | 'transferencia',
     metodoPagoProductos?: 'efectivo' | 'transferencia'
   ): Promise<void> {
     if (tipo === 'turno') {
+      // Actualiza turno Y todos sus productos (caso sin productos pendientes separados)
       await this.pool.query(
         `UPDATE turnos SET metodo_pago = $1, updated_at = NOW() WHERE id = $2 AND empresa_id = $3`,
         [metodoPago, id, empresaId]
       );
-      // Si se especifica método para productos, usarlo; si no, usar el mismo del servicio
       const metodoProd = metodoPagoProductos ?? metodoPago;
+      await this._actualizarProductosDeTurno(id, empresaId, metodoProd);
 
-      // Productos con catálogo: recalcular precio según método de pago
-      // $1 = metodo (para SET), $2 = turno_id, $3 = empresa_id, $4 = metodo (para CASE, evita conflicto de tipos)
+    } else if (tipo === 'turno_solo_servicio') {
+      // Solo actualiza el turno — los productos se cobran por separado desde su propia fila
       await this.pool.query(
-        `UPDATE venta_productos vp
-         SET metodo_pago   = $1,
-             precio_unitario = CASE
-               WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia
-               WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo
-               ELSE vp.precio_unitario
-             END,
-             precio_total = CASE
-               WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
-               WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
-               ELSE vp.precio_total
-             END,
-             comision_monto = (CASE
-               WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
-               WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
-               ELSE vp.precio_total
-             END) * vp.comision_porcentaje / 100,
-             neto_vendedor = (CASE
-               WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
-               WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
-               ELSE vp.precio_total
-             END) * (1 - vp.comision_porcentaje / 100),
-             updated_at = NOW()
-         FROM productos p
-         WHERE vp.turno_id = $2 AND vp.empresa_id = $3 AND vp.producto_id = p.id`,
-        [metodoProd, id, empresaId, metodoProd]
+        `UPDATE turnos SET metodo_pago = $1, updated_at = NOW() WHERE id = $2 AND empresa_id = $3`,
+        [metodoPago, id, empresaId]
       );
 
-      // Productos sin catálogo (custom): solo actualizar método, el precio queda igual
-      await this.pool.query(
-        `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW()
-         WHERE turno_id = $2 AND empresa_id = $3 AND producto_id IS NULL`,
-        [metodoProd, id, empresaId]
-      );
+    } else if (tipo === 'venta_turno') {
+      // Solo actualiza venta_productos del turno — no toca turnos.metodo_pago
+      await this._actualizarProductosDeTurno(id, empresaId, metodoPago);
+
     } else {
+      // Venta directa: actualiza por venta_grupo_id
       await this.pool.query(
         `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW() WHERE venta_grupo_id = $2 AND empresa_id = $3`,
         [metodoPago, id, empresaId]
       );
     }
+  }
+
+  private async _actualizarProductosDeTurno(
+    turnoId: string,
+    empresaId: string,
+    metodo: 'efectivo' | 'transferencia'
+  ): Promise<void> {
+    // Productos con catálogo: recalcular precio según método de pago
+    await this.pool.query(
+      `UPDATE venta_productos vp
+       SET metodo_pago     = $1,
+           precio_unitario = CASE
+             WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia
+             WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo
+             ELSE vp.precio_unitario
+           END,
+           precio_total = CASE
+             WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
+             WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
+             ELSE vp.precio_total
+           END,
+           comision_monto = (CASE
+             WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
+             WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
+             ELSE vp.precio_total
+           END) * vp.comision_porcentaje / 100,
+           neto_vendedor = (CASE
+             WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
+             WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
+             ELSE vp.precio_total
+           END) * (1 - vp.comision_porcentaje / 100),
+           updated_at = NOW()
+       FROM productos p
+       WHERE vp.turno_id = $2 AND vp.empresa_id = $3 AND vp.producto_id = p.id`,
+      [metodo, turnoId, empresaId, metodo]
+    );
+    // Productos sin catálogo (custom): solo actualizar método
+    await this.pool.query(
+      `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW()
+       WHERE turno_id = $2 AND empresa_id = $3 AND producto_id IS NULL`,
+      [metodo, turnoId, empresaId]
+    );
   }
 }

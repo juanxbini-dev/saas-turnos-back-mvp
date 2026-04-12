@@ -1,6 +1,6 @@
 import { pool } from '../database/postgres.connection';
 import { IClienteRepository, CreateClienteData, UpdateClienteData, ClientesPaginados } from '../../domain/repositories/IClienteRepository';
-import { Cliente } from '../../domain/entities/Cliente';
+import { Cliente, TurnoResumen, ProductoComprado } from '../../domain/entities/Cliente';
 
 export class PostgresClienteRepository implements IClienteRepository {
   async findByEmpresa(empresaId: string): Promise<Cliente[]> {
@@ -120,16 +120,8 @@ export class PostgresClienteRepository implements IClienteRepository {
     return result.rows[0];
   }
 
-  async toggleActivo(id: string, activo: boolean): Promise<Cliente> {
-    const query = `
-      UPDATE clientes
-      SET activo = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING id, nombre, email, telefono, empresa_id, activo, created_at, updated_at
-    `;
-    
-    const result = await pool.query(query, [activo, id]);
-    return result.rows[0];
+  async delete(id: string): Promise<void> {
+    await pool.query('DELETE FROM clientes WHERE id = $1', [id]);
   }
 
   async existeEmail(email: string, empresaId: string, excludeId?: string): Promise<boolean> {
@@ -190,6 +182,47 @@ export class PostgresClienteRepository implements IClienteRepository {
     }
     
     return this.mapRowToCliente(result.rows[0]);
+  }
+
+  async getClienteTurnos(clienteId: string, empresaId: string): Promise<TurnoResumen[]> {
+    const query = `
+      SELECT
+        t.id,
+        t.fecha::text,
+        t.hora::text,
+        t.servicio,
+        t.estado,
+        t.total_final,
+        t.metodo_pago,
+        t.notas,
+        u.nombre AS profesional_nombre
+      FROM turnos t
+      LEFT JOIN usuarios u ON t.usuario_id = u.id
+      WHERE t.cliente_id = $1 AND t.empresa_id = $2
+      ORDER BY t.fecha DESC, t.hora DESC
+    `;
+    const result = await pool.query(query, [clienteId, empresaId]);
+    return result.rows;
+  }
+
+  async getClienteProductos(clienteId: string, empresaId: string): Promise<ProductoComprado[]> {
+    const query = `
+      SELECT
+        vp.id,
+        vp.nombre_producto,
+        vp.cantidad,
+        vp.precio_unitario,
+        vp.precio_total,
+        vp.metodo_pago,
+        vp.created_at::date::text AS fecha,
+        u.nombre AS vendedor_nombre
+      FROM venta_productos vp
+      LEFT JOIN usuarios u ON vp.vendedor_id = u.id
+      WHERE vp.cliente_id = $1 AND vp.empresa_id = $2
+      ORDER BY vp.created_at DESC
+    `;
+    const result = await pool.query(query, [clienteId, empresaId]);
+    return result.rows;
   }
 
   async getTurnosCount(clienteId: string): Promise<number> {

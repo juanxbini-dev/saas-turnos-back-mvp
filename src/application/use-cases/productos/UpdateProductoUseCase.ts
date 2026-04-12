@@ -18,6 +18,9 @@ export class UpdateProductoUseCase {
     if (data.costo !== undefined && data.costo !== null && data.costo < 0) {
       throw Object.assign(new Error('El costo no puede ser negativo'), { statusCode: 400 });
     }
+    if (data.stock !== undefined && (!Number.isInteger(data.stock) || data.stock < 0)) {
+      throw Object.assign(new Error('El stock debe ser un número entero mayor o igual a 0'), { statusCode: 400 });
+    }
     if (data.nombre !== undefined) {
       const existe = await this.productoRepository.findByNombre(empresaId, data.nombre.trim(), id);
       if (existe) {

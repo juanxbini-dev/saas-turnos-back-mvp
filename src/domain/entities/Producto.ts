@@ -31,6 +31,7 @@ export interface UpdateProductoData {
   precio_efectivo?: number;
   precio_transferencia?: number;
   costo?: number | null;
+  stock?: number;
   activo?: boolean;
   marca_id?: string | null;
 }

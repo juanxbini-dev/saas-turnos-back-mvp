@@ -60,13 +60,14 @@ export class ProductosController {
     try {
       const { empresaId } = req.user as AuthenticatedUser;
       const id = req.params.id as string;
-      const { nombre, descripcion, precio_efectivo, precio_transferencia, costo, activo, marca_id } = req.body;
+      const { nombre, descripcion, precio_efectivo, precio_transferencia, costo, stock, activo, marca_id } = req.body;
       const updateData: import('../../domain/entities/Producto').UpdateProductoData = {};
       if (nombre !== undefined) updateData.nombre = nombre;
       if (descripcion !== undefined) updateData.descripcion = descripcion;
       if (precio_efectivo !== undefined) updateData.precio_efectivo = Number(precio_efectivo);
       if (precio_transferencia !== undefined) updateData.precio_transferencia = Number(precio_transferencia);
       if (costo !== undefined) updateData.costo = costo != null ? Number(costo) : null;
+      if (stock !== undefined) updateData.stock = Number(stock);
       if (activo !== undefined) updateData.activo = activo;
       if (marca_id !== undefined) updateData.marca_id = marca_id || null;
       const producto = await this.updateProductoUseCase.execute(id, empresaId, updateData);

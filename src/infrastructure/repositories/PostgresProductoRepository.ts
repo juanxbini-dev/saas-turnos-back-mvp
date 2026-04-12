@@ -47,6 +47,7 @@ export class PostgresProductoRepository implements IProductoRepository {
     if (data.precio_efectivo !== undefined) { fields.push(`precio_efectivo = $${i++}`); values.push(data.precio_efectivo); }
     if (data.precio_transferencia !== undefined) { fields.push(`precio_transferencia = $${i++}`); values.push(data.precio_transferencia); }
     if (data.costo !== undefined) { fields.push(`costo = $${i++}`); values.push(data.costo); }
+    if (data.stock !== undefined) { fields.push(`stock = $${i++}`); values.push(data.stock); }
     if (data.activo !== undefined) { fields.push(`activo = $${i++}`); values.push(data.activo); }
     if (data.marca_id !== undefined) { fields.push(`marca_id = $${i++}`); values.push(data.marca_id); }
 

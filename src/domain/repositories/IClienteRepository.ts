@@ -17,7 +17,7 @@ export interface IClienteRepository {
   delete(id: string): Promise<void>
   existeEmail(email: string, empresaId: string, excludeId?: string): Promise<boolean>
   existeTelefono(telefono: string, empresaId: string, excludeId?: string): Promise<boolean>
-  findByEmailOrTelefono(email: string, empresaId: string, telefono?: string): Promise<Cliente | null>
+  findByEmailOrTelefono(email: string | undefined, empresaId: string, telefono?: string, nombre?: string): Promise<Cliente | null>
   getTurnosCount(clienteId: string): Promise<number>
   getClienteTurnos(clienteId: string, empresaId: string): Promise<TurnoResumen[]>
   getClienteProductos(clienteId: string, empresaId: string): Promise<ProductoComprado[]>

@@ -12,15 +12,7 @@ export class ClientePublicController {
 
   validateCliente = async (req: Request, res: Response) => {
     try {
-      const { email, telefono, empresa_id } = req.body;
-
-
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email es requerido'
-        });
-      }
+      const { email, telefono, nombre, empresa_id } = req.body;
 
       if (!empresa_id) {
         return res.status(400).json({
@@ -29,9 +21,17 @@ export class ClientePublicController {
         });
       }
 
-      const result = await this.validateClienteUseCase.execute({ 
-        email, 
+      if (!email && !telefono && !nombre) {
+        return res.status(400).json({
+          success: false,
+          message: 'Se requiere al menos email, teléfono o nombre'
+        });
+      }
+
+      const result = await this.validateClienteUseCase.execute({
+        email: email || undefined,
         telefono: telefono || undefined,
+        nombre: nombre || undefined,
         empresa_id
       });
 

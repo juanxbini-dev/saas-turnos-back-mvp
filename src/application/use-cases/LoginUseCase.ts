@@ -30,37 +30,32 @@ export class LoginUseCase {
   ) {}
 
   async execute(request: LoginRequest, ipAddress?: string, userAgent?: string): Promise<LoginResponse> {
-    // Parse email como username@domain.com
-    const emailParts = request.email.split('@');
-    if (emailParts.length !== 2 || !emailParts[0] || !emailParts[1]) {
-      throw new Error('Formato de email inválido');
+    if (!request.email || !request.email.trim()) {
+      throw new Error('El usuario o email es requerido');
     }
 
-    const username = emailParts[0];  // "test_admin"
-    const domain = emailParts[1];    // "testempresa.com"
+    // 1. Buscar usuario por username o email
+    const user = await this.userRepository.findByUsernameOrEmail(request.email.trim());
 
-    // 1. Buscar usuario por username y dominio (como está guardado en BD)
-    const user = await this.userRepository.findByUsernameAndDomain(username, domain);
-    
     if (!user) {
-      throw new Error('Credenciales inválidas');
+      throw new Error('Usuario no encontrado. Verificá tu usuario o email.');
     }
 
     // 2. Validar usuario activo
     if (!user.activo) {
-      throw new Error('Usuario inactivo');
+      throw new Error('Tu usuario está inactivo. Contactá al administrador.');
     }
 
     // 3. Validar empresa activa
     if (!user.empresa_activa) {
-      throw new Error('Empresa inactiva');
+      throw new Error('La cuenta de la empresa está inactiva. Contactá al administrador.');
     }
 
     // 4. Comparar password
     const isPasswordValid = await this.passwordService.compare(request.password, user.password);
-    
+
     if (!isPasswordValid) {
-      throw new Error('Credenciales inválidas');
+      throw new Error('Contraseña incorrecta. Verificá e intentá de nuevo.');
     }
 
     // 5. Generar access token

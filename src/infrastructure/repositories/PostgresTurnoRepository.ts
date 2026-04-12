@@ -8,7 +8,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       SELECT
         t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora,
         t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
-        t.empresa_id, t.created_at, t.updated_at,
+        t.empresa_id, t.origen, t.created_at, t.updated_at,
         c.nombre as cliente_nombre, c.email as cliente_email,
         u.nombre as usuario_nombre, u.username as usuario_username
       FROM turnos t
@@ -25,10 +25,10 @@ export class PostgresTurnoRepository implements ITurnoRepository {
 
   async findByEmpresa(empresaId: string): Promise<TurnoConDetalle[]> {
     const query = `
-      SELECT 
-        t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora, 
-        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion, 
-        t.empresa_id, t.created_at, t.updated_at,
+      SELECT
+        t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora,
+        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
+        t.empresa_id, t.origen, t.created_at, t.updated_at,
         c.nombre as cliente_nombre, c.email as cliente_email,
         u.nombre as usuario_nombre, u.username as usuario_username
       FROM turnos t
@@ -50,10 +50,10 @@ export class PostgresTurnoRepository implements ITurnoRepository {
 
   async findByProfesional(profesionalId: string): Promise<TurnoConDetalle[]> {
     const query = `
-      SELECT 
-        t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora, 
-        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion, 
-        t.empresa_id, t.created_at, t.updated_at,
+      SELECT
+        t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora,
+        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
+        t.empresa_id, t.origen, t.created_at, t.updated_at,
         c.nombre as cliente_nombre, c.email as cliente_email,
         u.nombre as usuario_nombre, u.username as usuario_username
       FROM turnos t
@@ -98,7 +98,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
         TO_CHAR(t.fecha::date, 'YYYY-MM-DD') as fecha,
         TO_CHAR(t.hora::time, 'HH24:MI') as hora,
         t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
-        t.empresa_id, t.created_at, t.updated_at,
+        t.empresa_id, t.origen, t.created_at, t.updated_at,
         t.metodo_pago, t.descuento_porcentaje, t.total_final,
         COALESCE((
           SELECT SUM(vp.precio_total)
@@ -130,15 +130,15 @@ export class PostgresTurnoRepository implements ITurnoRepository {
   async create(data: CreateTurnoData): Promise<Turno> {
     const query = `
       INSERT INTO turnos (
-        id, cliente_id, usuario_id, servicio_id, fecha, hora, estado, 
-        notas, servicio, servicio_precio, duracion, empresa_id, created_at, updated_at
+        id, cliente_id, usuario_id, servicio_id, fecha, hora, estado,
+        notas, servicio, servicio_precio, duracion, empresa_id, origen, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'pendiente', $7, $8, $9, $10, $11, NOW(), NOW())
-      RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado, 
-                notas, servicio, servicio_precio as precio, duracion as duracion_minutos, 
-                empresa_id, created_at, updated_at
+      VALUES ($1, $2, $3, $4, $5, $6, 'pendiente', $7, $8, $9, $10, $11, $12, NOW(), NOW())
+      RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado,
+                notas, servicio, servicio_precio as precio, duracion as duracion_minutos,
+                empresa_id, origen, created_at, updated_at
     `;
-    
+
     const result = await pool.query(query, [
       data.id,
       data.cliente_id,
@@ -150,9 +150,10 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       data.servicio,
       data.precio,
       data.duracion_minutos,
-      data.empresa_id
+      data.empresa_id,
+      data.origen || 'interno'
     ]);
-    
+
     return result.rows[0];
   }
 

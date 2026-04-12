@@ -124,7 +124,8 @@ export class CreateTurnoPublicUseCase {
       servicio: servicio.nombre,
       precio: servicio.precio_base || 0,
       duracion_minutos: servicio.duracion || 30,
-      empresa_id: servicio.empresa_id
+      empresa_id: servicio.empresa_id,
+      origen: 'web'
     };
 
     // Solo agregar notas si existen

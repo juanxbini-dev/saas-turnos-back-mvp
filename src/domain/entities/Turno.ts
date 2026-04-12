@@ -24,6 +24,8 @@ export interface Turno {
   total_final?: number;
   finalizado_at?: string;
   finalizado_por_id?: string;
+  // Origen del turno
+  origen?: 'web' | 'interno';
 }
 
 export interface TurnoConDetalle extends Turno {
@@ -45,6 +47,7 @@ export interface CreateTurnoData {
   precio: number;
   duracion_minutos: number;
   empresa_id: string;
+  origen?: 'web' | 'interno';
 }
 
 export interface FinalizarTurnoData {

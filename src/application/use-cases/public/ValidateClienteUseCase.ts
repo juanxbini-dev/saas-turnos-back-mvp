@@ -1,8 +1,9 @@
 import { IClienteRepository } from '../../../domain/repositories/IClienteRepository';
 
 export interface ValidateClienteRequest {
-  email: string;
+  email?: string;
   telefono?: string;
+  nombre?: string;
   empresa_id: string;
 }
 
@@ -20,11 +21,14 @@ export class ValidateClienteUseCase {
   constructor(private clienteRepository: IClienteRepository) {}
 
   async execute(request: ValidateClienteRequest): Promise<ValidateClienteResponse> {
-    const { email, telefono, empresa_id } = request;
+    const { email, telefono, nombre, empresa_id } = request;
 
+    if (!email && !telefono && !nombre) {
+      return { exists: false };
+    }
 
-    // Buscar cliente por email o teléfono usando el método correcto
-    const cliente = await this.clienteRepository.findByEmailOrTelefono(email, empresa_id, telefono);
+    // Buscar cliente por email, teléfono o nombre (con al menos uno provisto)
+    const cliente = await this.clienteRepository.findByEmailOrTelefono(email, empresa_id, telefono, nombre);
     
 
     if (!cliente) {

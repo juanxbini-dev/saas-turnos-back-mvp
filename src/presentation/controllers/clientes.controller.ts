@@ -3,7 +3,8 @@ import { GetClientesUseCase } from '../../application/use-cases/clientes/GetClie
 import { GetMisClientesUseCase } from '../../application/use-cases/clientes/GetMisClientesUseCase';
 import { CreateClienteUseCase } from '../../application/use-cases/clientes/CreateClienteUseCase';
 import { UpdateClienteUseCase } from '../../application/use-cases/clientes/UpdateClienteUseCase';
-import { ToggleClienteActivoUseCase } from '../../application/use-cases/clientes/ToggleClienteActivoUseCase';
+import { DeleteClienteUseCase } from '../../application/use-cases/clientes/DeleteClienteUseCase';
+import { GetClientePerfilUseCase } from '../../application/use-cases/clientes/GetClientePerfilUseCase';
 import { PostgresClienteRepository } from '../../infrastructure/repositories/PostgresClienteRepository';
 import { CryptoService } from '../../infrastructure/security/crypto.service';
 import { AuthenticatedUser } from '../middlewares/auth.middleware';
@@ -13,7 +14,8 @@ export class ClientesController {
   private getMisClientesUseCase: GetMisClientesUseCase;
   private createClienteUseCase: CreateClienteUseCase;
   private updateClienteUseCase: UpdateClienteUseCase;
-  private toggleClienteActivoUseCase: ToggleClienteActivoUseCase;
+  private deleteClienteUseCase: DeleteClienteUseCase;
+  private getClientePerfilUseCase: GetClientePerfilUseCase;
 
   constructor() {
     const clienteRepository = new PostgresClienteRepository();
@@ -23,7 +25,8 @@ export class ClientesController {
     this.getMisClientesUseCase = new GetMisClientesUseCase(clienteRepository);
     this.createClienteUseCase = new CreateClienteUseCase(clienteRepository, cryptoService);
     this.updateClienteUseCase = new UpdateClienteUseCase(clienteRepository);
-    this.toggleClienteActivoUseCase = new ToggleClienteActivoUseCase(clienteRepository);
+    this.deleteClienteUseCase = new DeleteClienteUseCase(clienteRepository);
+    this.getClientePerfilUseCase = new GetClientePerfilUseCase(clienteRepository);
   }
 
   async getClientes(req: Request, res: Response): Promise<void> {
@@ -156,51 +159,48 @@ export class ClientesController {
     }
   }
 
-  async toggleActivo(req: Request, res: Response): Promise<void> {
+  async deleteCliente(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { activo } = req.body;
       const user = req.user as AuthenticatedUser;
 
-      // Solo admin puede activar/desactivar
       if (!user.roles.includes('admin')) {
         res.status(403).json({
           success: false,
-          message: 'No tienes permisos para activar/desactivar clientes'
+          message: 'No tenés permisos para eliminar clientes'
         });
         return;
       }
 
-      if (typeof activo !== 'boolean') {
-        res.status(400).json({
-          success: false,
-          message: 'El campo activo es requerido y debe ser booleano'
-        });
-        return;
-      }
-
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          message: 'ID de cliente es requerido'
-        });
-        return;
-      }
-
-      const cliente = await this.toggleClienteActivoUseCase.execute(id as string, activo);
+      await this.deleteClienteUseCase.execute(id as string, user.empresaId);
 
       res.json({
         success: true,
-        data: cliente
+        message: 'Cliente eliminado correctamente'
       });
     } catch (error) {
       const statusCode = (error as any).statusCode || 500;
-      const message = error instanceof Error ? error.message : 'Error al cambiar estado del cliente';
-      
+      const message = error instanceof Error ? error.message : 'Error al eliminar el cliente';
+
       res.status(statusCode).json({
         success: false,
         message
       });
+    }
+  }
+
+  async getPerfilCliente(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const user = req.user as AuthenticatedUser;
+
+      const perfil = await this.getClientePerfilUseCase.execute(id as string, user.empresaId);
+
+      res.json({ success: true, data: perfil });
+    } catch (error) {
+      const statusCode = (error as any).statusCode || 500;
+      const message = error instanceof Error ? error.message : 'Error al obtener perfil del cliente';
+      res.status(statusCode).json({ success: false, message });
     }
   }
 

@@ -1,8 +1,8 @@
 import { CalculoCompletoTurno, ComisionesCalculadas } from '../../domain/entities/Turno';
 
 export interface ComisionesConfig {
-  comision_turno: number;      // % para empresa
-  comision_producto: number;   // % para empresa
+  comision_turno: number;      // % para el profesional
+  comision_producto: number;   // % para el profesional
 }
 
 export const calcularComisiones = (
@@ -24,10 +24,12 @@ export const calcularComisiones = (
   const servicioConDescuento = montoServicio - (descuentoMonto * proporcionServicio);
   const productosConDescuento = montoProductos - (descuentoMonto * proporcionProductos);
   
-  // 3. Calcular comisiones (empresa se queda con el %)
-  const comisionServicioMonto = servicioConDescuento * (config.comision_turno / 100);
-  const comisionProductosMonto = productosConDescuento * (config.comision_producto / 100);
-  
+  // 3. Calcular comisiones (el profesional recibe el %)
+  const netoServicioProfesional = servicioConDescuento * (config.comision_turno / 100);
+  const comisionServicioMonto = servicioConDescuento - netoServicioProfesional;
+  const netoProductosProfesional = productosConDescuento * (config.comision_producto / 100);
+  const comisionProductosMonto = productosConDescuento - netoProductosProfesional;
+
   return {
     precioOriginalServicio: montoServicio,
     precioOriginalProductos: montoProductos,
@@ -39,18 +41,18 @@ export const calcularComisiones = (
       base: servicioConDescuento,
       porcentajeEmpresa: config.comision_turno,
       montoEmpresa: comisionServicioMonto,
-      netoProfesional: servicioConDescuento - comisionServicioMonto
+      netoProfesional: netoServicioProfesional
     },
     comisionProductos: {
       base: productosConDescuento,
       porcentajeEmpresa: config.comision_producto,
       montoEmpresa: comisionProductosMonto,
-      netoProfesional: productosConDescuento - comisionProductosMonto
+      netoProfesional: netoProductosProfesional
     },
     totales: {
       totalRecaudado: totalConDescuento,
       totalEmpresa: comisionServicioMonto + comisionProductosMonto,
-      totalProfesional: (servicioConDescuento - comisionServicioMonto) + (productosConDescuento - comisionProductosMonto)
+      totalProfesional: netoServicioProfesional + netoProductosProfesional
     }
   };
 };
@@ -61,28 +63,30 @@ export const calcularComisionesSeparadas = (
   comisionServicioPorcentaje: number,
   comisionProductoPorcentaje: number
 ): ComisionesCalculadas => {
-  
-  // Calcular comisiones sobre montos ya con descuento
-  const comisionServicioMonto = montoServicio * (comisionServicioPorcentaje / 100);
-  const comisionProductosMonto = montoProductos * (comisionProductoPorcentaje / 100);
-  
+
+  // El profesional recibe el porcentaje configurado
+  const netoServicio = montoServicio * (comisionServicioPorcentaje / 100);
+  const comisionServicioMonto = montoServicio - netoServicio;
+  const netoProductos = montoProductos * (comisionProductoPorcentaje / 100);
+  const comisionProductosMonto = montoProductos - netoProductos;
+
   return {
     servicio: {
       monto: montoServicio,
       comisionPorcentaje: comisionServicioPorcentaje,
       comisionMonto: comisionServicioMonto,
-      netoProfesional: montoServicio - comisionServicioMonto
+      netoProfesional: netoServicio
     },
     productos: {
       monto: montoProductos,
       comisionPorcentaje: comisionProductoPorcentaje,
       comisionMonto: comisionProductosMonto,
-      netoProfesional: montoProductos - comisionProductosMonto
+      netoProfesional: netoProductos
     },
     totales: {
       totalRecaudado: montoServicio + montoProductos,
       totalComisionEmpresa: comisionServicioMonto + comisionProductosMonto,
-      totalNetoProfesional: (montoServicio - comisionServicioMonto) + (montoProductos - comisionProductosMonto)
+      totalNetoProfesional: netoServicio + netoProductos
     }
   };
 };

@@ -52,7 +52,8 @@ export class CreateVentaDirectaUseCase {
 
     for (const item of data.items) {
       const precioTotal = item.precio_unitario * item.cantidad;
-      const comisionMonto = precioTotal * comisionPct / 100;
+      const netoVendedor = precioTotal * comisionPct / 100;
+      const comisionMonto = precioTotal - netoVendedor;
 
       // Obtener nombre del producto desde catálogo si existe
       let nombreProducto = `Producto ${item.producto_id}`;
@@ -75,7 +76,7 @@ export class CreateVentaDirectaUseCase {
         metodo_pago: data.metodo_pago,
         comision_porcentaje: comisionPct,
         comision_monto: comisionMonto,
-        neto_vendedor: precioTotal - comisionMonto,
+        neto_vendedor: netoVendedor,
       });
 
       if (this.catalogoProductoRepository) {

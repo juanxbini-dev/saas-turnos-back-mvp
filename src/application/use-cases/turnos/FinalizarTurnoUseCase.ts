@@ -66,7 +66,9 @@ export class FinalizarTurnoUseCase {
       const comisionProductoPct = profesional.comision_producto ?? 0;
 
       for (const producto of data.productos) {
-        const comisionMonto = Number(producto.precio_total) * comisionProductoPct / 100;
+        const precioTotal = Number(producto.precio_total);
+        const netoVendedor = precioTotal * comisionProductoPct / 100;
+        const comisionMonto = precioTotal - netoVendedor;
         await this.productoRepository.create({
           empresa_id: data.empresaId,
           vendedor_id: data.profesionalId,
@@ -80,7 +82,7 @@ export class FinalizarTurnoUseCase {
           metodo_pago: producto.metodo_pago ?? data.metodoPago,
           comision_porcentaje: comisionProductoPct,
           comision_monto: comisionMonto,
-          neto_vendedor: Number(producto.precio_total) - comisionMonto,
+          neto_vendedor: netoVendedor,
         });
 
         if (producto.producto_id && this.catalogoProductoRepository) {

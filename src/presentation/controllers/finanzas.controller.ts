@@ -155,7 +155,7 @@ export class FinanzasController {
     try {
       const authUser = (req as any).user;
       if (!authUser) return res.status(401).json({ message: 'No autenticado' });
-      const { turnoId } = req.params;
+      const turnoId = req.params.turnoId as string;
       const productos = await ventaProductoRepo.findByTurnoWithPrices(turnoId, authUser.empresaId);
       res.json({ success: true, data: productos });
     } catch (error) {

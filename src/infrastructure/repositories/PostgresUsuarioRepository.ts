@@ -161,9 +161,9 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
     let query = `
       SELECT id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at, avatar_url
       FROM usuarios
-      WHERE empresa_id = $1 AND activo = true
+      WHERE empresa_id = $1 AND activo = true AND NOT (roles @> ARRAY['super_admin']::text[])
     `;
-    
+
     const queryParams: any[] = [empresaId];
 
     if (search) {
@@ -182,7 +182,7 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
     let query = `
       SELECT COUNT(*) as count
       FROM usuarios
-      WHERE empresa_id = $1 AND activo = true
+      WHERE empresa_id = $1 AND activo = true AND NOT (roles @> ARRAY['super_admin']::text[])
     `;
 
     const queryParams: any[] = [empresaId];

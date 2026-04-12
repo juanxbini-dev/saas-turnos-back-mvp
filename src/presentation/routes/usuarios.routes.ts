@@ -31,8 +31,8 @@ router.put('/:id/password', (req, res) => usuariosController.updatePassword(req,
 // PUT /api/usuarios/:id/rol - Cambiar rol
 router.put('/:id/rol', (req, res) => usuariosController.updateRol(req, res));
 
-// PUT /api/usuarios/:id/activo - Activar o desactivar
-router.put('/:id/activo', (req, res) => usuariosController.toggleActivo(req, res));
+// DELETE /api/usuarios/:id - Eliminar usuario (solo admin)
+router.delete('/:id', (req, res) => usuariosController.deleteUsuario(req, res));
 
 // POST /api/usuarios/:id/avatar - Subir/actualizar avatar (admin)
 router.post('/:id/avatar', uploadAvatar, (req, res) => usuariosController.uploadAvatar(req, res));

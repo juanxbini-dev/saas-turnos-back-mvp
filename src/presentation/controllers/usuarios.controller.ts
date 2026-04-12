@@ -4,7 +4,7 @@ import { CreateUsuarioUseCase } from '../../application/use-cases/usuarios/Creat
 import { UpdateUsuarioDatosUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioDatosUseCase';
 import { UpdateUsuarioPasswordUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioPasswordUseCase';
 import { UpdateUsuarioRolUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioRolUseCase';
-import { ToggleUsuarioActivoUseCase } from '../../application/use-cases/usuarios/ToggleUsuarioActivoUseCase';
+import { DeleteUsuarioUseCase } from '../../application/use-cases/usuarios/DeleteUsuarioUseCase';
 import { GetProfesionalesUseCase } from '../../application/use-cases/usuarios/GetProfesionalesUseCase';
 import { UpdateUsuarioAvatarUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioAvatarUseCase';
 import { DeleteUsuarioAvatarUseCase } from '../../application/use-cases/usuarios/DeleteUsuarioAvatarUseCase';
@@ -21,7 +21,7 @@ export class UsuariosController {
   private updateUsuarioDatosUseCase: UpdateUsuarioDatosUseCase;
   private updateUsuarioPasswordUseCase: UpdateUsuarioPasswordUseCase;
   private updateUsuarioRolUseCase: UpdateUsuarioRolUseCase;
-  private toggleUsuarioActivoUseCase: ToggleUsuarioActivoUseCase;
+  private deleteUsuarioUseCase: DeleteUsuarioUseCase;
   private getProfesionalesUseCase: GetProfesionalesUseCase;
   private updateUsuarioAvatarUseCase: UpdateUsuarioAvatarUseCase;
   private deleteUsuarioAvatarUseCase: DeleteUsuarioAvatarUseCase;
@@ -46,7 +46,7 @@ export class UsuariosController {
       passwordService
     );
     this.updateUsuarioRolUseCase = new UpdateUsuarioRolUseCase(usuarioRepository);
-    this.toggleUsuarioActivoUseCase = new ToggleUsuarioActivoUseCase(usuarioRepository);
+    this.deleteUsuarioUseCase = new DeleteUsuarioUseCase(usuarioRepository, imageRepository);
     this.getProfesionalesUseCase = new GetProfesionalesUseCase(usuarioRepository);
     this.updateUsuarioAvatarUseCase = new UpdateUsuarioAvatarUseCase(imageRepository, usuarioRepository);
     this.deleteUsuarioAvatarUseCase = new DeleteUsuarioAvatarUseCase(imageRepository, usuarioRepository);
@@ -282,38 +282,21 @@ export class UsuariosController {
     }
   }
 
-  async toggleActivo(req: Request, res: Response): Promise<void> {
+  async deleteUsuario(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { activo } = req.body;
       const adminUser = req.user as AuthenticatedUser;
 
-      if (typeof activo !== 'boolean') {
-        res.status(400).json({
-          success: false,
-          message: 'El campo activo es requerido y debe ser booleano'
-        });
-        return;
-      }
-
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          message: 'ID de usuario es requerido'
-        });
-        return;
-      }
-
-      const usuario = await this.toggleUsuarioActivoUseCase.execute(id as string, activo, adminUser.id);
+      await this.deleteUsuarioUseCase.execute(id as string, adminUser.id, adminUser.empresaId);
 
       res.json({
         success: true,
-        data: usuario
+        message: 'Usuario eliminado correctamente'
       });
     } catch (error) {
       const statusCode = (error as any).statusCode || 500;
-      const message = error instanceof Error ? error.message : 'Error al cambiar estado del usuario';
-      
+      const message = error instanceof Error ? error.message : 'Error al eliminar el usuario';
+
       res.status(statusCode).json({
         success: false,
         message

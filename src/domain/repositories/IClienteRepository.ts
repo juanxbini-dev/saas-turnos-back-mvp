@@ -1,4 +1,4 @@
-import { Cliente, CreateClienteData, UpdateClienteData } from '../entities/Cliente';
+import { Cliente, CreateClienteData, UpdateClienteData, TurnoResumen, ProductoComprado } from '../entities/Cliente';
 
 export { CreateClienteData, UpdateClienteData };
 
@@ -14,9 +14,11 @@ export interface IClienteRepository {
   findById(id: string): Promise<Cliente | null>
   create(data: CreateClienteData): Promise<Cliente>
   update(id: string, data: UpdateClienteData): Promise<Cliente>
-  toggleActivo(id: string, activo: boolean): Promise<Cliente>
+  delete(id: string): Promise<void>
   existeEmail(email: string, empresaId: string, excludeId?: string): Promise<boolean>
   existeTelefono(telefono: string, empresaId: string, excludeId?: string): Promise<boolean>
   findByEmailOrTelefono(email: string, empresaId: string, telefono?: string): Promise<Cliente | null>
   getTurnosCount(clienteId: string): Promise<number>
+  getClienteTurnos(clienteId: string, empresaId: string): Promise<TurnoResumen[]>
+  getClienteProductos(clienteId: string, empresaId: string): Promise<ProductoComprado[]>
 }

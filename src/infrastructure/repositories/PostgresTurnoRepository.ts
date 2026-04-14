@@ -139,22 +139,31 @@ export class PostgresTurnoRepository implements ITurnoRepository {
                 empresa_id, origen, created_at, updated_at
     `;
 
-    const result = await pool.query(query, [
-      data.id,
-      data.cliente_id,
-      data.usuario_id,
-      data.servicio_id,
-      data.fecha,
-      data.hora,
-      data.notas || null,
-      data.servicio,
-      data.precio,
-      data.duracion_minutos,
-      data.empresa_id,
-      data.origen || 'interno'
-    ]);
-
-    return result.rows[0];
+    try {
+      const result = await pool.query(query, [
+        data.id,
+        data.cliente_id,
+        data.usuario_id,
+        data.servicio_id,
+        data.fecha,
+        data.hora,
+        data.notas || null,
+        data.servicio,
+        data.precio,
+        data.duracion_minutos,
+        data.empresa_id,
+        data.origen || 'interno'
+      ]);
+      return result.rows[0];
+    } catch (err: any) {
+      if (err.code === '23505') {
+        throw Object.assign(
+          new Error('El horario seleccionado ya no está disponible'),
+          { statusCode: 409 }
+        );
+      }
+      throw err;
+    }
   }
 
   async updateEstado(id: string, estado: 'pendiente' | 'confirmado' | 'completado' | 'cancelado'): Promise<Turno> {

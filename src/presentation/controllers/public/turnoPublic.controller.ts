@@ -121,7 +121,8 @@ export class TurnoPublicController {
         });
       }
 
-      if (error.message === 'El horario seleccionado ya no está disponible') {
+      const statusCode = error.statusCode || 500;
+      if (statusCode === 409 || error.code === '23505') {
         return res.status(409).json({
           success: false,
           message: 'El horario seleccionado ya no está disponible'

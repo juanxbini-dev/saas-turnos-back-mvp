@@ -45,7 +45,8 @@ export class FinalizarTurnoUseCase {
       {
         comision_turno: profesional.comision_turno ?? 0,
         comision_producto: profesional.comision_producto ?? 0
-      }
+      },
+      data.descuentoAplicarA
     );
 
     // 4. Actualizar turno

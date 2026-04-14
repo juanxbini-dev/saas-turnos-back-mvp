@@ -44,6 +44,26 @@ export class PostgresComisionRepository implements IComisionRepository {
     return result.rows;
   }
 
+  async updateByTurno(turnoId: string, data: Partial<CreateComisionData>): Promise<ComisionTurno> {
+    const result = await pool.query(
+      `UPDATE comisiones_turno
+       SET servicio_monto = COALESCE($1, servicio_monto),
+           servicio_comision_porcentaje = COALESCE($2, servicio_comision_porcentaje),
+           servicio_comision_monto = COALESCE($3, servicio_comision_monto),
+           servicio_neto_profesional = COALESCE($4, servicio_neto_profesional),
+           updated_at = NOW()
+       WHERE turno_id = $5 RETURNING *`,
+      [
+        data.servicio_monto,
+        data.servicio_comision_porcentaje,
+        data.servicio_comision_monto,
+        data.servicio_neto_profesional,
+        turnoId
+      ]
+    );
+    return result.rows[0];
+  }
+
   async updateEstado(id: string, estado: 'pendiente' | 'pagada' | 'cancelada'): Promise<ComisionTurno> {
     const result = await pool.query(
       `UPDATE comisiones_turno

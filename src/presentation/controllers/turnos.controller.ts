@@ -152,7 +152,7 @@ export class TurnosController {
     try {
       const id = req.params['id'] as string;
       const { empresaId } = req.user!;
-      const { metodoPago, precioModificado, descuentoPorcentaje, productos } = req.body;
+      const { metodoPago, precioModificado, descuentoPorcentaje, descuentoAplicarA, productos } = req.body;
 
       // Importamos dinámicamente para evitar dependencia circular
       const { FinalizarTurnoUseCase } = await import('../../application/use-cases/turnos/FinalizarTurnoUseCase');
@@ -184,15 +184,63 @@ export class TurnosController {
         metodoPago,
         precioModificado,
         descuentoPorcentaje,
+        descuentoAplicarA,
         productos
       });
       
       res.json({ success: true, data: turno });
     } catch (error: any) {
       const statusCode = error.statusCode || 500;
-      res.status(statusCode).json({ 
-        success: false, 
-        message: error.message || 'Error al finalizar turno' 
+      res.status(statusCode).json({
+        success: false,
+        message: error.message || 'Error al finalizar turno'
+      });
+    }
+  }
+
+  async editarPago(req: Request, res: Response) {
+    try {
+      const id = req.params['id'] as string;
+      const { empresaId } = req.user!;
+      const { metodoPago, precioModificado, descuentoPorcentaje, descuentoAplicarA, productos } = req.body;
+
+      const { EditarPagoTurnoUseCase } = await import('../../application/use-cases/turnos/EditarPagoTurnoUseCase');
+      const { PostgresComisionRepository } = await import('../../infrastructure/repositories/PostgresComisionRepository');
+      const { PostgresVentaProductoRepository } = await import('../../infrastructure/repositories/PostgresVentaProductoRepository');
+      const { PostgresUsuarioRepository } = await import('../../infrastructure/repositories/PostgresUsuarioRepository');
+      const { PostgresProductoRepository } = await import('../../infrastructure/repositories/PostgresProductoRepository');
+
+      const turnoRepository = this.getTurnosUseCase['turnoRepository'];
+      const turnoExistente = await turnoRepository.findById(id);
+      if (!turnoExistente) {
+        return res.status(404).json({ success: false, message: 'Turno no encontrado' });
+      }
+
+      const editarPagoUseCase = new EditarPagoTurnoUseCase(
+        turnoRepository,
+        new PostgresUsuarioRepository(),
+        new PostgresComisionRepository(),
+        new PostgresVentaProductoRepository(),
+        new PostgresProductoRepository()
+      );
+
+      const turno = await editarPagoUseCase.execute({
+        turnoId: id,
+        profesionalId: turnoExistente.usuario_id,
+        empresaId,
+        metodoPago,
+        precioModificado,
+        descuentoPorcentaje,
+        descuentoAplicarA,
+        productos
+      });
+
+      res.json({ success: true, data: turno });
+    } catch (error: any) {
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message || 'Error al editar el pago del turno'
       });
     }
   }

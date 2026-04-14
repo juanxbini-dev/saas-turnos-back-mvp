@@ -61,7 +61,7 @@ export class TurnoPublicController {
         });
       }
 
-      if (!cliente_data.nombre || !cliente_data.email) {
+      if (!cliente_data.nombre || (!cliente_id && !cliente_data.email)) {
         console.log('❌ TurnoPublic Controller - Faltan datos de cliente');
         return res.status(400).json({
           success: false,

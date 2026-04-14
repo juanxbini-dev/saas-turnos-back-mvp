@@ -5,24 +5,34 @@ export interface ComisionesConfig {
   comision_producto: number;   // % para el profesional
 }
 
+export interface DescuentoAplicarA {
+  servicio: boolean;
+  productos: boolean;
+}
+
 export const calcularComisiones = (
   montoServicio: number,
   montoProductos: number,
   descuentoPorcentaje: number,
-  config: ComisionesConfig
+  config: ComisionesConfig,
+  descuentoAplicarA: DescuentoAplicarA = { servicio: true, productos: true }
 ): CalculoCompletoTurno => {
-  
-  // 1. Calcular descuento
+
+  // 1. Calcular descuento según a qué ítems aplica
   const subtotalOriginal = montoServicio + montoProductos;
-  const descuentoMonto = subtotalOriginal * (descuentoPorcentaje / 100);
+  const baseDescuentoServicio = descuentoAplicarA.servicio ? montoServicio : 0;
+  const baseDescuentoProductos = descuentoAplicarA.productos ? montoProductos : 0;
+  const baseDescuento = baseDescuentoServicio + baseDescuentoProductos;
+  const descuentoMonto = baseDescuento * (descuentoPorcentaje / 100);
   const totalConDescuento = subtotalOriginal - descuentoMonto;
-  
-  // 2. Distribuir descuento proporcionalmente
-  const proporcionServicio = montoServicio / subtotalOriginal;
-  const proporcionProductos = montoProductos / subtotalOriginal;
-  
-  const servicioConDescuento = montoServicio - (descuentoMonto * proporcionServicio);
-  const productosConDescuento = montoProductos - (descuentoMonto * proporcionProductos);
+
+  // 2. Aplicar descuento solo a los ítems seleccionados
+  const servicioConDescuento = descuentoAplicarA.servicio
+    ? montoServicio - (baseDescuento > 0 ? descuentoMonto * (baseDescuentoServicio / baseDescuento) : 0)
+    : montoServicio;
+  const productosConDescuento = descuentoAplicarA.productos
+    ? montoProductos - (baseDescuento > 0 ? descuentoMonto * (baseDescuentoProductos / baseDescuento) : 0)
+    : montoProductos;
   
   // 3. Calcular comisiones (el profesional recibe el %)
   const netoServicioProfesional = servicioConDescuento * (config.comision_turno / 100);

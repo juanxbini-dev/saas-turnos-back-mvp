@@ -50,6 +50,11 @@ export interface CreateTurnoData {
   origen?: 'web' | 'interno';
 }
 
+export interface DescuentoAplicarA {
+  servicio: boolean;
+  productos: boolean;
+}
+
 export interface FinalizarTurnoData {
   turnoId: string;
   profesionalId: string;
@@ -57,12 +62,24 @@ export interface FinalizarTurnoData {
   metodoPago: MetodoPago;
   precioModificado?: number;
   descuentoPorcentaje?: number;
+  descuentoAplicarA?: DescuentoAplicarA;
   productos?: VentaProductoData[];
   precio_original?: number;
   descuento_monto?: number;
   total_final?: number;
   finalizado_at?: string;
   finalizado_por_id?: string;
+}
+
+export interface EditarPagoData {
+  turnoId: string;
+  profesionalId: string;
+  empresaId: string;
+  metodoPago: MetodoPago;
+  precioModificado?: number;
+  descuentoPorcentaje?: number;
+  descuentoAplicarA?: DescuentoAplicarA;
+  productos?: VentaProductoData[];
 }
 
 export interface VentaProductoData {

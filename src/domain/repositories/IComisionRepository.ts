@@ -6,4 +6,5 @@ export interface IComisionRepository {
   findByProfesional(profesionalId: string): Promise<ComisionTurno[]>;
   findByEmpresa(empresaId: string): Promise<ComisionTurno[]>;
   updateEstado(id: string, estado: 'pendiente' | 'pagada' | 'cancelada'): Promise<ComisionTurno>;
+  updateByTurno(turnoId: string, data: Partial<CreateComisionData>): Promise<ComisionTurno>;
 }

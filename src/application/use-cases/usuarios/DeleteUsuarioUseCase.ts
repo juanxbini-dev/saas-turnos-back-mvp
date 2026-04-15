@@ -1,5 +1,6 @@
 import { IImageRepository } from '../../../domain/repositories/IImageRepository';
 import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
+import { pool } from '../../../infrastructure/database/postgres.connection';
 
 export class DeleteUsuarioUseCase {
   constructor(
@@ -36,6 +37,9 @@ export class DeleteUsuarioUseCase {
         // Si falla el delete de Cloudinary, continuamos con el delete del usuario
       }
     }
+
+    // Eliminar registro de landing_profesionales si existe (FK sin CASCADE)
+    await pool.query('DELETE FROM landing_profesionales WHERE usuario_id = $1', [id]);
 
     await this.usuarioRepository.delete(id);
   }

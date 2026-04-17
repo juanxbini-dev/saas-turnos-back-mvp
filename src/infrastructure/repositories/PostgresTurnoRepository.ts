@@ -75,11 +75,11 @@ export class PostgresTurnoRepository implements ITurnoRepository {
 
   async findByFechaYProfesional(profesionalId: string, fecha: string): Promise<Turno[]> {
     const query = `
-      SELECT id, cliente_id, usuario_id, servicio_id, fecha, hora, 
-             estado, notas, servicio, servicio_precio as precio, duracion as duracion_minutos, 
+      SELECT id, cliente_id, usuario_id, servicio_id, fecha, hora,
+             estado, notas, servicio, servicio_precio as precio, duracion as duracion_minutos,
              empresa_id, created_at, updated_at
       FROM turnos
-      WHERE usuario_id = $1 AND fecha = $2
+      WHERE usuario_id = $1 AND fecha = $2 AND estado = 'confirmado'
       ORDER BY hora ASC
     `;
     

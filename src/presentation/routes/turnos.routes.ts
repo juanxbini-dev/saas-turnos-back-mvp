@@ -47,7 +47,8 @@ const createTurnoUseCase = new CreateTurnoUseCase(
 const updateTurnoEstadoUseCase = new UpdateTurnoEstadoUseCase(turnoRepository);
 const getDisponibilidadMesUseCase = new GetDisponibilidadMesUseCase(
   disponibilidadRepository,
-  disponibilidadService
+  disponibilidadService,
+  turnoRepository
 );
 const getSlotsDisponiblesUseCase = new GetSlotsDisponiblesUseCase(
   disponibilidadRepository,

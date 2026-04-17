@@ -307,9 +307,9 @@ export class DisponibilidadService {
     // Ordenar slots cronológicamente tras el merge
     slots.sort();
 
-    // Restar slots ocupados por turnos con estado pendiente o confirmado
+    // Restar slots ocupados por turnos con estado confirmado
     const slotsOcupados = turnosExistentes
-      .filter(turno => turno.estado === 'pendiente' || turno.estado === 'confirmado')
+      .filter(turno => turno.estado === 'confirmado')
       .map(turno => {
         const horaNormalizada = turno.hora.slice(0, 5);
         logDate('Turno ocupado:', {

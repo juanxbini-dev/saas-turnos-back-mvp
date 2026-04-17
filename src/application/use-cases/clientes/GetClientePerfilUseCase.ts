@@ -39,7 +39,7 @@ export class GetClientePerfilUseCase {
     const total_gastado = total_gastado_turnos + total_gastado_productos;
 
     const proximo_turno: TurnoResumen | null = turnos
-      .filter(t => t.fecha >= hoy && (t.estado === 'pendiente' || t.estado === 'confirmado'))
+      .filter(t => t.fecha >= hoy && t.estado === 'confirmado')
       .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora))[0] ?? null;
 
     const ultimo_turno: TurnoResumen | null = turnos

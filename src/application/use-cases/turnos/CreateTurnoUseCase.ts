@@ -121,11 +121,7 @@ export class CreateTurnoUseCase {
     });
 
     const turno = await this.turnoRepository.create(turnoData);
-    turnoLogger.info('Turno creado', { turnoId: turno.id });
-
-    // Confirmar el turno inmediatamente — las notificaciones se manejan en el controller (n8n)
-    await this.turnoRepository.updateEstado(id, 'confirmado');
-    turnoLogger.info('Turno confirmado', { turnoId: id });
+    turnoLogger.info('Turno creado y confirmado', { turnoId: turno.id });
 
     return turno;
   }

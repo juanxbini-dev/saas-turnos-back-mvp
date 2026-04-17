@@ -113,7 +113,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       WHERE t.usuario_id = $1
       AND t.fecha >= $2
       AND t.fecha <= $3
-      AND t.estado IN ('pendiente', 'confirmado', 'completado')
+      AND t.estado IN ('confirmado', 'completado')
       ORDER BY t.fecha ASC, t.hora ASC
     `;
     
@@ -133,7 +133,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
         id, cliente_id, usuario_id, servicio_id, fecha, hora, estado,
         notas, servicio, servicio_precio, duracion, empresa_id, origen, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'pendiente', $7, $8, $9, $10, $11, $12, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, 'confirmado', $7, $8, $9, $10, $11, $12, NOW(), NOW())
       RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado,
                 notas, servicio, servicio_precio as precio, duracion as duracion_minutos,
                 empresa_id, origen, created_at, updated_at

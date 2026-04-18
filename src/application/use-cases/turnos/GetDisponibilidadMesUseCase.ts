@@ -1,15 +1,17 @@
 import { IDisponibilidadRepository } from '../../../domain/repositories/IDisponibilidadRepository';
 import { ITurnoRepository } from '../../../domain/repositories/ITurnoRepository';
+import { IUsuarioServicioRepository } from '../../../domain/repositories/IUsuarioServicioRepository';
 import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
 
 export class GetDisponibilidadMesUseCase {
   constructor(
     private disponibilidadRepository: IDisponibilidadRepository,
     private disponibilidadService: DisponibilidadService,
-    private turnoRepository: ITurnoRepository
+    private turnoRepository: ITurnoRepository,
+    private usuarioServicioRepository: IUsuarioServicioRepository
   ) {}
 
-  async execute(profesionalId: string, mes: number, año: number): Promise<string[]> {
+  async execute(profesionalId: string, mes: number, año: number, servicioId?: string): Promise<string[]> {
     const primerDia = `${año}-${String(mes).padStart(2, '0')}-01`;
     const ultimoDia = `${año}-${String(mes).padStart(2, '0')}-${new Date(año, mes, 0).getDate()}`;
 
@@ -20,7 +22,15 @@ export class GetDisponibilidadMesUseCase {
       this.turnoRepository.findByProfesionalEnRango(profesionalId, primerDia, ultimoDia)
     ]);
 
-    // Agrupar turnos confirmados por fecha para reutilizar en el cálculo de slots
+    let duracionMinutos = 0;
+    if (servicioId) {
+      const servicio = await this.usuarioServicioRepository.findByUsuarioAndServicio(profesionalId, servicioId);
+      if (servicio) {
+        duracionMinutos = servicio.duracion_personalizada || servicio.duracion_minutos || 0;
+      }
+    }
+
+    // Agrupar turnos confirmados por fecha
     const turnosPorFecha = new Map<string, typeof turnosMes>();
     for (const turno of turnosMes) {
       const fecha = typeof turno.fecha === 'string'
@@ -38,14 +48,16 @@ export class GetDisponibilidadMesUseCase {
       año
     );
 
-    // Filtrar los días que tengan al menos un slot libre
+    // Filtrar los días que tengan al menos un slot libre (respetando la duración del servicio)
     const diasDisponibles = diasConHorario.filter(fecha => {
       const turnosDelDia = turnosPorFecha.get(fecha) || [];
       const slots = this.disponibilidadService.calcularSlotsDisponibles(
         disponibilidades,
         excepciones,
         turnosDelDia as any,
-        fecha
+        fecha,
+        [],
+        duracionMinutos
       );
       return slots.length > 0;
     });

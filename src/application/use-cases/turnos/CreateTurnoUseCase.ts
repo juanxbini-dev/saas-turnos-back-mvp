@@ -54,6 +54,12 @@ export class CreateTurnoUseCase {
       turnosExistentes: turnosExistentes.length
     });
 
+    // Buscar servicio antes de validar para conocer la duración y validar el rango completo
+    const servicioParaValidar = await this.usuarioServicioRepository.findByUsuarioAndServicio(usuarioId, data.servicio_id);
+    const duracionParaValidar = servicioParaValidar
+      ? (servicioParaValidar.duracion_personalizada || servicioParaValidar.duracion_minutos || 0)
+      : 0;
+
     const slotDisponible = this.disponibilidadService.validarSlotDisponible(
       disponibilidades,
       excepciones,
@@ -61,7 +67,8 @@ export class CreateTurnoUseCase {
       vacaciones,
       data.fecha,
       data.hora,
-      bloqueosSlots
+      bloqueosSlots,
+      duracionParaValidar
     );
 
     turnoLogger.debug('Resultado validación slot', { 
@@ -75,12 +82,12 @@ export class CreateTurnoUseCase {
       throw Object.assign(new Error('El slot no está disponible'), { statusCode: 400 });
     }
 
-    // Buscar servicio en usuario_servicios JOIN servicios para snapshot
+    // Reutilizar el servicio ya buscado para el snapshot del turno
     turnoLogger.debug('Buscando servicio', { usuarioId, servicioId: data.servicio_id });
-    const servicio = await this.usuarioServicioRepository.findByUsuarioAndServicio(usuarioId, data.servicio_id);
-    
+    const servicio = servicioParaValidar;
+
     turnoLogger.debug('Servicio encontrado', { servicioId: servicio?.id, nombre: servicio?.nombre });
-    
+
     if (!servicio) {
       turnoLogger.error('Servicio no disponible', undefined, { usuarioId, servicioId: data.servicio_id });
       throw Object.assign(new Error('El servicio no está disponible para este profesional'), { statusCode: 400 });

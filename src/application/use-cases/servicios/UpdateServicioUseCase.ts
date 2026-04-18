@@ -14,8 +14,8 @@ export class UpdateServicioUseCase {
       throw Object.assign(new Error('El nombre del servicio es requerido'), { statusCode: 400 });
     }
 
-    if (data.duracion !== undefined && (data.duracion <= 0 || !data.duracion)) {
-      throw Object.assign(new Error('La duración debe ser mayor a 0'), { statusCode: 400 });
+    if (data.duracion !== undefined && (data.duracion < 60 || data.duracion % 60 !== 0)) {
+      throw Object.assign(new Error('La duración debe ser en horas completas (mínimo 60 minutos)'), { statusCode: 400 });
     }
 
     return this.servicioRepository.update(id, data);

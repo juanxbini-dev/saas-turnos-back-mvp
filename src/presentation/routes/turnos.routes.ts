@@ -48,13 +48,15 @@ const updateTurnoEstadoUseCase = new UpdateTurnoEstadoUseCase(turnoRepository);
 const getDisponibilidadMesUseCase = new GetDisponibilidadMesUseCase(
   disponibilidadRepository,
   disponibilidadService,
-  turnoRepository
+  turnoRepository,
+  usuarioServicioRepository
 );
 const getSlotsDisponiblesUseCase = new GetSlotsDisponiblesUseCase(
   disponibilidadRepository,
   turnoRepository,
   disponibilidadService,
-  bloqueoSlotRepository
+  bloqueoSlotRepository,
+  usuarioServicioRepository
 );
 const getCalendarioUseCase = new GetCalendarioUseCase(turnoRepository);
 const createDisponibilidadUseCase = new CreateDisponibilidadUseCase(
@@ -79,7 +81,8 @@ const getSlotsRangoUseCase = new GetSlotsRangoUseCase(
   disponibilidadRepository,
   turnoRepository,
   disponibilidadService,
-  bloqueoSlotRepository
+  bloqueoSlotRepository,
+  usuarioServicioRepository
 );
 
 // Controller

@@ -146,7 +146,8 @@ export class DisponibilidadService {
     excepciones: ExcepcionDia[],
     turnosExistentes: Turno[],
     fecha: string,
-    bloqueosSlots: BloqueoSlot[] = []
+    bloqueosSlots: BloqueoSlot[] = [],
+    duracionMinutos: number = 0
   ): string[] {
     logDate('calcularSlotsDisponibles - INICIO');
     logDate('Parámetros:', { fecha });
@@ -307,27 +308,48 @@ export class DisponibilidadService {
     // Ordenar slots cronológicamente tras el merge
     slots.sort();
 
-    // Restar slots ocupados por turnos con estado confirmado
-    const slotsOcupados = turnosExistentes
-      .filter(turno => turno.estado === 'confirmado')
-      .map(turno => {
-        const horaNormalizada = turno.hora.slice(0, 5);
-        logDate('Turno ocupado:', {
-          turno_id: turno.id,
-          hora_original: turno.hora,
-          hora_normalizada: horaNormalizada,
-          estado: turno.estado
-        });
-        return horaNormalizada;
-      });
+    // Helper: convierte "HH:MM" a minutos totales
+    const toMin = (hora: string): number => {
+      const parts = hora.slice(0, 5).split(':').map(Number);
+      return (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
+    };
+
+    // Segmentos de horario disponibles para el día (base + adicionales)
+    const segmentos: { inicio: number; fin: number }[] = [];
+    if (horaInicio && horaFin && intervaloMinutos > 0) {
+      segmentos.push({ inicio: toMin(horaInicio), fin: toMin(horaFin) });
+    }
+    for (const exc of excepcionesAdicionales) {
+      if (exc.hora_inicio && exc.hora_fin) {
+        segmentos.push({ inicio: toMin(exc.hora_inicio), fin: toMin(exc.hora_fin) });
+      }
+    }
+
+    const turnosConfirmados = turnosExistentes.filter(t => t.estado === 'confirmado');
 
     const slotsFinales = slots.filter(slot => {
-      const estaOcupado = slotsOcupados.includes(slot);
-      logDate('Verificando slot:', {
-        slot,
-        estaOcupado,
-        slotsOcupados
-      });
+      const slotMin = toMin(slot);
+
+      // Cuando se solicita duración específica: el slot completo debe caber dentro de un segmento
+      if (duracionMinutos > 0) {
+        const slotEndMin = slotMin + duracionMinutos;
+        const cabe = segmentos.some(seg => slotMin >= seg.inicio && slotEndMin <= seg.fin);
+        if (!cabe) {
+          logDate('Slot excluido (no cabe la duración):', { slot, duracionMinutos });
+          return false;
+        }
+
+        // Verificar que el rango [slot, slot+duracion) no se superponga con ningún turno
+        return !turnosConfirmados.some(t => {
+          const tStart = toMin(t.hora);
+          const tEnd = tStart + (t.duracion_minutos || 60);
+          return tStart < slotEndMin && tEnd > slotMin;
+        });
+      }
+
+      // Sin duración específica: comportamiento legacy (match exacto)
+      const estaOcupado = turnosConfirmados.some(t => t.hora.slice(0, 5) === slot);
+      logDate('Verificando slot:', { slot, estaOcupado });
       return !estaOcupado;
     });
     
@@ -360,7 +382,7 @@ export class DisponibilidadService {
     });
 
     logDate('Slots generados:', slots);
-    logDate('Slots ocupados:', slotsOcupados);
+    logDate('Turnos confirmados:', turnosConfirmados.map(t => t.hora.slice(0, 5)));
     logDate('Bloqueos del día:', bloqueosDelDia);
     logDate('Slots finales disponibles:', slotsSinBloqueos);
     logDate('calcularSlotsDisponibles - FIN');
@@ -375,33 +397,33 @@ export class DisponibilidadService {
     vacaciones: DiasVacacion[],
     fecha: string,
     hora: string,
-    bloqueosSlots: BloqueoSlot[] = []
+    bloqueosSlots: BloqueoSlot[] = [],
+    duracionMinutos: number = 0
   ): boolean {
     const useNewUtils = isFeatureEnabled('USE_DATE_UTILS_IN_DISPONIBILIDAD');
-    // Parsear como medianoche LOCAL (no UTC) para que getMonth/getDay sean correctos en cualquier timezone
     const fechaObj = useNewUtils ? DateUtils.combineDateTime(fecha, '00:00') : new Date(fecha + 'T00:00:00');
-    const diaSemana = fechaObj.getDay();
 
     // Verificar que la fecha esté disponible
     const diasDisponibles = this.calcularDiasDisponiblesMes(
       disponibilidades,
       vacaciones,
       excepciones,
-      useNewUtils ? (fechaObj.getMonth() + 1) : fechaObj.getMonth() + 1,
-      useNewUtils ? fechaObj.getFullYear() : fechaObj.getFullYear()
+      fechaObj.getMonth() + 1,
+      fechaObj.getFullYear()
     );
 
     if (!diasDisponibles.includes(fecha)) {
       return false;
     }
 
-    // Verificar que el slot no esté ocupado
+    // Verificar que el slot esté disponible (con chequeo de duración si aplica)
     const slotsDisponibles = this.calcularSlotsDisponibles(
       disponibilidades,
       excepciones,
       turnosExistentes,
       fecha,
-      bloqueosSlots
+      bloqueosSlots,
+      duracionMinutos
     );
 
     return slotsDisponibles.includes(hora);

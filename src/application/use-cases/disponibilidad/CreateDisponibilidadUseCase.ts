@@ -23,6 +23,10 @@ export class CreateDisponibilidadUseCase {
       throw Object.assign(new Error('No puedes crear disponibilidad para otro profesional'), { statusCode: 403 });
     }
 
+    if (!intervaloMinutos || intervaloMinutos < 60 || intervaloMinutos % 60 !== 0) {
+      throw Object.assign(new Error('El intervalo debe ser en horas completas (mínimo 60 minutos)'), { statusCode: 400 });
+    }
+
     const id = this.cryptoService.generateUUID();
 
     const data: CreateDisponibilidadData = {

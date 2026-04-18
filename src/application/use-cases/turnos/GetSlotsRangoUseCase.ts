@@ -1,6 +1,7 @@
 import { IDisponibilidadRepository } from '../../../domain/repositories/IDisponibilidadRepository';
 import { ITurnoRepository } from '../../../domain/repositories/ITurnoRepository';
 import { IBloqueoSlotRepository } from '../../../domain/repositories/IBloqueoSlotRepository';
+import { IUsuarioServicioRepository } from '../../../domain/repositories/IUsuarioServicioRepository';
 import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
 import { DateUtils } from '../../../shared/utils/DateUtils';
 import { isFeatureEnabled, logDate } from '../../../shared/config/featureFlags';
@@ -10,13 +11,15 @@ export class GetSlotsRangoUseCase {
     private disponibilidadRepository: IDisponibilidadRepository,
     private turnoRepository: ITurnoRepository,
     private disponibilidadService: DisponibilidadService,
-    private bloqueoSlotRepository: IBloqueoSlotRepository
+    private bloqueoSlotRepository: IBloqueoSlotRepository,
+    private usuarioServicioRepository: IUsuarioServicioRepository
   ) {}
 
   async execute(
     profesionalId: string,
     fechaInicio: string,
-    fechaFin: string
+    fechaFin: string,
+    servicioId?: string
   ): Promise<{ fecha: string; slots: string[] }[]> {
     logDate('Ejecutando:', { profesionalId, fechaInicio, fechaFin });
 
@@ -74,12 +77,20 @@ export class GetSlotsRangoUseCase {
 
     logDate('Fechas a procesar:', { fechas, useNewUtils });
 
-    // Obtener disponibilidades, excepciones y bloqueos una sola vez para todo el rango
+    // Obtener disponibilidades, excepciones, bloqueos y duración del servicio una sola vez
     const [disponibilidades, excepciones, bloqueosRango] = await Promise.all([
       this.disponibilidadRepository.findDisponibilidadByProfesional(profesionalId),
       this.disponibilidadRepository.findExcepcionesByProfesional(profesionalId),
       this.bloqueoSlotRepository.findByProfesionalAndRango(profesionalId, fechaInicio, fechaFin)
     ]);
+
+    let duracionMinutos = 0;
+    if (servicioId) {
+      const servicio = await this.usuarioServicioRepository.findByUsuarioAndServicio(profesionalId, servicioId);
+      if (servicio) {
+        duracionMinutos = servicio.duracion_personalizada || servicio.duracion_minutos || 0;
+      }
+    }
 
     // Procesar cada fecha
     const resultados = await Promise.all(
@@ -102,7 +113,8 @@ export class GetSlotsRangoUseCase {
             excepciones,
             turnosExistentes,
             fecha,
-            bloqueosDelDia
+            bloqueosDelDia,
+            duracionMinutos
           );
 
           return {

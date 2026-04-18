@@ -248,14 +248,15 @@ export class TurnosController {
   async getDisponibilidadMes(req: Request, res: Response) {
     try {
       const profesionalId = req.params['profesionalId'] as string;
-      const { mes, año } = req.query;
-      
-      console.log('🔍 [TurnosController] getDisponibilidadMes - Petición recibida:', { profesionalId, mes, año });
-      
+      const { mes, año, servicioId } = req.query;
+
+      console.log('🔍 [TurnosController] getDisponibilidadMes - Petición recibida:', { profesionalId, mes, año, servicioId });
+
       const diasDisponibles = await this.getDisponibilidadMesUseCase.execute(
         profesionalId,
         Number(mes),
-        Number(año)
+        Number(año),
+        typeof servicioId === 'string' ? servicioId : undefined
       );
       
       console.log('🔍 [TurnosController] getDisponibilidadMes - Resultado:', diasDisponibles);
@@ -274,26 +275,22 @@ export class TurnosController {
   async getSlotsDisponibles(req: Request, res: Response) {
     try {
       const profesionalId = req.params['profesionalId'] as string;
-      const { fecha } = req.query;
-      
-      console.log('🔍 [TurnosController] getSlotsDisponibles - Petición:', { profesionalId, fecha });
-      
+      const { fecha, servicioId } = req.query;
+
+      console.log('🔍 [TurnosController] getSlotsDisponibles - Petición:', { profesionalId, fecha, servicioId });
+
       // Validar que fecha exista
       if (!fecha || typeof fecha !== 'string') {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'El parámetro fecha es requerido y debe ser un string' 
+        return res.status(400).json({
+          success: false,
+          message: 'El parámetro fecha es requerido y debe ser un string'
         });
       }
-      
-      // Si no hay usuario autenticado (ruta debug), creamos un usuario mock
-      if (!req.user) {
-        console.log('🔍 [TurnosController] Modo debug - sin autenticación');
-      }
-      
+
       const slots = await this.getSlotsDisponiblesUseCase.execute(
         profesionalId,
-        fecha
+        fecha,
+        typeof servicioId === 'string' ? servicioId : undefined
       );
       
       console.log('🔍 [TurnosController] getSlotsDisponibles - Resultado:', slots);
@@ -368,10 +365,12 @@ export class TurnosController {
       
       logDate('Validaciones OK - Procesando rango de', { diasDiferencia, useNewUtils });
       
+      const { servicioId } = req.query;
       const slotsRango = await this.getSlotsRangoUseCase.execute(
         profesionalId as string,
         fechaInicio,
-        fechaFin
+        fechaFin,
+        typeof servicioId === 'string' ? servicioId : undefined
       );
       
       logDate('getSlotsRango - Resultado:', slotsRango);

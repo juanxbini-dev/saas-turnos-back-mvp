@@ -2,10 +2,6 @@ import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('N8nService');
 
-// TODO: Reemplazar este número por el teléfono real del cliente (campo `telefono` de la tabla clientes).
-// Mientras tanto se usa este número de prueba para todas las notificaciones de WhatsApp.
-const TELEFONO_PRUEBA = '542915705322';
-
 export interface N8nTurnoPayload {
   appointment_id: string;
   customer_name: string;
@@ -108,23 +104,12 @@ export class N8nService {
     return resultado;
   }
 
-  /**
-   * Normaliza el teléfono al formato internacional requerido por WhatsApp Business API.
-   * TODO: Cuando se pase al teléfono real del cliente, reemplazar getTelefonoPrueba() por
-   * N8nService.normalizarTelefono(cliente.telefono) en TurnosController, TurnoPublicController
-   * y turnos.cron.ts.
-   */
+  /** Normaliza el teléfono al formato internacional requerido por WhatsApp Business API (Argentina: 54...). */
   static normalizarTelefono(telefono?: string): string {
-    if (!telefono) return TELEFONO_PRUEBA;
+    if (!telefono) return '';
     const limpio = telefono.replace(/[\s\-().+]/g, '');
     if (limpio.startsWith('54')) return limpio;
-    // Si no tiene código de país, asumir Argentina (54)
     return `54${limpio}`;
-  }
-
-  /** Devuelve el teléfono de prueba hardcodeado. Usar hasta tener el teléfono real del cliente. */
-  static getTelefonoPrueba(): string {
-    return TELEFONO_PRUEBA;
   }
 
   /**
@@ -146,8 +131,9 @@ export class N8nService {
       fechaStr = String(fecha).split('T')[0].substring(0, 10);
     }
 
-    // hora viene como "HH:MM:SS" desde PostgreSQL — tomar solo HH:MM:SS
-    const horaStr = String(hora).substring(0, 8);
+    // hora puede venir como "HH:MM" o "HH:MM:SS" — normalizar a "HH:MM:SS"
+    const horaNorm = String(hora).substring(0, 8);
+    const horaStr = horaNorm.length === 5 ? `${horaNorm}:00` : horaNorm;
 
     return `${fechaStr} ${horaStr}`;
   }

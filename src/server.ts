@@ -1,15 +1,11 @@
 import app from './app';
 import { connectDatabase } from './infrastructure/database/postgres.connection';
 import { config } from './config/env';
-import { initTurnosCron } from './infrastructure/cron/turnos.cron';
 
 const startServer = async (): Promise<void> => {
   try {
     // Connect to database
     await connectDatabase();
-
-    // Initialize cron jobs
-    initTurnosCron();
 
     // Start server
     app.listen(config.port, () => {

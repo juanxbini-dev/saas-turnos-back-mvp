@@ -107,13 +107,11 @@ export class TurnosController {
         return;
       }
 
-      // TODO: Reemplazar N8nService.getTelefonoPrueba() por N8nService.normalizarTelefono(cliente.telefono)
-      // cuando se pase a producción real con los teléfonos de los clientes.
       const resultado = await this.n8nService.notificarTurnoCreado({
         appointment_id: turno.id,
         customer_name: cliente.nombre,
         customer_email: cliente.email,
-        customer_phone: N8nService.getTelefonoPrueba(),
+        customer_phone: N8nService.normalizarTelefono(cliente.telefono ?? undefined),
         service_id: turno.servicio_id,
         service_name: turno.servicio,
         professional_id: turno.usuario_id,
@@ -124,7 +122,7 @@ export class TurnosController {
       if (resultado.success) {
         console.log(`[n8n] ✅ Notificaciones enviadas — turno: ${turno.id} | WhatsApp: ${resultado.whatsapp_enviado ? '✅' : '❌'} | Email: ${resultado.email_enviado ? '✅' : '❌'}`);
       } else {
-        console.warn(`[n8n] ⚠️ Notificación fallida — turno: ${turno.id} (el cron reintentará en 15 min)`);
+        console.warn(`[n8n] ⚠️ Notificación fallida — turno: ${turno.id}`);
       }
     } catch (error) {
       console.error('[n8n] ❌ Error preparando payload para n8n:', error);

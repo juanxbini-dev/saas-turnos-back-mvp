@@ -1,11 +1,15 @@
 import app from './app';
 import { connectDatabase } from './infrastructure/database/postgres.connection';
 import { config } from './config/env';
+import { initRecordatorioCron } from './infrastructure/cron/recordatorio.cron';
 
 const startServer = async (): Promise<void> => {
   try {
     // Connect to database
     await connectDatabase();
+
+    // Initialize cron jobs
+    initRecordatorioCron();
 
     // Start server
     app.listen(config.port, () => {

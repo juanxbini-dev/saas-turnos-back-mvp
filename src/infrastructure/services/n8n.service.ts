@@ -20,6 +20,15 @@ export interface N8nWebhookResult {
   email_enviado: boolean;
 }
 
+export interface N8nRecordatorioPayload {
+  turno_id: string;
+  customer_name: string;
+  customer_phone: string;
+  service_name: string;
+  professional_name: string;
+  hora: string;
+}
+
 export class N8nService {
   private readonly webhookUrl: string;
   // Timeout generoso: fire-and-forget, no afecta al tiempo de respuesta al usuario
@@ -102,6 +111,47 @@ export class N8nService {
     }
 
     return resultado;
+  }
+
+  /**
+   * Envía recordatorio de turno a n8n.
+   * Retorna true si n8n respondió 2xx (el backend marcará recordatorio_enviado = true).
+   * Nunca propaga excepciones.
+   */
+  async enviarRecordatorio(payload: N8nRecordatorioPayload): Promise<boolean> {
+    if (!process.env.N8N_WEBHOOK_BASE_URL) return false;
+
+    const url = `${process.env.N8N_WEBHOOK_BASE_URL}/webhook/enviar-recordatorio`;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        logger.error('n8n respondió con error HTTP al enviar recordatorio', new Error(`HTTP ${response.status}`), {
+          turnoId: payload.turno_id, status: response.status
+        });
+        return false;
+      }
+
+      logger.info('Recordatorio enviado a n8n', { turnoId: payload.turno_id });
+      return true;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        logger.error('n8n timeout al enviar recordatorio', error, { turnoId: payload.turno_id });
+      } else {
+        logger.error('Error al enviar recordatorio a n8n', error, { turnoId: payload.turno_id });
+      }
+      return false;
+    }
   }
 
   /** Normaliza el teléfono al formato internacional requerido por WhatsApp Business API (Argentina: 54...). */

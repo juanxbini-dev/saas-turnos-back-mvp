@@ -1,5 +1,5 @@
 import { pool } from '../database/postgres.connection';
-import { ITurnoRepository, CreateTurnoData } from '../../domain/repositories/ITurnoRepository';
+import { ITurnoRepository, CreateTurnoData, TurnoRecordatorio } from '../../domain/repositories/ITurnoRepository';
 import { Turno, TurnoConDetalle } from '../../domain/entities/Turno';
 
 export class PostgresTurnoRepository implements ITurnoRepository {
@@ -223,6 +223,34 @@ export class PostgresTurnoRepository implements ITurnoRepository {
     ]);
     
     return result.rows[0];
+  }
+
+  async findConfirmadosDelDiaSinRecordatorio(): Promise<TurnoRecordatorio[]> {
+    const query = `
+      SELECT
+        t.id,
+        TO_CHAR(t.hora::time, 'HH24:MI') AS hora,
+        t.servicio,
+        c.nombre AS customer_name,
+        c.telefono AS customer_phone,
+        u.nombre AS professional_name
+      FROM turnos t
+      JOIN clientes c ON t.cliente_id = c.id
+      JOIN usuarios u ON t.usuario_id = u.id
+      WHERE t.fecha = CURRENT_DATE
+        AND t.estado = 'confirmado'
+        AND t.recordatorio_enviado = FALSE
+      ORDER BY t.hora ASC
+    `;
+    const result = await pool.query(query);
+    return result.rows;
+  }
+
+  async marcarRecordatorioEnviado(id: string): Promise<void> {
+    await pool.query(
+      'UPDATE turnos SET recordatorio_enviado = TRUE, updated_at = NOW() WHERE id = $1',
+      [id]
+    );
   }
 
   async marcarConfirmacionWhatsappEnviada(id: string): Promise<void> {

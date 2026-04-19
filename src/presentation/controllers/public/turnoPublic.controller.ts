@@ -106,7 +106,7 @@ export class TurnoPublicController {
             appointment_date: N8nService.formatearAppointmentDate(fecha, hora)
           });
           if (resultado.whatsapp_enviado) {
-            await turnoRepo.marcarWhatsappEnviado(turno.id);
+            await turnoRepo.marcarConfirmacionWhatsappEnviada(turno.id);
           }
           if (resultado.success) {
             console.log(`[n8n] ✅ Notificaciones enviadas — turno: ${turno.id} | WhatsApp: ${resultado.whatsapp_enviado ? '✅' : '❌'} | Email: ${resultado.email_enviado ? '✅' : '❌'}`);

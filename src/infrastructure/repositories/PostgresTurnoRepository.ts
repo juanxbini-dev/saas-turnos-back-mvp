@@ -8,7 +8,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       SELECT
         t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora,
         t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
-        t.empresa_id, t.origen, t.whatsapp_enviado, t.created_at, t.updated_at,
+        t.empresa_id, t.origen, t.confirmacion_whatsapp_enviada, t.created_at, t.updated_at,
         c.nombre as cliente_nombre, c.email as cliente_email,
         u.nombre as usuario_nombre, u.username as usuario_username
       FROM turnos t
@@ -28,7 +28,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       SELECT
         t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora,
         t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
-        t.empresa_id, t.origen, t.whatsapp_enviado, t.created_at, t.updated_at,
+        t.empresa_id, t.origen, t.confirmacion_whatsapp_enviada, t.created_at, t.updated_at,
         c.nombre as cliente_nombre, c.email as cliente_email,
         u.nombre as usuario_nombre, u.username as usuario_username
       FROM turnos t
@@ -53,7 +53,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       SELECT
         t.id, t.cliente_id, t.usuario_id, t.servicio_id, t.fecha, t.hora,
         t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
-        t.empresa_id, t.origen, t.whatsapp_enviado, t.created_at, t.updated_at,
+        t.empresa_id, t.origen, t.confirmacion_whatsapp_enviada, t.created_at, t.updated_at,
         c.nombre as cliente_nombre, c.email as cliente_email,
         u.nombre as usuario_nombre, u.username as usuario_username
       FROM turnos t
@@ -98,7 +98,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
         TO_CHAR(t.fecha::date, 'YYYY-MM-DD') as fecha,
         TO_CHAR(t.hora::time, 'HH24:MI') as hora,
         t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
-        t.empresa_id, t.origen, t.whatsapp_enviado, t.created_at, t.updated_at,
+        t.empresa_id, t.origen, t.confirmacion_whatsapp_enviada, t.created_at, t.updated_at,
         t.metodo_pago, t.descuento_porcentaje, t.total_final,
         COALESCE((
           SELECT SUM(vp.precio_total)
@@ -225,9 +225,9 @@ export class PostgresTurnoRepository implements ITurnoRepository {
     return result.rows[0];
   }
 
-  async marcarWhatsappEnviado(id: string): Promise<void> {
+  async marcarConfirmacionWhatsappEnviada(id: string): Promise<void> {
     await pool.query(
-      'UPDATE turnos SET whatsapp_enviado = TRUE, updated_at = NOW() WHERE id = $1',
+      'UPDATE turnos SET confirmacion_whatsapp_enviada = TRUE, updated_at = NOW() WHERE id = $1',
       [id]
     );
   }

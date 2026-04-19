@@ -27,7 +27,7 @@ export interface Turno {
   // Origen del turno
   origen?: 'web' | 'interno';
   // Notificación WhatsApp
-  whatsapp_enviado?: boolean;
+  confirmacion_whatsapp_enviada?: boolean;
 }
 
 export interface TurnoConDetalle extends Turno {

@@ -122,7 +122,7 @@ export class TurnosController {
 
       if (resultado.whatsapp_enviado) {
         const turnoRepo = new PostgresTurnoRepository();
-        await turnoRepo.marcarWhatsappEnviado(turno.id);
+        await turnoRepo.marcarConfirmacionWhatsappEnviada(turno.id);
       }
       if (resultado.success) {
         console.log(`[n8n] ✅ Notificaciones enviadas — turno: ${turno.id} | WhatsApp: ${resultado.whatsapp_enviado ? '✅' : '❌'} | Email: ${resultado.email_enviado ? '✅' : '❌'}`);

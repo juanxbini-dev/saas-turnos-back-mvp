@@ -92,6 +92,7 @@ export class TurnoPublicController {
       (async () => {
         try {
           const usuarioRepo = new PostgresUsuarioRepository();
+          const turnoRepo = new PostgresTurnoRepository();
           const profesional = await usuarioRepo.findById(profesional_id);
           const resultado = await this.n8nService.notificarTurnoCreado({
             appointment_id: turno.id,
@@ -104,6 +105,9 @@ export class TurnoPublicController {
             professional_name: profesional?.nombre || '',
             appointment_date: N8nService.formatearAppointmentDate(fecha, hora)
           });
+          if (resultado.whatsapp_enviado) {
+            await turnoRepo.marcarWhatsappEnviado(turno.id);
+          }
           if (resultado.success) {
             console.log(`[n8n] ✅ Notificaciones enviadas — turno: ${turno.id} | WhatsApp: ${resultado.whatsapp_enviado ? '✅' : '❌'} | Email: ${resultado.email_enviado ? '✅' : '❌'}`);
           } else {

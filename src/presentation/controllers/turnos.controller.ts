@@ -19,6 +19,7 @@ import { UpdateExcepcionUseCase } from '../../application/use-cases/disponibilid
 import { DeleteExcepcionUseCase } from '../../application/use-cases/disponibilidad/DeleteExcepcionUseCase';
 import { GetSlotsRangoUseCase } from '../../application/use-cases/turnos/GetSlotsRangoUseCase';
 import { IDisponibilidadRepository } from '../../domain/repositories/IDisponibilidadRepository';
+import { PostgresTurnoRepository } from '../../infrastructure/repositories/PostgresTurnoRepository';
 import { DateUtils } from '../../shared/utils/DateUtils';
 import { isFeatureEnabled, logDate } from '../../shared/config/featureFlags';
 
@@ -119,6 +120,10 @@ export class TurnosController {
         appointment_date: N8nService.formatearAppointmentDate(turno.fecha, turno.hora)
       });
 
+      if (resultado.whatsapp_enviado) {
+        const turnoRepo = new PostgresTurnoRepository();
+        await turnoRepo.marcarWhatsappEnviado(turno.id);
+      }
       if (resultado.success) {
         console.log(`[n8n] ✅ Notificaciones enviadas — turno: ${turno.id} | WhatsApp: ${resultado.whatsapp_enviado ? '✅' : '❌'} | Email: ${resultado.email_enviado ? '✅' : '❌'}`);
       } else {

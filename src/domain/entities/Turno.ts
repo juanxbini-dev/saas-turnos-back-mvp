@@ -26,6 +26,8 @@ export interface Turno {
   finalizado_por_id?: string;
   // Origen del turno
   origen?: 'web' | 'interno';
+  // Notificación WhatsApp
+  whatsapp_enviado?: boolean;
 }
 
 export interface TurnoConDetalle extends Turno {

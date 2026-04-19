@@ -15,5 +15,6 @@ export interface ITurnoRepository {
   create(data: CreateTurnoData): Promise<Turno>;
   updateEstado(id: string, estado: 'pendiente' | 'confirmado' | 'completado' | 'cancelado'): Promise<Turno>;
   finalizar(id: string, data: Partial<FinalizarTurnoData>): Promise<Turno>;
+  marcarWhatsappEnviado(id: string): Promise<void>;
   completarVencidos(): Promise<number>;
 }

@@ -103,7 +103,8 @@ export class CreateTurnoPublicUseCase {
       excepciones,
       turnosExistentes,
       fecha,
-      bloqueosSlots
+      bloqueosSlots,
+      servicio.duracion || 0
     );
 
     if (!slotsDisponibles.includes(hora)) {

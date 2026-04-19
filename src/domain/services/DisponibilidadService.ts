@@ -325,7 +325,8 @@ export class DisponibilidadService {
       }
     }
 
-    const turnosConfirmados = turnosExistentes.filter(t => t.estado === 'confirmado');
+    // Incluir completado además de confirmado: slots de turnos ya realizados también están físicamente ocupados
+    const turnosConfirmados = turnosExistentes.filter(t => t.estado === 'confirmado' || t.estado === 'completado');
 
     const slotsFinales = slots.filter(slot => {
       const slotMin = toMin(slot);

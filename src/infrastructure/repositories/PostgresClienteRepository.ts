@@ -199,6 +199,24 @@ export class PostgresClienteRepository implements IClienteRepository {
     return this.mapRowToCliente(result.rows[0]);
   }
 
+  async findByTelefono(telefono: string, empresaId: string): Promise<Cliente | null> {
+    const result = await pool.query(
+      `SELECT id, nombre, email, telefono, empresa_id, activo, created_at, updated_at
+       FROM clientes WHERE empresa_id = $1 AND telefono = $2 LIMIT 1`,
+      [empresaId, telefono]
+    );
+    return result.rows[0] ? this.mapRowToCliente(result.rows[0]) : null;
+  }
+
+  async findByEmail(email: string, empresaId: string): Promise<Cliente | null> {
+    const result = await pool.query(
+      `SELECT id, nombre, email, telefono, empresa_id, activo, created_at, updated_at
+       FROM clientes WHERE empresa_id = $1 AND email = $2 LIMIT 1`,
+      [empresaId, email]
+    );
+    return result.rows[0] ? this.mapRowToCliente(result.rows[0]) : null;
+  }
+
   async getClienteTurnos(clienteId: string, empresaId: string): Promise<TurnoResumen[]> {
     const query = `
       SELECT

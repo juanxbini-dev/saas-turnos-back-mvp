@@ -21,36 +21,35 @@ export class ValidateClienteUseCase {
   constructor(private clienteRepository: IClienteRepository) {}
 
   async execute(request: ValidateClienteRequest): Promise<ValidateClienteResponse> {
-    const { email, telefono, nombre, empresa_id } = request;
+    const { email, telefono, empresa_id } = request;
 
-    if (!email && !telefono && !nombre) {
+    if (!telefono && !email) {
       return { exists: false };
     }
 
-    // Buscar cliente por email, teléfono o nombre (con al menos uno provisto)
-    const cliente = await this.clienteRepository.findByEmailOrTelefono(email, empresa_id, telefono, nombre);
-    
+    // Prioridad: teléfono primero, luego email
+    let cliente = null;
+    if (telefono) {
+      cliente = await this.clienteRepository.findByTelefono(telefono, empresa_id);
+    }
+    if (!cliente && email) {
+      cliente = await this.clienteRepository.findByEmail(email, empresa_id);
+    }
 
     if (!cliente) {
       return { exists: false };
     }
 
-    // Por ahora, retornamos datos básicos del cliente
     const clienteData: ValidateClienteResponse['cliente'] = {
       id: cliente.id,
       nombre: cliente.nombre,
       email: cliente.email
     };
 
-    // Solo agregar teléfono si existe
     if (cliente.telefono) {
       clienteData.telefono = cliente.telefono;
     }
 
-
-    return {
-      exists: true,
-      cliente: clienteData
-    };
+    return { exists: true, cliente: clienteData };
   }
 }

@@ -59,15 +59,16 @@ export class CreateTurnoPublicUseCase {
     // Crear o usar cliente existente
     let finalClienteId = cliente_id;
     if (!finalClienteId) {
-      // Buscar cliente existente por email
-      const existingCliente = await this.clienteRepository.findByEmailOrTelefono(
-        cliente_data.email, 
-        servicio.empresa_id,
-        cliente_data.telefono
-      );
-      
+      // Prioridad: teléfono primero, luego email
+      let existingCliente = null;
+      if (cliente_data.telefono) {
+        existingCliente = await this.clienteRepository.findByTelefono(cliente_data.telefono, servicio.empresa_id);
+      }
+      if (!existingCliente && cliente_data.email) {
+        existingCliente = await this.clienteRepository.findByEmail(cliente_data.email, servicio.empresa_id);
+      }
+
       if (existingCliente) {
-        // Usar cliente existente
         finalClienteId = existingCliente.id;
         console.log('✅ Usando cliente existente:', existingCliente.id);
       } else {

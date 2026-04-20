@@ -325,8 +325,8 @@ export class DisponibilidadService {
       }
     }
 
-    // Incluir completado además de confirmado: slots de turnos ya realizados también están físicamente ocupados
-    const turnosConfirmados = turnosExistentes.filter(t => t.estado === 'confirmado' || t.estado === 'completado');
+    // Bloquear todos los turnos no cancelados (pendiente, confirmado, completado)
+    const turnosActivos = turnosExistentes.filter(t => t.estado !== 'cancelado');
 
     const slotsFinales = slots.filter(slot => {
       const slotMin = toMin(slot);
@@ -341,7 +341,7 @@ export class DisponibilidadService {
         }
 
         // Verificar que el rango [slot, slot+duracion) no se superponga con ningún turno
-        return !turnosConfirmados.some(t => {
+        return !turnosActivos.some(t => {
           const tStart = toMin(t.hora);
           const tEnd = tStart + (t.duracion_minutos || 60);
           return tStart < slotEndMin && tEnd > slotMin;
@@ -349,7 +349,7 @@ export class DisponibilidadService {
       }
 
       // Sin duración específica: comportamiento legacy (match exacto)
-      const estaOcupado = turnosConfirmados.some(t => t.hora.slice(0, 5) === slot);
+      const estaOcupado = turnosActivos.some(t => t.hora.slice(0, 5) === slot);
       logDate('Verificando slot:', { slot, estaOcupado });
       return !estaOcupado;
     });
@@ -383,7 +383,7 @@ export class DisponibilidadService {
     });
 
     logDate('Slots generados:', slots);
-    logDate('Turnos confirmados:', turnosConfirmados.map(t => t.hora.slice(0, 5)));
+    logDate('Turnos confirmados:', turnosActivos.map(t => t.hora.slice(0, 5)));
     logDate('Bloqueos del día:', bloqueosDelDia);
     logDate('Slots finales disponibles:', slotsSinBloqueos);
     logDate('calcularSlotsDisponibles - FIN');

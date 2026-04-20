@@ -79,7 +79,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
              estado, notas, servicio, servicio_precio as precio, duracion as duracion_minutos,
              empresa_id, created_at, updated_at
       FROM turnos
-      WHERE usuario_id = $1 AND fecha = $2 AND estado = 'confirmado'
+      WHERE usuario_id = $1 AND fecha = $2 AND estado NOT IN ('cancelado')
       ORDER BY hora ASC
     `;
     
@@ -113,7 +113,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       WHERE t.usuario_id = $1
       AND t.fecha >= $2
       AND t.fecha <= $3
-      AND t.estado IN ('confirmado', 'completado')
+      AND t.estado NOT IN ('cancelado')
       ORDER BY t.fecha ASC, t.hora ASC
     `;
     

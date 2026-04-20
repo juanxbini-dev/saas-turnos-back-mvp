@@ -49,7 +49,8 @@ const getDisponibilidadMesUseCase = new GetDisponibilidadMesUseCase(
   disponibilidadRepository,
   disponibilidadService,
   turnoRepository,
-  usuarioServicioRepository
+  usuarioServicioRepository,
+  bloqueoSlotRepository
 );
 const getSlotsDisponiblesUseCase = new GetSlotsDisponiblesUseCase(
   disponibilidadRepository,

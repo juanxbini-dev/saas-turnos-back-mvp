@@ -14,7 +14,9 @@ const landingController = new LandingPublicController();
 router.get('/empresas/:slug/profesionales', profesionalController.getProfesionales);
 router.get('/profesionales/:profesionalId/servicios', profesionalController.getServicios);
 router.post('/clientes/validate', clienteController.validateCliente);
+router.get('/clientes/turnos', turnoController.getTurnosCliente);
 router.post('/turnos', turnoController.createTurno);
+router.post('/turnos/:id/cancelar', turnoController.cancelarTurnoPublico);
 
 // Landing pública con configuracion dinámica
 router.get('/landing/:empresaSlug', landingController.getLanding);

@@ -28,4 +28,5 @@ export interface ITurnoRepository {
   findConfirmadosDelDiaSinRecordatorio(): Promise<TurnoRecordatorio[]>;
   marcarRecordatorioEnviado(id: string): Promise<void>;
   completarVencidos(): Promise<number>;
+  findByClienteAndProfesional(clienteId: string, profesionalId: string): Promise<TurnoConDetalle[]>;
 }

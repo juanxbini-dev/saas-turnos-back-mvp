@@ -262,14 +262,39 @@ export class PostgresTurnoRepository implements ITurnoRepository {
 
   async completarVencidos(): Promise<number> {
     const query = `
-      UPDATE turnos 
+      UPDATE turnos
       SET estado = 'completado', updated_at = NOW()
-      WHERE estado = 'confirmado' 
+      WHERE estado = 'confirmado'
         AND (fecha::date + hora::time + INTERVAL '45 minutes') < NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires'
       RETURNING id
     `;
-    
+
     const result = await pool.query(query);
     return result.rowCount || 0;
+  }
+
+  async findByClienteAndProfesional(clienteId: string, profesionalId: string): Promise<TurnoConDetalle[]> {
+    const query = `
+      SELECT
+        t.id, t.cliente_id, t.usuario_id, t.servicio_id,
+        TO_CHAR(t.fecha::date, 'YYYY-MM-DD') as fecha,
+        TO_CHAR(t.hora::time, 'HH24:MI') as hora,
+        t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
+        t.empresa_id,
+        c.nombre as cliente_nombre, c.email as cliente_email, c.telefono as cliente_telefono,
+        u.nombre as usuario_nombre
+      FROM turnos t
+      JOIN clientes c ON t.cliente_id = c.id
+      JOIN usuarios u ON t.usuario_id = u.id
+      WHERE t.cliente_id = $1 AND t.usuario_id = $2 AND t.estado != 'cancelado'
+      ORDER BY t.fecha DESC, t.hora DESC
+      LIMIT 20
+    `;
+    const result = await pool.query(query, [clienteId, profesionalId]);
+    return result.rows.map(row => ({
+      ...row,
+      duracion_minutos: row.duracion,
+      precio: row.servicio_precio
+    }));
   }
 }

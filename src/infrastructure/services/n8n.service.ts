@@ -20,6 +20,19 @@ export interface N8nWebhookResult {
   email_enviado: boolean;
 }
 
+export interface N8nCancelacionPayload {
+  turno_id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  service_name: string;
+  professional_id: string;
+  professional_name: string;
+  appointment_date: string;
+  fecha: string;
+  hora: string;
+}
+
 export interface N8nRecordatorioPayload {
   turno_id: string;
   customer_name: string;
@@ -151,6 +164,32 @@ export class N8nService {
         logger.error('Error al enviar recordatorio a n8n', error, { turnoId: payload.turno_id });
       }
       return false;
+    }
+  }
+
+  /**
+   * Notifica a n8n que se canceló un turno desde la web pública.
+   * Fire-and-forget — nunca propaga excepciones.
+   */
+  async notificarCancelacionTurno(payload: N8nCancelacionPayload): Promise<void> {
+    if (!process.env.N8N_WEBHOOK_BASE_URL) return;
+
+    const url = `${process.env.N8N_WEBHOOK_BASE_URL}/webhook/cancelar-turno`;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      logger.info('Notificación cancelación enviada a n8n', { turnoId: payload.turno_id, status: response.status });
+    } catch (error: any) {
+      logger.error('Error al notificar cancelación a n8n', error, { turnoId: payload.turno_id });
     }
   }
 

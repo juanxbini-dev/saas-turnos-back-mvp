@@ -60,7 +60,8 @@ export class CreateTurnoUseCase {
       ? (servicioParaValidar.duracion_personalizada || servicioParaValidar.duracion_minutos || 0)
       : 0;
 
-    const esFechaPasada = new Date(data.fecha + 'T00:00:00') < new Date(new Date().toDateString());
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const esFechaPasada = data.fecha < todayStr;
 
     if (isAdmin && esFechaPasada) {
       // Admin cargando un turno retroactivo: solo verificar solapamiento con turnos existentes

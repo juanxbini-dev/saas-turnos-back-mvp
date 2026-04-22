@@ -66,7 +66,7 @@ export class TurnosController {
   async createTurno(req: Request, res: Response) {
     try {
       const { empresaId, id: usuarioId, roles } = req.user!;
-      const isAdmin = roles.includes('admin');
+      const isAdmin = roles.includes('admin') || roles.includes('super_admin');
 
       const turno = await this.createTurnoUseCase.execute(req.body, usuarioId, isAdmin);
 

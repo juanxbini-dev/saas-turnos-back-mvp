@@ -28,6 +28,7 @@ export interface N8nCancelacionPayload {
   service_name: string;
   professional_id: string;
   professional_name: string;
+  professional_phone: string;
   appointment_date: string;
   fecha: string;
   hora: string;

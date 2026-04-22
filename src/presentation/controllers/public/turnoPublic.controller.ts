@@ -199,9 +199,17 @@ export class TurnoPublicController {
         empresa_id: empresa_id as string
       });
 
-      // Fire-and-forget: notificar cancelación a n8n
+      // Fire-and-forget: notificar cancelación a n8n solo si el profesional tiene teléfono
       (async () => {
         try {
+          const usuarioRepo = new PostgresUsuarioRepository();
+          const profesional = await usuarioRepo.findById(turno.profesional_id);
+
+          if (!profesional?.telefono) {
+            console.log(`[n8n] Cancelación sin notificar — profesional ${turno.profesional_id} no tiene teléfono`);
+            return;
+          }
+
           await this.n8nService.notificarCancelacionTurno({
             turno_id: turno.id,
             customer_name: turno.cliente_nombre,
@@ -210,6 +218,7 @@ export class TurnoPublicController {
             service_name: turno.servicio,
             professional_id: turno.profesional_id,
             professional_name: turno.profesional_nombre,
+            professional_phone: N8nService.normalizarTelefono(profesional.telefono),
             appointment_date: N8nService.formatearAppointmentDate(turno.fecha, turno.hora),
             fecha: turno.fecha,
             hora: turno.hora

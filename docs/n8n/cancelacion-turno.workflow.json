@@ -1,0 +1,82 @@
+{
+  "name": "Cancelacion Turno - Notificar Profesional WP",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cancelar-turno",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "cancelar-turno"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "REEMPLAZAR_CON_PHONE_NUMBER_ID",
+        "to": "={{ $json.body.professional_phone }}",
+        "messageType": "template",
+        "name": "cancelacion",
+        "language": "es",
+        "bodyParametersUi": {
+          "parameter": [
+            { "type": "text", "value": "={{ $json.body.professional_name }}" },
+            { "type": "text", "value": "={{ $json.body.customer_name }}" },
+            { "type": "text", "value": "={{ $json.body.service_name }}" },
+            { "type": "text", "value": "={{ $json.body.fecha }}" },
+            { "type": "text", "value": "={{ $json.body.hora }}" },
+            { "type": "text", "value": "={{ $json.body.customer_phone }}" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Enviar WP Cancelacion",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CON_CREDENTIAL_ID",
+          "name": "WhatsApp Business API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true }"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [760, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Enviar WP Cancelacion", "type": "main", "index": 0 }]
+      ]
+    },
+    "Enviar WP Cancelacion": {
+      "main": [
+        [{ "node": "Responder OK", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "turnos-saas"
+  },
+  "tags": []
+}

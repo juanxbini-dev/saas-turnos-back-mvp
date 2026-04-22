@@ -40,3 +40,6 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+
+# n8n workflows (configuración local, no se versiona)
+docs/n8n/

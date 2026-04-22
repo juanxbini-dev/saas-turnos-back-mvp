@@ -77,7 +77,7 @@ export class UsuariosController {
       const user = req.user as AuthenticatedUser;
       const { nombre, username, password, email, rol, telefono } = req.body;
 
-      if (!nombre || !username || !password || !email || !rol) {
+      if (!nombre || !username || !password || !email || !rol || !telefono) {
         res.status(400).json({
           success: false,
           message: 'Todos los campos son requeridos'

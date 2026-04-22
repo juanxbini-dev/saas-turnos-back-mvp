@@ -60,15 +60,14 @@ export class CreateTurnoUseCase {
       ? (servicioParaValidar.duracion_personalizada || servicioParaValidar.duracion_minutos || 0)
       : 0;
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const esFechaPasada = data.fecha < todayStr;
-
-    if (isAdmin && esFechaPasada) {
-      // Admin cargando un turno retroactivo: solo verificar solapamiento con turnos existentes
+    if (isAdmin) {
+      // Admin: solo verificar solapamiento con turnos existentes, sin restricción de horario configurado.
+      // El frontend ya actúa como primera barrera para slots futuros fuera del horario.
       const [horaH, horaM] = data.hora.split(':').map(Number);
       const inicioMinutos = horaH * 60 + horaM;
       const finMinutos = inicioMinutos + (duracionParaValidar || 60);
-      const hayConflicto = turnosExistentes.some(t => {
+      const turnosActivos = turnosExistentes.filter(t => t.estado !== 'cancelado');
+      const hayConflicto = turnosActivos.some(t => {
         const [tH, tM] = t.hora.split(':').map(Number);
         const tInicio = tH * 60 + tM;
         const tFin = tInicio + (t.duracion_minutos || 60);

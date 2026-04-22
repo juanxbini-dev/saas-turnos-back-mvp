@@ -231,8 +231,8 @@ export class ServiciosController {
   async getMisServicios(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user as AuthenticatedUser;
-      const isSuperAdmin = user.roles.includes('super_admin');
-      const efectivoUsuarioId = isSuperAdmin && req.query.usuarioId
+      const isPrivileged = user.roles.includes('super_admin') || user.roles.includes('admin');
+      const efectivoUsuarioId = isPrivileged && req.query.usuarioId
         ? req.query.usuarioId as string
         : user.id;
       const misServicios = await this.getMisServiciosUseCase.execute(efectivoUsuarioId);

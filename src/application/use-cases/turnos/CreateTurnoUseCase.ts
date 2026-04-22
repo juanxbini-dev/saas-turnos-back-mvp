@@ -60,26 +60,44 @@ export class CreateTurnoUseCase {
       ? (servicioParaValidar.duracion_personalizada || servicioParaValidar.duracion_minutos || 0)
       : 0;
 
-    const slotDisponible = this.disponibilidadService.validarSlotDisponible(
-      disponibilidades,
-      excepciones,
-      turnosExistentes,
-      vacaciones,
-      data.fecha,
-      data.hora,
-      bloqueosSlots,
-      duracionParaValidar
-    );
+    const esFechaPasada = new Date(data.fecha + 'T00:00:00') < new Date(new Date().toDateString());
 
-    turnoLogger.debug('Resultado validación slot', { 
-      slotDisponible, 
-      fecha: data.fecha, 
-      hora: data.hora 
-    });
+    if (isAdmin && esFechaPasada) {
+      // Admin cargando un turno retroactivo: solo verificar solapamiento con turnos existentes
+      const [horaH, horaM] = data.hora.split(':').map(Number);
+      const inicioMinutos = horaH * 60 + horaM;
+      const finMinutos = inicioMinutos + (duracionParaValidar || 60);
+      const hayConflicto = turnosExistentes.some(t => {
+        const [tH, tM] = t.hora.split(':').map(Number);
+        const tInicio = tH * 60 + tM;
+        const tFin = tInicio + (t.duracion_minutos || 60);
+        return inicioMinutos < tFin && finMinutos > tInicio;
+      });
+      if (hayConflicto) {
+        throw Object.assign(new Error('Ya existe un turno en ese horario'), { statusCode: 400 });
+      }
+    } else {
+      const slotDisponible = this.disponibilidadService.validarSlotDisponible(
+        disponibilidades,
+        excepciones,
+        turnosExistentes,
+        vacaciones,
+        data.fecha,
+        data.hora,
+        bloqueosSlots,
+        duracionParaValidar
+      );
 
-    if (!slotDisponible) {
-      turnoLogger.error('Slot no disponible', undefined, { fecha: data.fecha, hora: data.hora });
-      throw Object.assign(new Error('El slot no está disponible'), { statusCode: 400 });
+      turnoLogger.debug('Resultado validación slot', {
+        slotDisponible,
+        fecha: data.fecha,
+        hora: data.hora
+      });
+
+      if (!slotDisponible) {
+        turnoLogger.error('Slot no disponible', undefined, { fecha: data.fecha, hora: data.hora });
+        throw Object.assign(new Error('El slot no está disponible'), { statusCode: 400 });
+      }
     }
 
     // Reutilizar el servicio ya buscado para el snapshot del turno

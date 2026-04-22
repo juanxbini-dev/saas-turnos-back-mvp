@@ -75,7 +75,7 @@ export class UsuariosController {
   async createUsuario(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user as AuthenticatedUser;
-      const { nombre, username, password, email, rol } = req.body;
+      const { nombre, username, password, email, rol, telefono } = req.body;
 
       if (!nombre || !username || !password || !email || !rol) {
         res.status(400).json({
@@ -91,7 +91,8 @@ export class UsuariosController {
         password,
         email,
         empresa_id: user.empresaId,
-        rol
+        rol,
+        telefono: telefono || null
       });
 
       res.status(201).json({
@@ -112,7 +113,7 @@ export class UsuariosController {
   async updateDatos(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { nombre, username, email, comision_turno, comision_producto } = req.body;
+      const { nombre, username, email, comision_turno, comision_producto, telefono } = req.body;
 
       if (!nombre || !username || !email) {
         res.status(400).json({
@@ -135,7 +136,8 @@ export class UsuariosController {
         username,
         email,
         comision_turno,
-        comision_producto
+        comision_producto,
+        telefono: telefono || null
       });
 
       res.json({

@@ -16,6 +16,7 @@ export interface User {
   empresa_activa?: boolean;
   avatar_url?: string | null;
   avatar_public_id?: string | null;
+  telefono?: string | null;
 }
 
 export interface UsuarioPublico {
@@ -32,4 +33,5 @@ export interface UsuarioPublico {
   comision_turno?: number;
   comision_producto?: number;
   avatar_url?: string | null;
+  telefono?: string | null;
 }

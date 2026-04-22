@@ -10,6 +10,7 @@ export interface CreateUsuarioData {
   rol: 'admin' | 'staff';
   comision_turno?: number;
   comision_producto?: number;
+  telefono?: string | null;
 }
 
 export interface UpdateDatosData {
@@ -18,6 +19,7 @@ export interface UpdateDatosData {
   email: string;
   comision_turno?: number;
   comision_producto?: number;
+  telefono?: string | null;
 }
 
 export interface IUsuarioRepository {

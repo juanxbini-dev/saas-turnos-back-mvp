@@ -173,9 +173,14 @@ export class N8nService {
    * Fire-and-forget — nunca propaga excepciones.
    */
   async notificarCancelacionTurno(payload: N8nCancelacionPayload): Promise<void> {
-    if (!process.env.N8N_WEBHOOK_BASE_URL) return;
+    if (!process.env.N8N_WEBHOOK_BASE_URL) {
+      logger.error('N8N_WEBHOOK_BASE_URL no está configurada — cancelación sin notificar', new Error('Missing env'), { turnoId: payload.turno_id });
+      return;
+    }
 
     const url = `${process.env.N8N_WEBHOOK_BASE_URL}/webhook/cancelar-turno`;
+    logger.info('Enviando notificación cancelación a n8n', { turnoId: payload.turno_id, url, professionalPhone: payload.professional_phone });
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -190,7 +195,13 @@ export class N8nService {
       clearTimeout(timeoutId);
       logger.info('Notificación cancelación enviada a n8n', { turnoId: payload.turno_id, status: response.status });
     } catch (error: any) {
-      logger.error('Error al notificar cancelación a n8n', error, { turnoId: payload.turno_id });
+      if (error.name === 'AbortError') {
+        logger.error('n8n timeout al notificar cancelación', error, { turnoId: payload.turno_id });
+      } else if (error.cause?.code === 'ECONNREFUSED' || error.cause?.code === 'ENOTFOUND') {
+        logger.error('n8n no disponible al notificar cancelación', error, { turnoId: payload.turno_id });
+      } else {
+        logger.error('Error al notificar cancelación a n8n', error, { turnoId: payload.turno_id });
+      }
     }
   }
 

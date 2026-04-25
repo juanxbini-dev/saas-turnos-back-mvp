@@ -170,33 +170,6 @@ export class DisponibilidadService {
       useNewUtils
     });
 
-    // Primero verificar si hay una excepción que marque el día como NO disponible
-    const excepcionNoDisponible = excepciones.find(exc => {
-      const fechaExcepcion = useNewUtils ? DateUtils.normalizeDate(exc.fecha) : (() => {
-        if (typeof exc.fecha === 'string') {
-          return exc.fecha.slice(0, 10);
-        }
-        const d = exc.fecha as Date;
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-      })();
-      logDate('Verificando excepción NO disponible:', { 
-        excFecha: exc.fecha, 
-        fechaExcepcion, 
-        fechaParametro: fecha, 
-        disponible: exc.disponible,
-        coincide: fechaExcepcion === fecha
-      });
-      return fechaExcepcion === fecha && !exc.disponible;
-    });
-
-    if (excepcionNoDisponible) {
-      logDate('Día marcado como NO disponible por excepción, retornando array vacío');
-      return [];
-    }
-
     // Normalizar fecha de una excepción (helper inline reutilizable)
     const normalizarFechaExc = (excFecha: string | Date): string => {
       if (useNewUtils) return DateUtils.normalizeDate(excFecha as string);
@@ -205,18 +178,38 @@ export class DisponibilidadService {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
+    // Calcular adicionales ANTES del early return: slots habilitados individualmente
+    // tienen prioridad sobre el bloqueo de día completo
+    const excepcionesAdicionales = excepciones.filter(exc =>
+      normalizarFechaExc(exc.fecha) === fecha &&
+      exc.disponible &&
+      exc.tipo === 'adicional'
+    );
+
+    // Verificar si hay una excepción que marque el día como NO disponible
+    const excepcionNoDisponible = excepciones.find(exc => {
+      const fechaExcepcion = normalizarFechaExc(exc.fecha);
+      logDate('Verificando excepción NO disponible:', {
+        excFecha: exc.fecha,
+        fechaExcepcion,
+        fechaParametro: fecha,
+        disponible: exc.disponible,
+        coincide: fechaExcepcion === fecha
+      });
+      return fechaExcepcion === fecha && !exc.disponible;
+    });
+
+    // Early return solo si no hay adicionales que sobreescriban el bloqueo del día
+    if (excepcionNoDisponible && excepcionesAdicionales.length === 0) {
+      logDate('Día marcado como NO disponible por excepción, retornando array vacío');
+      return [];
+    }
+
     // Excepción de tipo reemplazo: sustituye el horario semanal del día
     const excepcionReemplazo = excepciones.find(exc =>
       normalizarFechaExc(exc.fecha) === fecha &&
       exc.disponible &&
       (!exc.tipo || exc.tipo === 'reemplazo')
-    );
-
-    // Excepciones de tipo adicional: agregan slots fuera del horario semanal
-    const excepcionesAdicionales = excepciones.filter(exc =>
-      normalizarFechaExc(exc.fecha) === fecha &&
-      exc.disponible &&
-      exc.tipo === 'adicional'
     );
 
     logDate('Excepción reemplazo encontrada:', excepcionReemplazo);
@@ -226,7 +219,12 @@ export class DisponibilidadService {
     let horaFin: string;
     let intervaloMinutos: number;
 
-    if (excepcionReemplazo?.hora_inicio && excepcionReemplazo?.hora_fin && excepcionReemplazo?.intervalo_minutos) {
+    if (excepcionNoDisponible) {
+      // Día no disponible pero con slots adicionales habilitados: omitir horario base
+      horaInicio = '';
+      horaFin = '';
+      intervaloMinutos = 0;
+    } else if (excepcionReemplazo?.hora_inicio && excepcionReemplazo?.hora_fin && excepcionReemplazo?.intervalo_minutos) {
       horaInicio = excepcionReemplazo.hora_inicio;
       horaFin = excepcionReemplazo.hora_fin;
       intervaloMinutos = excepcionReemplazo.intervalo_minutos;

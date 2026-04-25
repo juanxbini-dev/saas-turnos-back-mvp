@@ -61,8 +61,8 @@ export class DisponibilidadService {
         continue;
       }
 
-      // Primero verificar si hay una excepción para este día (prioridad máxima)
-      const excepcion = excepciones.find(exc => {
+      // Verificar excepciones para este día (pueden ser múltiples)
+      const excepcionesDelDia = excepciones.filter(exc => {
         const fechaExcepcion = useNewUtils ? DateUtils.normalizeDate(exc.fecha) : (() => {
           if (typeof exc.fecha === 'string') {
             return exc.fecha.slice(0, 10);
@@ -75,17 +75,17 @@ export class DisponibilidadService {
         })();
         return fechaExcepcion === fechaStr;
       });
-      
-      if (excepcion) {
-        logDate(`Excepción encontrada para ${fechaStr}:`, excepcion);
-        if (excepcion.disponible) {
-          // Si la excepción dice que está disponible, agregar el día
+
+      if (excepcionesDelDia.length > 0) {
+        // El día tiene slots disponibles si al menos una excepción lo habilita
+        // (una excepción adicional prevalece sobre el bloqueo del día completo)
+        const tieneSlotHabilitado = excepcionesDelDia.some(exc => exc.disponible);
+        if (tieneSlotHabilitado) {
           logDate(`Día ${fechaStr} disponible por excepción`);
           diasDisponibles.push(fechaStr);
         } else {
           logDate(`Día ${fechaStr} NO disponible por excepción`);
         }
-        // Si disponible = false, no se agrega el día (se ignora la disponibilidad semanal)
         continue;
       }
 

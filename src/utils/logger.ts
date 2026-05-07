@@ -1,48 +1,45 @@
 import winston from 'winston';
+import { AsyncLocalStorage } from 'async_hooks';
 
-const logLevel = process.env.LOG_LEVEL || 'info';
+export const requestStore = new AsyncLocalStorage<{ requestId: string; userId?: string }>();
+
+const REDACTED_FIELDS = ['password', 'token', 'accessToken', 'refreshToken', 'authorization'];
+
+const redact = winston.format((info) => {
+  REDACTED_FIELDS.forEach((field) => {
+    if ((info as any)[field]) (info as any)[field] = '[REDACTED]';
+    if ((info as any).body?.[field]) (info as any).body[field] = '[REDACTED]';
+  });
+  return info;
+});
+
+const addRequestContext = winston.format((info) => {
+  const store = requestStore.getStore();
+  if (store?.requestId) (info as any).requestId = store.requestId;
+  if (store?.userId) (info as any).userId = store.userId;
+  return info;
+});
 
 export const logger = winston.createLogger({
-  level: logLevel,
+  level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
+    redact(),
+    addRequestContext(),
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
   defaultMeta: { service: 'turnos-backend' },
-  transports: [
-    new winston.transports.File({ 
-      filename: 'logs/error.log', 
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5
-    }),
-    new winston.transports.File({ 
-      filename: 'logs/combined.log',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5
-    })
-  ]
+  transports: [new winston.transports.Console()],
 });
 
-// Consola siempre activa — en Railway los archivos son efímeros e invisibles
-logger.add(new winston.transports.Console({
-  format: process.env.NODE_ENV === 'production'
-    ? winston.format.combine(winston.format.timestamp(), winston.format.json())
-    : winston.format.combine(winston.format.colorize(), winston.format.simple())
-}));
-
-// Create component-specific logger
 export const createLogger = (component: string) => ({
-  debug: (message: string, meta?: any) => 
+  debug: (message: string, meta?: any) =>
     logger.debug(message, { component, ...meta }),
-  
-  info: (message: string, meta?: any) => 
+  info: (message: string, meta?: any) =>
     logger.info(message, { component, ...meta }),
-  
-  warn: (message: string, meta?: any) => 
+  warn: (message: string, meta?: any) =>
     logger.warn(message, { component, ...meta }),
-  
-  error: (message: string, error?: Error, meta?: any) => 
-    logger.error(message, { error: error?.message, stack: error?.stack, component, ...meta })
+  error: (message: string, error?: Error, meta?: any) =>
+    logger.error(message, { error: error?.message, stack: error?.stack, component, ...meta }),
 });

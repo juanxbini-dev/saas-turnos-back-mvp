@@ -9,6 +9,9 @@ export interface CreateVentaDirectaItem {
   producto_id: string;
   cantidad: number;
   precio_unitario: number;
+  precio_costo?: number;
+  es_venta_costo?: boolean;
+  fecha_venta?: string | null;
 }
 
 export interface CreateVentaDirectaData {
@@ -77,6 +80,9 @@ export class CreateVentaDirectaUseCase {
         comision_porcentaje: comisionPct,
         comision_monto: comisionMonto,
         neto_vendedor: netoVendedor,
+        fecha_venta: item.fecha_venta ?? null,
+        es_venta_costo: item.es_venta_costo ?? false,
+        costo_unitario_snapshot: item.es_venta_costo ? item.precio_costo ?? null : null,
       });
 
       if (this.catalogoProductoRepository) {

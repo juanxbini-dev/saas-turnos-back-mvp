@@ -42,6 +42,9 @@ export interface VentaProducto {
   comision_porcentaje: number;
   comision_monto: number;
   neto_vendedor: number;
+  fecha_venta?: string | null;
+  es_venta_costo?: boolean;
+  costo_unitario_snapshot?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,4 +64,7 @@ export interface CreateVentaProductoData {
   comision_porcentaje: number;
   comision_monto: number;
   neto_vendedor: number;
+  fecha_venta?: string | null;
+  es_venta_costo?: boolean;
+  costo_unitario_snapshot?: number | null;
 }

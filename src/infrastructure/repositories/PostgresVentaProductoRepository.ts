@@ -1,5 +1,5 @@
 import { pool } from '../database/postgres.connection';
-import { IVentaProductoRepository } from '../../domain/repositories/IVentaProductoRepository';
+import { IVentaProductoRepository, VentaProductoFiltros, VentaProductoConVendedor, UpdateVentaProductoData } from '../../domain/repositories/IVentaProductoRepository';
 import { VentaProducto, CreateVentaProductoData } from '../../domain/entities/Comision';
 import { generarId } from '../../shared/utils/calculos.utils';
 
@@ -10,9 +10,10 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
         id, empresa_id, vendedor_id, cliente_id, turno_id, venta_grupo_id,
         producto_id, nombre_producto, cantidad, precio_unitario, precio_total,
         metodo_pago, comision_porcentaje, comision_monto, neto_vendedor,
+        fecha_venta, es_venta_costo, costo_unitario_snapshot,
         created_at, updated_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW(),NOW())
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW(),NOW())
       RETURNING *
     `;
     const result = await pool.query(query, [
@@ -23,6 +24,9 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       data.nombre_producto, data.cantidad, data.precio_unitario, data.precio_total,
       data.metodo_pago ?? null,
       data.comision_porcentaje, data.comision_monto, data.neto_vendedor,
+      data.fecha_venta ?? null,
+      data.es_venta_costo ?? false,
+      data.costo_unitario_snapshot ?? null,
     ]);
     return result.rows[0];
   }
@@ -61,10 +65,92 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
        LEFT JOIN clientes c ON c.id = vp.cliente_id
        WHERE vp.vendedor_id = $1
          AND vp.empresa_id = $2
-         AND DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN $3 AND $4
-       ORDER BY vp.created_at DESC`,
+         AND vp.fecha_venta BETWEEN $3 AND $4
+       ORDER BY vp.fecha_venta DESC`,
       [vendedorId, empresaId, fechaDesde, fechaHasta]
     );
     return result.rows;
+  }
+
+  async findAllPaginated(empresaId: string, params: VentaProductoFiltros): Promise<{ rows: VentaProductoConVendedor[], total: number }> {
+    const { fechaDesde, fechaHasta, vendedor_id, page, limit } = params;
+    const offset = (page - 1) * limit;
+
+    const baseParams: any[] = [empresaId, fechaDesde, fechaHasta];
+    let vendedorFilter = '';
+
+    if (vendedor_id) {
+      baseParams.push(vendedor_id);
+      vendedorFilter = `AND vp.vendedor_id = $${baseParams.length}`;
+    }
+
+    const dataParams = [...baseParams, limit, offset];
+
+    const dataQuery = `
+      SELECT vp.*, u.nombre AS vendedor_nombre, c.nombre AS cliente_nombre
+      FROM venta_productos vp
+      JOIN usuarios u ON u.id = vp.vendedor_id
+      LEFT JOIN clientes c ON c.id = vp.cliente_id
+      WHERE vp.empresa_id = $1
+        AND vp.fecha_venta BETWEEN $2 AND $3
+        ${vendedorFilter}
+      ORDER BY vp.fecha_venta DESC, vp.created_at DESC
+      LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}
+    `;
+
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM venta_productos vp
+      WHERE vp.empresa_id = $1
+        AND vp.fecha_venta BETWEEN $2 AND $3
+        ${vendedorFilter}
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(dataQuery, dataParams),
+      pool.query(countQuery, baseParams),
+    ]);
+
+    return {
+      rows: dataResult.rows,
+      total: parseInt(countResult.rows[0].total, 10),
+    };
+  }
+
+  async updateById(id: string, empresaId: string, data: UpdateVentaProductoData): Promise<VentaProducto> {
+    const query = `
+      UPDATE venta_productos
+      SET nombre_producto = COALESCE($3, nombre_producto),
+          cantidad = COALESCE($4, cantidad),
+          precio_unitario = COALESCE($5, precio_unitario),
+          precio_total = COALESCE($6, precio_total),
+          metodo_pago = COALESCE($7, metodo_pago),
+          fecha_venta = COALESCE($8, fecha_venta),
+          es_venta_costo = COALESCE($9, es_venta_costo),
+          costo_unitario_snapshot = COALESCE($10, costo_unitario_snapshot),
+          updated_at = NOW()
+      WHERE id = $1 AND empresa_id = $2
+      RETURNING *
+    `;
+    const result = await pool.query(query, [
+      id,
+      empresaId,
+      data.nombre_producto ?? null,
+      data.cantidad ?? null,
+      data.precio_unitario ?? null,
+      data.precio_total ?? null,
+      data.metodo_pago ?? null,
+      data.fecha_venta ?? null,
+      data.es_venta_costo ?? null,
+      data.costo_unitario_snapshot ?? null,
+    ]);
+    return result.rows[0] ?? null;
+  }
+
+  async deleteById(id: string, empresaId: string): Promise<void> {
+    await pool.query(
+      `DELETE FROM venta_productos WHERE id = $1 AND empresa_id = $2`,
+      [id, empresaId]
+    );
   }
 }

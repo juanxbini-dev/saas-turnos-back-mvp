@@ -160,10 +160,13 @@ function buildMocks() {
   };
 
   const ventaProductoRepo: jest.Mocked<IVentaProductoRepository> = {
-    create:          jest.fn(),
-    findByTurno:     jest.fn(),
-    deleteByTurno:   jest.fn(),
-    findByVendedor:  jest.fn(),
+    create:             jest.fn(),
+    findByTurno:        jest.fn(),
+    deleteByTurno:      jest.fn(),
+    findByVendedor:     jest.fn(),
+    findAllPaginated:   jest.fn(),
+    updateById:         jest.fn(),
+    deleteById:         jest.fn(),
   };
 
   const catalogoProductoRepo: jest.Mocked<IProductoRepository> = {

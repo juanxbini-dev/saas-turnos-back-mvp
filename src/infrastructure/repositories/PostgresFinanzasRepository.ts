@@ -352,12 +352,12 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
              WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
              ELSE vp.precio_total
            END,
-           comision_monto = (CASE
+           neto_vendedor = (CASE
              WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
              WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
              ELSE vp.precio_total
            END) * vp.comision_porcentaje / 100,
-           neto_vendedor = (CASE
+           comision_monto = (CASE
              WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
              WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
              ELSE vp.precio_total

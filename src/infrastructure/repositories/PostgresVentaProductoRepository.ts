@@ -168,7 +168,11 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       SELECT
         u.id AS vendedor_id,
         u.nombre,
-        COALESCE(u.comision_producto, 0) AS comision_producto,
+        CASE
+          WHEN SUM(v.precio_total) > 0
+            THEN ROUND(SUM(v.neto_vendedor) * 100.0 / SUM(v.precio_total), 2)
+          ELSE 0
+        END AS comision_producto,
         SUM(v.precio_total)                                AS total_ventas,
         SUM(v.costo_item)                                  AS costo_total,
         SUM(v.precio_total) - SUM(v.costo_item)            AS ganancia_bruta,
@@ -176,7 +180,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
         SUM(v.comision_monto) - SUM(v.costo_item)          AS ganancia_empresa
       FROM ventas_con_costo v
       JOIN usuarios u ON u.id = v.vendedor_id
-      GROUP BY u.id, u.nombre, u.comision_producto
+      GROUP BY u.id, u.nombre
       ORDER BY total_ventas DESC
     `;
 

@@ -35,7 +35,9 @@ export class FinalizarTurnoUseCase {
     }
 
     // 3. Calcular totales (castear a Number explícitamente: node-pg devuelve NUMERIC como string)
-    const precioServicio = Number(data.precioModificado || turno.precio);
+    const precioServicio = (data.precioModificado !== undefined && data.precioModificado !== null)
+      ? Number(data.precioModificado)
+      : Number(turno.precio);
     const montoProductos = data.productos?.reduce((sum, p) => sum + Number(p.precio_total), 0) || 0;
     
     const calculo = calcularComisiones(

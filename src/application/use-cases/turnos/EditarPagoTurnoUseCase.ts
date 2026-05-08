@@ -32,7 +32,9 @@ export class EditarPagoTurnoUseCase {
     }
 
     // 3. Calcular nuevos totales
-    const precioServicio = Number(data.precioModificado || turno.precio);
+    const precioServicio = (data.precioModificado !== undefined && data.precioModificado !== null)
+      ? Number(data.precioModificado)
+      : Number(turno.precio);
     const montoProductos = data.productos?.reduce((sum, p) => sum + Number(p.precio_total), 0) || 0;
 
     const calculo = calcularComisiones(

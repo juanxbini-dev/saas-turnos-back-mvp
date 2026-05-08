@@ -1,5 +1,5 @@
 import { pool } from '../database/postgres.connection';
-import { IVentaProductoRepository, VentaProductoFiltros, VentaProductoConVendedor, UpdateVentaProductoData } from '../../domain/repositories/IVentaProductoRepository';
+import { IVentaProductoRepository, VentaProductoFiltros, VentaProductoConVendedor, UpdateVentaProductoData, ResumenTotalesVentas, ResumenProfesional } from '../../domain/repositories/IVentaProductoRepository';
 import { VentaProducto, CreateVentaProductoData } from '../../domain/entities/Comision';
 import { generarId } from '../../shared/utils/calculos.utils';
 
@@ -120,14 +120,15 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
   async updateById(id: string, empresaId: string, data: UpdateVentaProductoData): Promise<VentaProducto> {
     const query = `
       UPDATE venta_productos
-      SET nombre_producto = COALESCE($3, nombre_producto),
-          cantidad = COALESCE($4, cantidad),
-          precio_unitario = COALESCE($5, precio_unitario),
-          precio_total = COALESCE($6, precio_total),
-          metodo_pago = COALESCE($7, metodo_pago),
-          fecha_venta = COALESCE($8, fecha_venta),
-          es_venta_costo = COALESCE($9, es_venta_costo),
-          costo_unitario_snapshot = COALESCE($10, costo_unitario_snapshot),
+      SET vendedor_id = COALESCE($3, vendedor_id),
+          nombre_producto = COALESCE($4, nombre_producto),
+          cantidad = COALESCE($5, cantidad),
+          precio_unitario = COALESCE($6, precio_unitario),
+          precio_total = COALESCE($7, precio_total),
+          metodo_pago = COALESCE($8, metodo_pago),
+          fecha_venta = COALESCE($9, fecha_venta),
+          es_venta_costo = COALESCE($10, es_venta_costo),
+          costo_unitario_snapshot = COALESCE($11, costo_unitario_snapshot),
           updated_at = NOW()
       WHERE id = $1 AND empresa_id = $2
       RETURNING *
@@ -135,6 +136,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
     const result = await pool.query(query, [
       id,
       empresaId,
+      data.vendedor_id ?? null,
       data.nombre_producto ?? null,
       data.cantidad ?? null,
       data.precio_unitario ?? null,
@@ -145,6 +147,77 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       data.costo_unitario_snapshot ?? null,
     ]);
     return result.rows[0] ?? null;
+  }
+
+  async getResumen(empresaId: string, fechaDesde: string, fechaHasta: string): Promise<{ totales: ResumenTotalesVentas; por_profesional: ResumenProfesional[] }> {
+    const params = [empresaId, fechaDesde, fechaHasta];
+
+    const porProfQuery = `
+      WITH ventas_con_costo AS (
+        SELECT
+          vp.vendedor_id,
+          vp.precio_total,
+          vp.neto_vendedor,
+          vp.comision_monto,
+          COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad AS costo_item
+        FROM venta_productos vp
+        LEFT JOIN productos p ON p.id = vp.producto_id
+        WHERE vp.empresa_id = $1
+          AND vp.fecha_venta BETWEEN $2 AND $3
+      )
+      SELECT
+        u.id AS vendedor_id,
+        u.nombre,
+        COALESCE(u.comision_producto, 0) AS comision_producto,
+        SUM(v.precio_total)                                AS total_ventas,
+        SUM(v.costo_item)                                  AS costo_total,
+        SUM(v.precio_total) - SUM(v.costo_item)            AS ganancia_bruta,
+        SUM(v.neto_vendedor)                               AS ganancia_profesional,
+        SUM(v.comision_monto) - SUM(v.costo_item)          AS ganancia_empresa
+      FROM ventas_con_costo v
+      JOIN usuarios u ON u.id = v.vendedor_id
+      GROUP BY u.id, u.nombre, u.comision_producto
+      ORDER BY total_ventas DESC
+    `;
+
+    const totalesQuery = `
+      SELECT
+        SUM(vp.precio_total)                                                                    AS total_ventas,
+        SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad)                    AS costo_total,
+        SUM(vp.precio_total) - SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad) AS ganancia_bruta,
+        SUM(vp.neto_vendedor)                                                                   AS ganancia_profesionales,
+        SUM(vp.comision_monto) - SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad) AS ganancia_empresa
+      FROM venta_productos vp
+      LEFT JOIN productos p ON p.id = vp.producto_id
+      WHERE vp.empresa_id = $1
+        AND vp.fecha_venta BETWEEN $2 AND $3
+    `;
+
+    const [profResult, totResult] = await Promise.all([
+      pool.query(porProfQuery, params),
+      pool.query(totalesQuery, params),
+    ]);
+
+    const t = totResult.rows[0];
+    return {
+      totales: {
+        total_ventas:          Number(t.total_ventas)          || 0,
+        costo_total:           Number(t.costo_total)           || 0,
+        ganancia_bruta:        Number(t.ganancia_bruta)        || 0,
+        ganancia_profesionales:Number(t.ganancia_profesionales)|| 0,
+        ganancia_empresa:      Number(t.ganancia_empresa)      || 0,
+      },
+      por_profesional: profResult.rows.map(r => ({
+        vendedor_id:          r.vendedor_id,
+        nombre:               r.nombre,
+        comision_producto:    Number(r.comision_producto)    || 0,
+        total_ventas:         Number(r.total_ventas)         || 0,
+        costo_total:          Number(r.costo_total)          || 0,
+        ganancia_bruta:       Number(r.ganancia_bruta)       || 0,
+        ganancia_profesional: Number(r.ganancia_profesional) || 0,
+        ganancia_empresa:     Number(r.ganancia_empresa)     || 0,
+      })),
+    };
   }
 
   async deleteById(id: string, empresaId: string): Promise<void> {

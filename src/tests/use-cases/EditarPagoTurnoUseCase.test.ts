@@ -167,6 +167,7 @@ function buildMocks() {
     findAllPaginated:   jest.fn(),
     updateById:         jest.fn(),
     deleteById:         jest.fn(),
+    getResumen:         jest.fn(),
   };
 
   const catalogoProductoRepo: jest.Mocked<IProductoRepository> = {

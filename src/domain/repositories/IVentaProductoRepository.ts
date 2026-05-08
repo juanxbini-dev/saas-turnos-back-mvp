@@ -1,5 +1,24 @@
 import { VentaProducto, CreateVentaProductoData } from '../entities/Comision';
 
+export interface ResumenProfesional {
+  vendedor_id: string;
+  nombre: string;
+  comision_producto: number;
+  total_ventas: number;
+  costo_total: number;
+  ganancia_bruta: number;
+  ganancia_profesional: number;
+  ganancia_empresa: number;
+}
+
+export interface ResumenTotalesVentas {
+  total_ventas: number;
+  costo_total: number;
+  ganancia_bruta: number;
+  ganancia_profesionales: number;
+  ganancia_empresa: number;
+}
+
 export interface VentaProductoFiltros {
   fechaDesde: string;
   fechaHasta: string;
@@ -14,6 +33,7 @@ export interface VentaProductoConVendedor extends VentaProducto {
 }
 
 export interface UpdateVentaProductoData {
+  vendedor_id?: string;
   nombre_producto?: string;
   cantidad?: number;
   precio_unitario?: number;
@@ -32,4 +52,5 @@ export interface IVentaProductoRepository {
   findAllPaginated(empresaId: string, params: VentaProductoFiltros): Promise<{ rows: VentaProductoConVendedor[], total: number }>;
   updateById(id: string, empresaId: string, data: UpdateVentaProductoData): Promise<VentaProducto>;
   deleteById(id: string, empresaId: string): Promise<void>;
+  getResumen(empresaId: string, fechaDesde: string, fechaHasta: string): Promise<{ totales: ResumenTotalesVentas; por_profesional: ResumenProfesional[] }>;
 }

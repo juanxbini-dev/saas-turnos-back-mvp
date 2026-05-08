@@ -4,6 +4,7 @@ import { CreateVentaDirectaUseCase } from '../../application/use-cases/ventas/Cr
 import { GetVentaProductosUseCase } from '../../application/use-cases/ventas/GetVentaProductosUseCase';
 import { UpdateVentaProductoUseCase } from '../../application/use-cases/ventas/UpdateVentaProductoUseCase';
 import { DeleteVentaProductoUseCase } from '../../application/use-cases/ventas/DeleteVentaProductoUseCase';
+import { GetResumenVentasUseCase } from '../../application/use-cases/ventas/GetResumenVentasUseCase';
 import { PostgresVentaProductoRepository } from '../../infrastructure/repositories/PostgresVentaProductoRepository';
 import { PostgresUsuarioRepository } from '../../infrastructure/repositories/PostgresUsuarioRepository';
 import { PostgresProductoRepository } from '../../infrastructure/repositories/PostgresProductoRepository';
@@ -14,6 +15,7 @@ export class VentasController {
   private getVentasUseCase: GetVentaProductosUseCase;
   private updateVentaUseCase: UpdateVentaProductoUseCase;
   private deleteVentaUseCase: DeleteVentaProductoUseCase;
+  private getResumenUseCase: GetResumenVentasUseCase;
 
   constructor() {
     const ventaProductoRepo = new PostgresVentaProductoRepository();
@@ -26,6 +28,19 @@ export class VentasController {
     this.getVentasUseCase = new GetVentaProductosUseCase(ventaProductoRepo);
     this.updateVentaUseCase = new UpdateVentaProductoUseCase(ventaProductoRepo);
     this.deleteVentaUseCase = new DeleteVentaProductoUseCase(ventaProductoRepo);
+    this.getResumenUseCase = new GetResumenVentasUseCase(ventaProductoRepo);
+  }
+
+  async getResumen(req: Request, res: Response): Promise<void> {
+    try {
+      const { empresaId } = req.user as AuthenticatedUser;
+      const { fechaDesde, fechaHasta } = req.query as Record<string, string>;
+      const data = await this.getResumenUseCase.execute(empresaId, fechaDesde, fechaHasta);
+      res.status(200).json({ success: true, data });
+    } catch (error: any) {
+      const status = error.statusCode || 500;
+      res.status(status).json({ success: false, message: error.message || 'Error al obtener resumen' });
+    }
   }
 
   async getVentas(req: Request, res: Response): Promise<void> {
@@ -98,6 +113,7 @@ export class VentasController {
       }
 
       const {
+        vendedor_id,
         nombre_producto,
         cantidad,
         precio_unitario,
@@ -109,6 +125,7 @@ export class VentasController {
       } = req.body;
 
       const updated = await this.updateVentaUseCase.execute(id, empresaId, {
+        vendedor_id,
         nombre_producto,
         cantidad,
         precio_unitario,

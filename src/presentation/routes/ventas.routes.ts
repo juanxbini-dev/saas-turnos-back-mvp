@@ -7,6 +7,7 @@ const controller = new VentasController();
 
 router.use(authenticate);
 
+router.get('/resumen', (req, res) => controller.getResumen(req, res));
 router.get('/', (req, res) => controller.getVentas(req, res));
 router.post('/', (req, res) => controller.createVenta(req, res));
 router.patch('/:id', (req, res) => controller.updateVenta(req, res));

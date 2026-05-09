@@ -1,5 +1,5 @@
 import { pool } from '../database/postgres.connection';
-import { IVentaProductoRepository, VentaProductoFiltros, VentaProductoConVendedor, UpdateVentaProductoData, ResumenTotalesVentas, ResumenProfesional } from '../../domain/repositories/IVentaProductoRepository';
+import { IVentaProductoRepository, VentaProductoFiltros, VentaProductoConVendedor, UpdateVentaProductoData, ResumenTotalesVentas, ResumenProfesional, ResumenProducto } from '../../domain/repositories/IVentaProductoRepository';
 import { VentaProducto, CreateVentaProductoData } from '../../domain/entities/Comision';
 import { generarId } from '../../shared/utils/calculos.utils';
 
@@ -149,8 +149,18 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
     return result.rows[0] ?? null;
   }
 
-  async getResumen(empresaId: string, fechaDesde: string, fechaHasta: string): Promise<{ totales: ResumenTotalesVentas; por_profesional: ResumenProfesional[] }> {
-    const params = [empresaId, fechaDesde, fechaHasta];
+  async getResumen(
+    empresaId: string,
+    fechaDesde: string,
+    fechaHasta: string,
+    vendedorId?: string
+  ): Promise<{ totales: ResumenTotalesVentas; por_profesional: ResumenProfesional[]; por_producto: ResumenProducto[] }> {
+    const baseParams: any[] = [empresaId, fechaDesde, fechaHasta];
+    let vendedorFilter = '';
+    if (vendedorId) {
+      baseParams.push(vendedorId);
+      vendedorFilter = `AND vp.vendedor_id = $${baseParams.length}`;
+    }
 
     const porProfQuery = `
       WITH ventas_con_costo AS (
@@ -164,6 +174,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
         LEFT JOIN productos p ON p.id = vp.producto_id
         WHERE vp.empresa_id = $1
           AND vp.fecha_venta BETWEEN $2 AND $3
+          ${vendedorFilter}
       )
       SELECT
         u.id AS vendedor_id,
@@ -195,11 +206,30 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       LEFT JOIN productos p ON p.id = vp.producto_id
       WHERE vp.empresa_id = $1
         AND vp.fecha_venta BETWEEN $2 AND $3
+        ${vendedorFilter}
     `;
 
-    const [profResult, totResult] = await Promise.all([
-      pool.query(porProfQuery, params),
-      pool.query(totalesQuery, params),
+    const porProductoQuery = `
+      SELECT
+        vp.producto_id,
+        vp.nombre_producto,
+        SUM(vp.cantidad)::int                                                                   AS cantidad_total,
+        SUM(vp.precio_total)                                                                    AS total_ventas,
+        SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad)                    AS costo_total,
+        SUM(vp.precio_total) - SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad) AS ganancia_bruta
+      FROM venta_productos vp
+      LEFT JOIN productos p ON p.id = vp.producto_id
+      WHERE vp.empresa_id = $1
+        AND vp.fecha_venta BETWEEN $2 AND $3
+        ${vendedorFilter}
+      GROUP BY vp.producto_id, vp.nombre_producto
+      ORDER BY total_ventas DESC
+    `;
+
+    const [profResult, totResult, prodResult] = await Promise.all([
+      pool.query(porProfQuery, baseParams),
+      pool.query(totalesQuery, baseParams),
+      pool.query(porProductoQuery, baseParams),
     ]);
 
     const t = totResult.rows[0];
@@ -220,6 +250,14 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
         ganancia_bruta:       Number(r.ganancia_bruta)       || 0,
         ganancia_profesional: Number(r.ganancia_profesional) || 0,
         ganancia_empresa:     Number(r.ganancia_empresa)     || 0,
+      })),
+      por_producto: prodResult.rows.map(r => ({
+        producto_id:    r.producto_id,
+        nombre_producto:r.nombre_producto,
+        cantidad_total: Number(r.cantidad_total) || 0,
+        total_ventas:   Number(r.total_ventas)   || 0,
+        costo_total:    Number(r.costo_total)    || 0,
+        ganancia_bruta: Number(r.ganancia_bruta) || 0,
       })),
     };
   }

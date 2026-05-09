@@ -19,6 +19,15 @@ export interface ResumenTotalesVentas {
   ganancia_empresa: number;
 }
 
+export interface ResumenProducto {
+  producto_id: string | null;
+  nombre_producto: string;
+  cantidad_total: number;
+  total_ventas: number;
+  costo_total: number;
+  ganancia_bruta: number;
+}
+
 export interface VentaProductoFiltros {
   fechaDesde: string;
   fechaHasta: string;
@@ -52,5 +61,5 @@ export interface IVentaProductoRepository {
   findAllPaginated(empresaId: string, params: VentaProductoFiltros): Promise<{ rows: VentaProductoConVendedor[], total: number }>;
   updateById(id: string, empresaId: string, data: UpdateVentaProductoData): Promise<VentaProducto>;
   deleteById(id: string, empresaId: string): Promise<void>;
-  getResumen(empresaId: string, fechaDesde: string, fechaHasta: string): Promise<{ totales: ResumenTotalesVentas; por_profesional: ResumenProfesional[] }>;
+  getResumen(empresaId: string, fechaDesde: string, fechaHasta: string, vendedorId?: string): Promise<{ totales: ResumenTotalesVentas; por_profesional: ResumenProfesional[]; por_producto: ResumenProducto[] }>;
 }

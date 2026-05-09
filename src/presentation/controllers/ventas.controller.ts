@@ -33,9 +33,13 @@ export class VentasController {
 
   async getResumen(req: Request, res: Response): Promise<void> {
     try {
-      const { empresaId } = req.user as AuthenticatedUser;
+      const user = req.user as AuthenticatedUser;
       const { fechaDesde, fechaHasta } = req.query as Record<string, string>;
-      const data = await this.getResumenUseCase.execute(empresaId, fechaDesde, fechaHasta);
+
+      const isAdmin = user.roles.includes('admin') || user.roles.includes('super_admin');
+      const vendedorId = isAdmin ? undefined : user.id;
+
+      const data = await this.getResumenUseCase.execute(user.empresaId, fechaDesde, fechaHasta, vendedorId);
       res.status(200).json({ success: true, data });
     } catch (error: any) {
       const status = error.statusCode || 500;

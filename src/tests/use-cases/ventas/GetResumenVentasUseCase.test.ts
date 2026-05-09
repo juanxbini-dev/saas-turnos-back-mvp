@@ -11,7 +11,7 @@
  */
 
 import { GetResumenVentasUseCase } from '../../../application/use-cases/ventas/GetResumenVentasUseCase';
-import { IVentaProductoRepository, ResumenTotalesVentas, ResumenProfesional } from '../../../domain/repositories/IVentaProductoRepository';
+import { IVentaProductoRepository, ResumenTotalesVentas, ResumenProfesional, ResumenProducto } from '../../../domain/repositories/IVentaProductoRepository';
 
 // ── Factories ─────────────────────────────────────────────────────────────────
 
@@ -40,12 +40,15 @@ function buildResumenProfesional(overrides: Partial<ResumenProfesional> = {}): R
   };
 }
 
-function buildResumenCompleto(): { totales: ResumenTotalesVentas; por_profesional: ResumenProfesional[] } {
+function buildResumenCompleto(): { totales: ResumenTotalesVentas; por_profesional: ResumenProfesional[]; por_producto: ResumenProducto[] } {
   return {
     totales: buildResumenTotales(),
     por_profesional: [
       buildResumenProfesional({ vendedor_id: 'vendedor-001', nombre: 'Laura Perez' }),
       buildResumenProfesional({ vendedor_id: 'vendedor-002', nombre: 'Carlos Gomez', total_ventas: 3000 }),
+    ],
+    por_producto: [
+      { producto_id: 'prod-001', nombre_producto: 'Shampoo', cantidad_total: 3, total_ventas: 3000, costo_total: 900, ganancia_bruta: 2100 },
     ],
   };
 }
@@ -132,7 +135,7 @@ describe('GetResumenVentasUseCase', () => {
 
   describe('estructura de retorno', () => {
 
-    it('retorna exactamente { totales, por_profesional }', async () => {
+    it('retorna exactamente { totales, por_profesional, por_producto }', async () => {
       const { ventaProductoRepo } = makeMocks();
       const useCase = new GetResumenVentasUseCase(ventaProductoRepo);
       const resumen = buildResumenCompleto();
@@ -142,6 +145,7 @@ describe('GetResumenVentasUseCase', () => {
 
       expect(resultado).toHaveProperty('totales');
       expect(resultado).toHaveProperty('por_profesional');
+      expect(resultado).toHaveProperty('por_producto');
     });
 
     it('totales contiene todos los campos del resumen financiero', async () => {
@@ -202,6 +206,7 @@ describe('GetResumenVentasUseCase', () => {
           ganancia_empresa: 0,
         }),
         por_profesional: [],
+        por_producto: [],
       });
 
       const resultado = await useCase.execute('empresa-001', '2026-04-01', '2026-04-30');
@@ -226,7 +231,8 @@ describe('GetResumenVentasUseCase', () => {
       expect(ventaProductoRepo.getResumen).toHaveBeenCalledWith(
         'empresa-XYZ',
         '2026-01-01',
-        '2026-12-31'
+        '2026-12-31',
+        undefined
       );
     });
 
@@ -262,7 +268,8 @@ describe('GetResumenVentasUseCase', () => {
       expect(ventaProductoRepo.getResumen).toHaveBeenCalledWith(
         'empresa-001',
         '2020-01-01',
-        '2026-12-31'
+        '2026-12-31',
+        undefined
       );
     });
 

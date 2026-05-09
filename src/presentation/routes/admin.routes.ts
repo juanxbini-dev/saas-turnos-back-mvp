@@ -20,4 +20,7 @@ router.get('/empresas/:id', (req, res) => adminController.getEmpresaDetalle(req,
 // PATCH /admin/empresas/:id/activo - activar/desactivar empresa
 router.patch('/empresas/:id/activo', (req, res) => adminController.toggleEmpresaActivo(req, res));
 
+// PUT /admin/usuarios/:id/reset-password - resetear contraseña sin validar la actual
+router.put('/usuarios/:id/reset-password', (req, res) => adminController.resetUsuarioPassword(req, res));
+
 export default router;

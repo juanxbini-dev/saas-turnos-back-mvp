@@ -18,9 +18,9 @@ export class DeleteClienteUseCase {
       throw error;
     }
 
-    const turnosCount = await this.clienteRepository.getTurnosCount(id);
-    if (turnosCount > 0) {
-      const error: any = new Error(`No se puede eliminar el cliente porque tiene ${turnosCount} turno${turnosCount === 1 ? '' : 's'} asociado${turnosCount === 1 ? '' : 's'}`);
+    const turnosActivos = await this.clienteRepository.tieneTurnosActivos(id);
+    if (turnosActivos > 0) {
+      const error: any = new Error(`No se puede eliminar el cliente porque tiene ${turnosActivos} turno${turnosActivos === 1 ? '' : 's'} pendiente${turnosActivos === 1 ? '' : 's'} o confirmado${turnosActivos === 1 ? '' : 's'}`);
       error.statusCode = 409;
       throw error;
     }

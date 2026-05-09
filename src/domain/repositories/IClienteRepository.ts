@@ -21,6 +21,7 @@ export interface IClienteRepository {
   findByTelefono(telefono: string, empresaId: string): Promise<Cliente | null>
   findByEmail(email: string, empresaId: string): Promise<Cliente | null>
   getTurnosCount(clienteId: string): Promise<number>
+  tieneTurnosActivos(clienteId: string): Promise<number>
   getClienteTurnos(clienteId: string, empresaId: string): Promise<TurnoResumen[]>
   getClienteProductos(clienteId: string, empresaId: string): Promise<ProductoComprado[]>
 }

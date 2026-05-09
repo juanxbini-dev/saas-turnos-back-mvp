@@ -264,8 +264,16 @@ export class PostgresClienteRepository implements IClienteRepository {
       FROM turnos
       WHERE cliente_id = $1
     `;
-    
+
     const result = await pool.query(query, [clienteId]);
+    return parseInt(result.rows[0].count);
+  }
+
+  async tieneTurnosActivos(clienteId: string): Promise<number> {
+    const result = await pool.query(
+      `SELECT COUNT(*) as count FROM turnos WHERE cliente_id = $1 AND estado IN ('pendiente', 'confirmado')`,
+      [clienteId]
+    );
     return parseInt(result.rows[0].count);
   }
 

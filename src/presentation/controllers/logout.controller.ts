@@ -13,7 +13,7 @@ export class LogoutController {
 
   async logout(req: Request, res: Response): Promise<void> {
     try {
-      const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+      const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
       const userId = (req as any).user?.userId; // From JWT middleware
 
       let logoutRequest: LogoutRequest = {};

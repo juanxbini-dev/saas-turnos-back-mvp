@@ -82,6 +82,8 @@ export class EditarPagoTurnoUseCase {
             comision_porcentaje: comisionProductoPct,
             comision_monto: comisionMonto,
             neto_vendedor: netoVendedor,
+            es_venta_costo: producto.es_venta_costo ?? false,
+            costo_unitario_snapshot: producto.es_venta_costo ? producto.precio_unitario : null,
           });
         }
       }

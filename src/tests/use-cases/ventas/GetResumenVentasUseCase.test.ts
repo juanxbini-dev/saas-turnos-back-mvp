@@ -17,11 +17,13 @@ import { IVentaProductoRepository, ResumenTotalesVentas, ResumenProfesional, Res
 
 function buildResumenTotales(overrides: Partial<ResumenTotalesVentas> = {}): ResumenTotalesVentas {
   return {
-    total_ventas:          5000,
-    costo_total:           1500,
-    ganancia_bruta:        3500,
+    total_ventas:           5000,
+    ingresos_efectivo:      3000,
+    ingresos_transferencia: 2000,
+    costo_total:            1500,
+    ganancia_bruta:         3500,
     ganancia_profesionales: 2000,
-    ganancia_empresa:      1500,
+    ganancia_empresa:       1500,
     ...overrides,
   };
 }

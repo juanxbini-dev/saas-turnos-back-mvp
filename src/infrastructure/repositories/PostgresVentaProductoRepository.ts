@@ -197,10 +197,12 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
 
     const totalesQuery = `
       SELECT
-        SUM(vp.precio_total)                                                                    AS total_ventas,
-        SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad)                    AS costo_total,
+        SUM(vp.precio_total)                                                                         AS total_ventas,
+        SUM(CASE WHEN vp.metodo_pago = 'efectivo'      THEN vp.precio_total ELSE 0 END)             AS ingresos_efectivo,
+        SUM(CASE WHEN vp.metodo_pago = 'transferencia' THEN vp.precio_total ELSE 0 END)             AS ingresos_transferencia,
+        SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad)                         AS costo_total,
         SUM(vp.precio_total) - SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad) AS ganancia_bruta,
-        SUM(vp.neto_vendedor)                                                                   AS ganancia_profesionales,
+        SUM(vp.neto_vendedor)                                                                        AS ganancia_profesionales,
         SUM(vp.comision_monto) - SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad) AS ganancia_empresa
       FROM venta_productos vp
       LEFT JOIN productos p ON p.id = vp.producto_id
@@ -235,11 +237,13 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
     const t = totResult.rows[0];
     return {
       totales: {
-        total_ventas:          Number(t.total_ventas)          || 0,
-        costo_total:           Number(t.costo_total)           || 0,
-        ganancia_bruta:        Number(t.ganancia_bruta)        || 0,
-        ganancia_profesionales:Number(t.ganancia_profesionales)|| 0,
-        ganancia_empresa:      Number(t.ganancia_empresa)      || 0,
+        total_ventas:           Number(t.total_ventas)           || 0,
+        ingresos_efectivo:      Number(t.ingresos_efectivo)      || 0,
+        ingresos_transferencia: Number(t.ingresos_transferencia) || 0,
+        costo_total:            Number(t.costo_total)            || 0,
+        ganancia_bruta:         Number(t.ganancia_bruta)         || 0,
+        ganancia_profesionales: Number(t.ganancia_profesionales) || 0,
+        ganancia_empresa:       Number(t.ganancia_empresa)       || 0,
       },
       por_profesional: profResult.rows.map(r => ({
         vendedor_id:          r.vendedor_id,

@@ -13,6 +13,8 @@ export interface ResumenProfesional {
 
 export interface ResumenTotalesVentas {
   total_ventas: number;
+  ingresos_efectivo: number;
+  ingresos_transferencia: number;
   costo_total: number;
   ganancia_bruta: number;
   ganancia_profesionales: number;

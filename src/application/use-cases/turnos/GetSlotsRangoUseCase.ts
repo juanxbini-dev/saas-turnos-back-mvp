@@ -77,10 +77,11 @@ export class GetSlotsRangoUseCase {
 
     logDate('Fechas a procesar:', { fechas, useNewUtils });
 
-    // Obtener disponibilidades, excepciones, bloqueos y duración del servicio una sola vez
-    const [disponibilidades, excepciones, bloqueosRango] = await Promise.all([
+    // Obtener disponibilidades, excepciones, vacaciones, bloqueos y duración del servicio una sola vez
+    const [disponibilidades, excepciones, vacaciones, bloqueosRango] = await Promise.all([
       this.disponibilidadRepository.findDisponibilidadByProfesional(profesionalId),
       this.disponibilidadRepository.findExcepcionesByProfesional(profesionalId),
+      this.disponibilidadRepository.findVacacionesByProfesional(profesionalId),
       this.bloqueoSlotRepository.findByProfesionalAndRango(profesionalId, fechaInicio, fechaFin)
     ]);
 
@@ -114,7 +115,8 @@ export class GetSlotsRangoUseCase {
             turnosExistentes,
             fecha,
             bloqueosDelDia,
-            duracionMinutos
+            duracionMinutos,
+            vacaciones
           );
 
           return {

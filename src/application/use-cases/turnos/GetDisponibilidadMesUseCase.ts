@@ -61,7 +61,7 @@ export class GetDisponibilidadMesUseCase {
       año
     );
 
-    // Filtrar los días que tengan al menos un slot libre (respetando duración y bloqueos)
+    // Filtrar los días que tengan al menos un slot libre (respetando duración, bloqueos y vacaciones)
     const diasDisponibles = diasConHorario.filter(fecha => {
       const turnosDelDia = turnosPorFecha.get(fecha) || [];
       const bloqueosDelDia = bloqueosPorFecha.get(fecha) || [];
@@ -71,7 +71,8 @@ export class GetDisponibilidadMesUseCase {
         turnosDelDia as any,
         fecha,
         bloqueosDelDia as any,
-        duracionMinutos
+        duracionMinutos,
+        vacaciones
       );
       return slots.length > 0;
     });

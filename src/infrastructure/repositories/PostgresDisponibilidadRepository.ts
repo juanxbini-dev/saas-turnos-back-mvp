@@ -107,13 +107,13 @@ export class PostgresDisponibilidadRepository implements IDisponibilidadReposito
   // Vacaciones
   async findVacacionesByProfesional(profesionalId: string): Promise<DiasVacacion[]> {
     const query = `
-      SELECT id, profesional_id, fecha, fecha_fin, tipo, motivo, 
-             activo, created_at, updated_at
+      SELECT id, profesional_id, fecha, fecha_fin, tipo, motivo,
+             created_at, updated_at
       FROM dias_vacacion
       WHERE profesional_id = $1
       ORDER BY fecha ASC
     `;
-    
+
     const result = await pool.query(query, [profesionalId]);
     return result.rows;
   }
@@ -124,8 +124,8 @@ export class PostgresDisponibilidadRepository implements IDisponibilidadReposito
         id, profesional_id, fecha, fecha_fin, tipo, motivo, created_at, updated_at
       )
       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-      RETURNING id, profesional_id, fecha, fecha_fin, tipo, motivo, 
-                activo, created_at, updated_at
+      RETURNING id, profesional_id, fecha, fecha_fin, tipo, motivo,
+                created_at, updated_at
     `;
     
     const result = await pool.query(query, [
@@ -172,8 +172,8 @@ export class PostgresDisponibilidadRepository implements IDisponibilidadReposito
       UPDATE dias_vacacion
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, profesional_id, fecha, fecha_fin, tipo, motivo, 
-                activo, created_at, updated_at
+      RETURNING id, profesional_id, fecha, fecha_fin, tipo, motivo,
+                created_at, updated_at
     `;
     
     const result = await pool.query(query, values);

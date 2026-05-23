@@ -147,7 +147,8 @@ export class DisponibilidadService {
     turnosExistentes: Turno[],
     fecha: string,
     bloqueosSlots: BloqueoSlot[] = [],
-    duracionMinutos: number = 0
+    duracionMinutos: number = 0,
+    vacaciones: DiasVacacion[] = []
   ): string[] {
     logDate('calcularSlotsDisponibles - INICIO');
     logDate('Parámetros:', { fecha });
@@ -186,6 +187,21 @@ export class DisponibilidadService {
       exc.tipo === 'adicional'
     );
 
+    // Verificar si la fecha cae en un rango de vacaciones activo
+    const estaDeVacaciones = vacaciones.some(vacacion => {
+      const fechaInicio = normalizarFechaExc(vacacion.fecha as string);
+      const fechaFin = vacacion.fecha_fin
+        ? normalizarFechaExc(vacacion.fecha_fin as string)
+        : fechaInicio;
+      return fecha >= fechaInicio && fecha <= fechaFin;
+    });
+
+    // Vacaciones bloquean el día salvo que haya una excepción adicional explícita
+    if (estaDeVacaciones && excepcionesAdicionales.length === 0) {
+      logDate('Día bloqueado por vacaciones, retornando array vacío');
+      return [];
+    }
+
     // Verificar si hay una excepción que marque el día como NO disponible
     const excepcionNoDisponible = excepciones.find(exc => {
       const fechaExcepcion = normalizarFechaExc(exc.fecha);
@@ -219,8 +235,8 @@ export class DisponibilidadService {
     let horaFin: string;
     let intervaloMinutos: number;
 
-    if (excepcionNoDisponible) {
-      // Día no disponible pero con slots adicionales habilitados: omitir horario base
+    if (excepcionNoDisponible || estaDeVacaciones) {
+      // Día no disponible o en vacaciones, con slots adicionales habilitados: omitir horario base
       horaInicio = '';
       horaFin = '';
       intervaloMinutos = 0;
@@ -422,7 +438,8 @@ export class DisponibilidadService {
       turnosExistentes,
       fecha,
       bloqueosSlots,
-      duracionMinutos
+      duracionMinutos,
+      vacaciones
     );
 
     return slotsDisponibles.includes(hora);

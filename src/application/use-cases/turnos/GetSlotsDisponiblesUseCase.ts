@@ -14,9 +14,10 @@ export class GetSlotsDisponiblesUseCase {
   ) {}
 
   async execute(profesionalId: string, fecha: string, servicioId?: string): Promise<string[]> {
-    const [disponibilidades, excepciones, turnosExistentes, bloqueosSlots] = await Promise.all([
+    const [disponibilidades, excepciones, vacaciones, turnosExistentes, bloqueosSlots] = await Promise.all([
       this.disponibilidadRepository.findDisponibilidadByProfesional(profesionalId),
       this.disponibilidadRepository.findExcepcionesByProfesional(profesionalId),
+      this.disponibilidadRepository.findVacacionesByProfesional(profesionalId),
       this.turnoRepository.findByFechaYProfesional(profesionalId, fecha),
       this.bloqueoSlotRepository.findByProfesionalAndFecha(profesionalId, fecha)
     ]);
@@ -35,7 +36,8 @@ export class GetSlotsDisponiblesUseCase {
       turnosExistentes,
       fecha,
       bloqueosSlots,
-      duracionMinutos
+      duracionMinutos,
+      vacaciones
     );
   }
 }

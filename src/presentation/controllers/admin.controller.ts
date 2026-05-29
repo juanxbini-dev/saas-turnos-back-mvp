@@ -74,7 +74,7 @@ export class AdminController {
 
   async resetUsuarioPassword(req: Request, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const { nuevaPassword } = req.body;
 
       if (!nuevaPassword || nuevaPassword.length < 6) {

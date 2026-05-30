@@ -213,4 +213,38 @@ export class DateUtils {
       0, 0, 0
     ));
   }
+
+  /**
+   * Offset fijo de Argentina (UTC-3). El server corre en UTC, pero los turnos
+   * se razonan en hora local de Argentina. Consistente con el resto del backend
+   * (ej. CancelarTurnoPublicUseCase usa el mismo offset hardcodeado).
+   */
+  private static readonly AR_OFFSET = '-03:00';
+
+  /**
+   * "Ahora" expresado como reloj de pared de Argentina (UTC-3).
+   * @returns { fecha: 'YYYY-MM-DD', minutos: minutos desde medianoche }
+   */
+  static nowAR(): { fecha: string; minutos: number } {
+    // Restar 3hs al instante UTC y leer los campos UTC equivale al reloj AR.
+    const ar = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const fecha = `${ar.getUTCFullYear()}-${String(ar.getUTCMonth() + 1).padStart(2, '0')}-${String(ar.getUTCDate()).padStart(2, '0')}`;
+    const minutos = ar.getUTCHours() * 60 + ar.getUTCMinutes();
+    return { fecha, minutos };
+  }
+
+  /**
+   * Indica si la combinación fecha+hora (interpretada en hora de Argentina)
+   * ya pasó respecto del momento actual.
+   * @param fecha Fecha en formato YYYY-MM-DD (o ISO)
+   * @param hora Hora en formato HH:MM (o HH:MM:SS)
+   * @returns boolean true si el turno está en el pasado
+   */
+  static isPastDateTimeAR(fecha: string, hora: string): boolean {
+    const f = fecha.slice(0, 10);
+    const h = hora.slice(0, 5);
+    const turnoDateTime = new Date(`${f}T${h}:00${this.AR_OFFSET}`);
+    if (isNaN(turnoDateTime.getTime())) return false; // entrada inválida: no bloquear acá
+    return turnoDateTime.getTime() <= Date.now();
+  }
 }

@@ -485,4 +485,65 @@ describe('DisponibilidadService', () => {
       expect(ok).toBe(false);
     });
   });
+
+  describe('horario cortado (múltiples rangos por día)', () => {
+    const FECHA_LUNES = '2026-06-15';
+
+    it('genera slots de los dos rangos cuando hay dos disponibilidades del mismo día', () => {
+      // Lun-Vie 09:00-11:00 y Lun-Vie 17:00-19:00, intervalo 60
+      const disponibilidades = [
+        buildDisponibilidadSemanal({ id: 'd1', hora_inicio: '09:00', hora_fin: '11:00', intervalo_minutos: 60 }),
+        buildDisponibilidadSemanal({ id: 'd2', hora_inicio: '17:00', hora_fin: '19:00', intervalo_minutos: 60 }),
+      ];
+      const slots = service.calcularSlotsDisponibles(
+        disponibilidades,
+        [],
+        [],
+        FECHA_LUNES
+      );
+      expect(slots).toEqual(['09:00', '10:00', '17:00', '18:00']);
+    });
+
+    it('los slots quedan ordenados cronológicamente aunque los rangos vengan desordenados', () => {
+      const disponibilidades = [
+        buildDisponibilidadSemanal({ id: 'd-tarde', hora_inicio: '17:00', hora_fin: '19:00', intervalo_minutos: 60 }),
+        buildDisponibilidadSemanal({ id: 'd-manana', hora_inicio: '09:00', hora_fin: '11:00', intervalo_minutos: 60 }),
+      ];
+      const slots = service.calcularSlotsDisponibles(disponibilidades, [], [], FECHA_LUNES);
+      expect(slots).toEqual(['09:00', '10:00', '17:00', '18:00']);
+    });
+
+    it('un turno en un rango no afecta los slots del otro rango', () => {
+      const disponibilidades = [
+        buildDisponibilidadSemanal({ id: 'd1', hora_inicio: '09:00', hora_fin: '11:00', intervalo_minutos: 60 }),
+        buildDisponibilidadSemanal({ id: 'd2', hora_inicio: '17:00', hora_fin: '19:00', intervalo_minutos: 60 }),
+      ];
+      const turnos = [buildTurno({ fecha: FECHA_LUNES, hora: '09:00', duracion_minutos: 60 })];
+      const slots = service.calcularSlotsDisponibles(disponibilidades, [], turnos, FECHA_LUNES);
+      // 09:00 ocupado; el resto disponible
+      expect(slots).toEqual(['10:00', '17:00', '18:00']);
+    });
+
+    it('con duración que no cabe en un rango pero sí en el otro, solo ofrece el que cabe', () => {
+      // Rango mañana 09:00-10:00 (1h), rango tarde 17:00-20:00 (3h). Servicio de 120 min.
+      const disponibilidades = [
+        buildDisponibilidadSemanal({ id: 'd1', hora_inicio: '09:00', hora_fin: '10:00', intervalo_minutos: 60 }),
+        buildDisponibilidadSemanal({ id: 'd2', hora_inicio: '17:00', hora_fin: '20:00', intervalo_minutos: 60 }),
+      ];
+      const slots = service.calcularSlotsDisponibles(
+        disponibilidades, [], [], FECHA_LUNES, [], 120
+      );
+      // 09:00 no cabe (solo 1h). 17:00 y 18:00 sí (terminan 19:00/20:00 dentro del rango)
+      expect(slots).toEqual(['17:00', '18:00']);
+    });
+
+    it('una disponibilidad inactiva no aporta slots aunque cubra el día', () => {
+      const disponibilidades = [
+        buildDisponibilidadSemanal({ id: 'd1', hora_inicio: '09:00', hora_fin: '11:00', intervalo_minutos: 60 }),
+        buildDisponibilidadSemanal({ id: 'd2', hora_inicio: '17:00', hora_fin: '19:00', intervalo_minutos: 60, activo: false }),
+      ];
+      const slots = service.calcularSlotsDisponibles(disponibilidades, [], [], FECHA_LUNES);
+      expect(slots).toEqual(['09:00', '10:00']);
+    });
+  });
 });

@@ -231,40 +231,36 @@ export class DisponibilidadService {
     logDate('Excepción reemplazo encontrada:', excepcionReemplazo);
     logDate('Excepciones adicionales encontradas:', excepcionesAdicionales.length);
 
-    let horaInicio: string;
-    let horaFin: string;
-    let intervaloMinutos: number;
+    // Rangos base del día: pueden ser varios (horario cortado, ej. 09-13 y 17-20)
+    type RangoHorario = { hora_inicio: string; hora_fin: string; intervalo_minutos: number };
+    let rangosBase: RangoHorario[] = [];
 
     if (excepcionNoDisponible || estaDeVacaciones) {
       // Día no disponible o en vacaciones, con slots adicionales habilitados: omitir horario base
-      horaInicio = '';
-      horaFin = '';
-      intervaloMinutos = 0;
+      rangosBase = [];
     } else if (excepcionReemplazo?.hora_inicio && excepcionReemplazo?.hora_fin && excepcionReemplazo?.intervalo_minutos) {
-      horaInicio = excepcionReemplazo.hora_inicio;
-      horaFin = excepcionReemplazo.hora_fin;
-      intervaloMinutos = excepcionReemplazo.intervalo_minutos;
+      rangosBase = [{
+        hora_inicio: excepcionReemplazo.hora_inicio,
+        hora_fin: excepcionReemplazo.hora_fin,
+        intervalo_minutos: excepcionReemplazo.intervalo_minutos
+      }];
     } else {
-      const disponibilidad = disponibilidades.find(disp =>
+      // Todas las disponibilidades semanales activas que cubren este día de la semana
+      const disponibilidadesDelDia = disponibilidades.filter(disp =>
         disp.activo &&
         diaSemana >= disp.dia_inicio &&
         diaSemana <= disp.dia_fin
       );
 
-      if (!disponibilidad && excepcionesAdicionales.length === 0) {
+      if (disponibilidadesDelDia.length === 0 && excepcionesAdicionales.length === 0) {
         return [];
       }
 
-      if (!disponibilidad) {
-        // Solo hay excepciones adicionales, sin horario base
-        horaInicio = '';
-        horaFin = '';
-        intervaloMinutos = 0;
-      } else {
-        horaInicio = disponibilidad.hora_inicio;
-        horaFin = disponibilidad.hora_fin;
-        intervaloMinutos = disponibilidad.intervalo_minutos;
-      }
+      rangosBase = disponibilidadesDelDia.map(disp => ({
+        hora_inicio: disp.hora_inicio,
+        hora_fin: disp.hora_fin,
+        intervalo_minutos: disp.intervalo_minutos
+      }));
     }
 
     // Helper para generar slots de un rango y agregarlos al array (sin duplicados)
@@ -285,32 +281,16 @@ export class DisponibilidadService {
       }
     };
 
-    // Generar todos los slots según el intervalo
+    // Generar todos los slots: rangos base (uno o varios) + excepciones adicionales
     const slots: string[] = [];
 
-    if (horaInicio && horaFin && intervaloMinutos > 0) {
-      const inicioParts = horaInicio.split(':');
-      const finParts = horaFin.split(':');
-      const inicioHoras = Number(inicioParts[0]);
-      const inicioMinutos = Number(inicioParts[1]);
-      const finHoras = Number(finParts[0]);
-      const finMinutos = Number(finParts[1]);
-
-      let currentMinutos = inicioHoras * 60 + inicioMinutos;
-      const finMinutosTotal = finHoras * 60 + finMinutos;
-
-    while (currentMinutos < finMinutosTotal) {
-      const horas = Math.floor(currentMinutos / 60);
-      const minutos = currentMinutos % 60;
-      const slot = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
-      
-      // El filtrado de slots pasados se delega al frontend (usa hora local del browser).
-      // El servidor corre en UTC y no puede conocer la timezone del cliente.
-      slots.push(slot);
-
-      currentMinutos += intervaloMinutos;
+    for (const rango of rangosBase) {
+      if (rango.hora_inicio && rango.hora_fin && rango.intervalo_minutos > 0) {
+        // El filtrado de slots pasados se delega al frontend (usa hora local del browser).
+        // El servidor corre en UTC y no puede conocer la timezone del cliente.
+        generarSlotsDeRango(rango.hora_inicio, rango.hora_fin, rango.intervalo_minutos, slots);
+      }
     }
-    } // fin if (horaInicio && horaFin)
 
     // Agregar slots de excepciones adicionales (se suman al horario base)
     for (const exc of excepcionesAdicionales) {
@@ -328,10 +308,12 @@ export class DisponibilidadService {
       return (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
     };
 
-    // Segmentos de horario disponibles para el día (base + adicionales)
+    // Segmentos de horario disponibles para el día (rangos base + adicionales)
     const segmentos: { inicio: number; fin: number }[] = [];
-    if (horaInicio && horaFin && intervaloMinutos > 0) {
-      segmentos.push({ inicio: toMin(horaInicio), fin: toMin(horaFin) });
+    for (const rango of rangosBase) {
+      if (rango.hora_inicio && rango.hora_fin && rango.intervalo_minutos > 0) {
+        segmentos.push({ inicio: toMin(rango.hora_inicio), fin: toMin(rango.hora_fin) });
+      }
     }
     for (const exc of excepcionesAdicionales) {
       if (exc.hora_inicio && exc.hora_fin) {

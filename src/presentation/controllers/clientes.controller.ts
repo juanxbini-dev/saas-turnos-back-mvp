@@ -102,10 +102,12 @@ export class ClientesController {
       console.error('💥 [ClientesController] Error en createCliente:', error);
       const statusCode = (error as any).statusCode || 500;
       const message = error instanceof Error ? error.message : 'Error al crear cliente';
-      
+      const clienteExistente = (error as any).cliente;
+
       res.status(statusCode).json({
         success: false,
-        message
+        message,
+        ...(clienteExistente ? { cliente: clienteExistente } : {})
       });
     }
   }

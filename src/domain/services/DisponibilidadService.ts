@@ -286,8 +286,8 @@ export class DisponibilidadService {
 
     for (const rango of rangosBase) {
       if (rango.hora_inicio && rango.hora_fin && rango.intervalo_minutos > 0) {
-        // El filtrado de slots pasados se delega al frontend (usa hora local del browser).
-        // El servidor corre en UTC y no puede conocer la timezone del cliente.
+        // Los slots pasados del día de hoy se descartan al final del método
+        // (ver filtro slotsSinPasados) usando la hora de Argentina.
         generarSlotsDeRango(rango.hora_inicio, rango.hora_fin, rango.intervalo_minutos, slots);
       }
     }
@@ -378,13 +378,27 @@ export class DisponibilidadService {
       });
     });
 
+    // Descartar slots que ya pasaron cuando la fecha solicitada es HOY (hora de Argentina).
+    // El server corre en UTC; usamos el offset fijo AR (-03:00) como el resto del backend.
+    // Esto es la barrera real (defensa en profundidad): antes el filtrado de horas
+    // pasadas vivía solo en el frontend, así que cualquier desfasaje de timezone del
+    // browser dejaba reservar turnos en el pasado del día actual.
+    const ahoraAR = DateUtils.nowAR();
+    const slotsSinPasados = fecha.slice(0, 10) === ahoraAR.fecha
+      ? slotsSinBloqueos.filter(slot => {
+          const parts = slot.split(':').map(Number);
+          const slotMin = (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
+          return slotMin > ahoraAR.minutos;
+        })
+      : slotsSinBloqueos;
+
     logDate('Slots generados:', slots);
     logDate('Turnos confirmados:', turnosActivos.map(t => t.hora.slice(0, 5)));
     logDate('Bloqueos del día:', bloqueosDelDia);
-    logDate('Slots finales disponibles:', slotsSinBloqueos);
+    logDate('Slots finales disponibles:', slotsSinPasados);
     logDate('calcularSlotsDisponibles - FIN');
 
-    return slotsSinBloqueos;
+    return slotsSinPasados;
   }
 
   validarSlotDisponible(

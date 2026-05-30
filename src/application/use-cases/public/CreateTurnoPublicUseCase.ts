@@ -4,6 +4,7 @@ import { IServicioRepository } from '../../../domain/repositories/IServicioRepos
 import { IDisponibilidadRepository } from '../../../domain/repositories/IDisponibilidadRepository';
 import { IBloqueoSlotRepository } from '../../../domain/repositories/IBloqueoSlotRepository';
 import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
+import { DateUtils } from '../../../shared/utils/DateUtils';
 
 export interface CreateTurnoPublicRequest {
   profesional_id: string;
@@ -54,6 +55,16 @@ export class CreateTurnoPublicUseCase {
     const servicio = await this.servicioRepository.findById(servicio_id);
     if (!servicio) {
       throw new Error('Servicio no encontrado');
+    }
+
+    // Rechazar reservas en el pasado (hora de Argentina). Barrera de servidor:
+    // la reserva pública nunca debe permitir un horario que ya pasó, sin depender
+    // del filtrado del frontend. Se valida antes de crear el cliente.
+    if (DateUtils.isPastDateTimeAR(fecha, hora)) {
+      throw Object.assign(
+        new Error('No se puede reservar un turno en un horario que ya pasó. Por favor elegí otro.'),
+        { statusCode: 400 }
+      );
     }
 
     // Crear o usar cliente existente

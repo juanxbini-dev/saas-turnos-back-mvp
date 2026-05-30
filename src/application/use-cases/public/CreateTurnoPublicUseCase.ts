@@ -12,7 +12,7 @@ export interface CreateTurnoPublicRequest {
   hora: string;
   cliente_data: {
     nombre: string;
-    email: string;
+    email?: string;
     telefono?: string;
   };
   cliente_id?: string; // Si el cliente ya existe

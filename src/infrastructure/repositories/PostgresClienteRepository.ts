@@ -78,7 +78,7 @@ export class PostgresClienteRepository implements IClienteRepository {
     const result = await pool.query(query, [
       data.id,
       data.nombre,
-      data.email,
+      data.email || null,
       data.telefono || null,
       data.empresa_id
     ]);

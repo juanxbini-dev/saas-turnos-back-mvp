@@ -76,11 +76,11 @@ export class ClientesController {
       const { nombre, email, telefono } = req.body;
       console.log('🔍 [ClientesController] Datos extraídos:', { nombre, email, telefono });
 
-      if (!nombre || !email) {
-        console.error('💥 [ClientesController] Datos faltantes - nombre:', nombre, 'email:', email);
+      if (!nombre) {
+        console.error('💥 [ClientesController] Datos faltantes - nombre:', nombre);
         res.status(400).json({
           success: false,
-          message: 'Nombre y email son requeridos'
+          message: 'El nombre es requerido'
         });
         return;
       }

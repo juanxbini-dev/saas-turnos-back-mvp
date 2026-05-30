@@ -68,11 +68,11 @@ export class TurnoPublicController {
         });
       }
 
-      if (!cliente_data.nombre || (!cliente_id && !cliente_data.email)) {
+      if (!cliente_data.nombre || (!cliente_id && !cliente_data.telefono)) {
         console.log('❌ TurnoPublic Controller - Faltan datos de cliente');
         return res.status(400).json({
           success: false,
-          message: 'Nombre y email del cliente son requeridos'
+          message: 'Nombre y teléfono del cliente son requeridos'
         });
       }
 
@@ -103,7 +103,7 @@ export class TurnoPublicController {
           const resultado = await this.n8nService.notificarTurnoCreado({
             appointment_id: turno.id,
             customer_name: cliente_data.nombre,
-            customer_email: cliente_data.email,
+            customer_email: cliente_data.email || '',
             customer_phone: N8nService.normalizarTelefono(cliente_data.telefono),
             service_id: servicio_id,
             service_name: turno.servicio_nombre,

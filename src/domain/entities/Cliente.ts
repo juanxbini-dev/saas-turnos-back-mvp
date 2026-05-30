@@ -1,7 +1,7 @@
 export interface Cliente {
   id: string
   nombre: string
-  email: string
+  email: string | null
   telefono: string | null
   empresa_id: string
   activo: boolean
@@ -12,14 +12,14 @@ export interface Cliente {
 export interface CreateClienteData {
   id: string
   nombre: string
-  email: string
+  email?: string | null
   telefono?: string
   empresa_id: string
 }
 
 export interface UpdateClienteData {
   nombre?: string
-  email?: string
+  email?: string | null
   telefono?: string | null
 }
 

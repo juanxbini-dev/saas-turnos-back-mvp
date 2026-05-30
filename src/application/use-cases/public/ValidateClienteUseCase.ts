@@ -12,7 +12,7 @@ export interface ValidateClienteResponse {
   cliente?: {
     id: string;
     nombre: string;
-    email: string;
+    email?: string;
     telefono?: string;
   };
 }
@@ -42,9 +42,12 @@ export class ValidateClienteUseCase {
 
     const clienteData: ValidateClienteResponse['cliente'] = {
       id: cliente.id,
-      nombre: cliente.nombre,
-      email: cliente.email
+      nombre: cliente.nombre
     };
+
+    if (cliente.email) {
+      clienteData.email = cliente.email;
+    }
 
     if (cliente.telefono) {
       clienteData.telefono = cliente.telefono;

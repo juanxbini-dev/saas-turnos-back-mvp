@@ -90,7 +90,7 @@ export class CancelarTurnoPublicUseCase {
       hora: horaStr,
       servicio: turno.servicio,
       cliente_nombre: cliente.nombre,
-      cliente_email: cliente.email,
+      cliente_email: cliente.email ?? '',
       cliente_telefono: cliente.telefono ?? null,
       profesional_nombre: (turno as any).usuario_nombre || '',
       profesional_id: turno.usuario_id

@@ -10,18 +10,20 @@ export class CreateClienteUseCase {
 
   async execute(
     nombre: string,
-    email: string,
+    email: string | undefined,
     telefono: string | undefined,
     empresaId: string
   ): Promise<Cliente> {
-    // Validar email duplicado. Adjuntamos el cliente existente al error para que
-    // el frontend pueda ofrecer "usar el cliente existente".
-    const existentePorEmail = await this.clienteRepository.findByEmail(email, empresaId);
-    if (existentePorEmail) {
-      throw Object.assign(new Error('Ya existe un cliente con ese email'), {
-        statusCode: 400,
-        cliente: existentePorEmail
-      });
+    // Validar email duplicado solo si se proporciona email. Adjuntamos el cliente
+    // existente al error para que el frontend pueda ofrecer "usar el cliente existente".
+    if (email) {
+      const existentePorEmail = await this.clienteRepository.findByEmail(email, empresaId);
+      if (existentePorEmail) {
+        throw Object.assign(new Error('Ya existe un cliente con ese email'), {
+          statusCode: 400,
+          cliente: existentePorEmail
+        });
+      }
     }
 
     // Validar teléfono duplicado si se proporciona

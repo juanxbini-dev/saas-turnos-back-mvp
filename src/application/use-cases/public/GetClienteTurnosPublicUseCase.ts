@@ -18,7 +18,7 @@ export interface TurnoPublicInfo {
 }
 
 export interface GetClienteTurnosPublicResponse {
-  cliente: { id: string; nombre: string; email: string; telefono?: string } | null;
+  cliente: { id: string; nombre: string; email?: string; telefono?: string } | null;
   turnos: TurnoPublicInfo[];
 }
 
@@ -63,7 +63,7 @@ export class GetClienteTurnosPublicUseCase {
       cliente: {
         id: cliente.id,
         nombre: cliente.nombre,
-        email: cliente.email,
+        ...(cliente.email ? { email: cliente.email } : {}),
         ...(cliente.telefono ? { telefono: cliente.telefono } : {})
       },
       turnos

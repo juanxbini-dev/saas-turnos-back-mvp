@@ -111,7 +111,7 @@ export class TurnosController {
       const resultado = await this.n8nService.notificarTurnoCreado({
         appointment_id: turno.id,
         customer_name: cliente.nombre,
-        customer_email: cliente.email,
+        customer_email: cliente.email ?? '',
         customer_phone: N8nService.normalizarTelefono(cliente.telefono ?? undefined),
         service_id: turno.servicio_id,
         service_name: turno.servicio,

@@ -374,6 +374,65 @@ describe('DisponibilidadService', () => {
 
     // ── BLOQUEOS DE SLOT ────────────────────────────────────────────────────
 
+    // ── SLOTS PASADOS DEL DÍA ACTUAL (hora de Argentina, UTC-3) ─────────────
+    describe('filtro de slots pasados (hoy AR)', () => {
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      // Disponibilidad amplia para tener slots a la mañana y a la tarde.
+      const dispDiaCompleto = () => [
+        buildDisponibilidadSemanal({ hora_inicio: '09:00', hora_fin: '18:00', intervalo_minutos: 60 }),
+      ];
+
+      it('si la fecha es HOY (AR), descarta los slots cuya hora ya pasó', () => {
+        // 15:30 AR = 18:30 UTC del lunes 2026-06-15
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-06-15T18:30:00Z'));
+
+        const slots = service.calcularSlotsDisponibles(
+          dispDiaCompleto(), [], [], FECHA_LUNES, [], 0, []
+        );
+        // Quedan solo los slots posteriores a 15:30 AR
+        expect(slots).toEqual(['16:00', '17:00']);
+      });
+
+      it('el slot que coincide exacto con la hora actual queda fuera (comparación estricta)', () => {
+        // 16:00 AR = 19:00 UTC
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-06-15T19:00:00Z'));
+
+        const slots = service.calcularSlotsDisponibles(
+          dispDiaCompleto(), [], [], FECHA_LUNES, [], 0, []
+        );
+        expect(slots).not.toContain('16:00');
+        expect(slots).toEqual(['17:00']);
+      });
+
+      it('si la fecha NO es hoy (futuro), no filtra ningún slot por hora', () => {
+        // Hoy es 2026-06-15 pero pedimos el martes 2026-06-16
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-06-15T18:30:00Z'));
+
+        const slots = service.calcularSlotsDisponibles(
+          dispDiaCompleto(), [], [], '2026-06-16', [], 0, []
+        );
+        expect(slots).toEqual(['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']);
+      });
+
+      it('caso borde de medianoche AR: 2026-06-15 23:30 AR no descarta slots del 2026-06-16', () => {
+        // 23:30 AR del 15 = 02:30 UTC del 16. La fecha AR sigue siendo el 15.
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-06-16T02:30:00Z'));
+
+        // Para el día siguiente (16) no se filtra nada
+        const slots = service.calcularSlotsDisponibles(
+          dispDiaCompleto(), [], [], '2026-06-16', [], 0, []
+        );
+        expect(slots[0]).toBe('09:00');
+      });
+    });
+
     describe('bloqueos de slot', () => {
       it('BloqueoSlot 10:00-11:00 filtra todos los slots dentro de [10:00, 11:00)', () => {
         const bloqueos = [

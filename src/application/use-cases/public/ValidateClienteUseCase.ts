@@ -21,7 +21,10 @@ export class ValidateClienteUseCase {
   constructor(private clienteRepository: IClienteRepository) {}
 
   async execute(request: ValidateClienteRequest): Promise<ValidateClienteResponse> {
-    const { email, telefono, empresa_id } = request;
+    const { telefono, empresa_id } = request;
+    // El email se normaliza (minúsculas + trim) para que el matching sea consistente
+    // con el índice UNIQUE(email, empresa_id), que es sensible a mayúsculas.
+    const email = request.email?.trim().toLowerCase() || undefined;
 
     if (!telefono && !email) {
       return { exists: false };

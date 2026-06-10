@@ -67,6 +67,10 @@ export class CreateTurnoPublicUseCase {
       );
     }
 
+    // El email se normaliza (minúsculas + trim) para que el matching y la inserción
+    // sean consistentes con el índice UNIQUE(email, empresa_id), sensible a mayúsculas.
+    const emailNormalizado = cliente_data.email?.trim().toLowerCase() || undefined;
+
     // Crear o usar cliente existente
     let finalClienteId = cliente_id;
     if (!finalClienteId) {
@@ -75,8 +79,8 @@ export class CreateTurnoPublicUseCase {
       if (cliente_data.telefono) {
         existingCliente = await this.clienteRepository.findByTelefono(cliente_data.telefono, servicio.empresa_id);
       }
-      if (!existingCliente && cliente_data.email) {
-        existingCliente = await this.clienteRepository.findByEmail(cliente_data.email, servicio.empresa_id);
+      if (!existingCliente && emailNormalizado) {
+        existingCliente = await this.clienteRepository.findByEmail(emailNormalizado, servicio.empresa_id);
       }
 
       if (existingCliente) {
@@ -87,7 +91,7 @@ export class CreateTurnoPublicUseCase {
         const clienteData: any = {
           id: `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generar ID único
           nombre: cliente_data.nombre,
-          email: cliente_data.email,
+          email: emailNormalizado,
           empresa_id: servicio.empresa_id
         };
 

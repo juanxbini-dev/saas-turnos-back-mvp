@@ -68,11 +68,13 @@ export class TurnoPublicController {
         });
       }
 
-      if (!cliente_data.nombre || (!cliente_id && !cliente_data.telefono)) {
+      // Para un cliente nuevo (sin cliente_id) exigimos nombre, teléfono y email.
+      // Si se reusa un cliente existente (cliente_id presente), alcanza con el nombre.
+      if (!cliente_data.nombre || (!cliente_id && (!cliente_data.telefono || !cliente_data.email))) {
         console.log('❌ TurnoPublic Controller - Faltan datos de cliente');
         return res.status(400).json({
           success: false,
-          message: 'Nombre y teléfono del cliente son requeridos'
+          message: 'Nombre, teléfono y email del cliente son requeridos'
         });
       }
 

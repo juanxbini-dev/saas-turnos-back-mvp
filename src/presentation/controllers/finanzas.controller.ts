@@ -27,6 +27,7 @@ export class FinanzasController {
       const filters: FinanzasFilters = {
         fecha_desde: req.query.fecha_desde as string || '',
         fecha_hasta: req.query.fecha_hasta as string || '',
+        tipo: ((req.query.tipo as string) || 'todos') as FinanzasFilters['tipo'],
         metodo_pago: ((req.query.metodo_pago as string) || 'todos') as FinanzasFilters['metodo_pago'],
         estado_comision: ((req.query.estado_comision as string) || 'todos') as FinanzasFilters['estado_comision'],
         ordenar_por: ((req.query.ordenar_por as string) || 'fecha') as FinanzasFilters['ordenar_por'],
@@ -43,10 +44,15 @@ export class FinanzasController {
       }
 
       // Validar valores de filtros
+      const validTipos = ['todos', 'turnos', 'productos', 'pendientes'];
       const validMetodosPago = ['todos', 'efectivo', 'transferencia', 'pendiente'];
       const validEstados = ['todos', 'pendiente', 'pagada', 'cancelada'];
       const validOrdenarPor = ['fecha', 'total_venta', 'total_neto_profesional'];
       const validOrden = ['asc', 'desc'];
+
+      if (!validTipos.includes(filters.tipo)) {
+        return res.status(400).json({ message: 'Tipo de entrada inválido' });
+      }
 
       if (!validMetodosPago.includes(filters.metodo_pago)) {
         return res.status(400).json({ message: 'Método de pago inválido' });
@@ -106,6 +112,7 @@ export class FinanzasController {
       const filters: FinanzasFilters = {
         fecha_desde: req.query.fecha_desde as string || '',
         fecha_hasta: req.query.fecha_hasta as string || '',
+        tipo: ((req.query.tipo as string) || 'todos') as FinanzasFilters['tipo'],
         metodo_pago: ((req.query.metodo_pago as string) || 'todos') as FinanzasFilters['metodo_pago'],
         estado_comision: ((req.query.estado_comision as string) || 'todos') as FinanzasFilters['estado_comision'],
         ordenar_por: ((req.query.ordenar_por as string) || 'fecha') as FinanzasFilters['ordenar_por'],
@@ -121,12 +128,14 @@ export class FinanzasController {
         });
       }
 
+      const validTipos = ['todos', 'turnos', 'productos', 'pendientes'];
       const validMetodosPago = ['todos', 'efectivo', 'transferencia', 'pendiente'];
       const validEstados = ['todos', 'pendiente', 'pagada', 'cancelada'];
       const validOrdenarPor = ['fecha', 'total_venta', 'total_neto_profesional'];
       const validOrden = ['asc', 'desc'];
 
-      if (!validMetodosPago.includes(filters.metodo_pago) ||
+      if (!validTipos.includes(filters.tipo) ||
+          !validMetodosPago.includes(filters.metodo_pago) ||
           !validEstados.includes(filters.estado_comision) ||
           !validOrdenarPor.includes(filters.ordenar_por) ||
           !validOrden.includes(filters.orden) ||

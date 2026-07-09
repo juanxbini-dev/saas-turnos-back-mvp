@@ -13,6 +13,10 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     const params: any[] = [profesionalId, empresaId, filters.fecha_desde, filters.fecha_hasta];
     let paramIdx = 5;
 
+    // Qué ramas del UNION participan según el tab
+    const incluirTurnos = filters.tipo !== 'productos';
+    const incluirVentas = filters.tipo !== 'turnos';
+
     // WHERE compartido para ambas fuentes ($1-$4 iguales)
     const whereTurnos: string[] = [
       'ct.profesional_id = $1',
@@ -26,15 +30,20 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       "COALESCE(trn.fecha, DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires')) BETWEEN $3 AND $4",
     ];
 
-    if (filters.metodo_pago !== 'todos') {
+    if (filters.tipo === 'pendientes') {
+      // El tab Pendientes pisa el filtro de método de pago
+      whereTurnos.push(`t.metodo_pago = 'pendiente'`);
+      whereVentas.push(`vp.metodo_pago = 'pendiente'`);
+    } else if (filters.metodo_pago !== 'todos') {
       whereTurnos.push(`t.metodo_pago = $${paramIdx}`);
       whereVentas.push(`vp.metodo_pago = $${paramIdx}`);
       params.push(filters.metodo_pago);
       paramIdx++;
     }
 
-    if (filters.estado_comision !== 'todos') {
-      // Solo aplica a comisiones, no a ventas directas
+    if (filters.estado_comision !== 'todos' && incluirTurnos) {
+      // Solo aplica a comisiones, no a ventas directas.
+      // Si la rama de turnos no participa, no se agrega el parámetro: un bind sin referencia en el SQL es error de Postgres.
       whereTurnos.push(`ct.estado = $${paramIdx}`);
       params.push(filters.estado_comision);
       paramIdx++;
@@ -52,8 +61,8 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     const offsetIdx = paramIdx++;
     params.push(filters.por_pagina, (filters.pagina - 1) * filters.por_pagina);
 
-    const query = `
-      WITH va AS (
+    // CTE de ventas agrupadas — solo se incluye si la rama de ventas participa
+    const vaCte = `va AS (
         SELECT
           COALESCE(vp.venta_grupo_id, vp.id)                                                         AS grupo_id,
           MIN(vp.turno_id)                                                                            AS turno_id,
@@ -82,8 +91,9 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
         LEFT JOIN turnos trn ON trn.id = vp.turno_id
         WHERE ${whereVentas.join(' AND ')}
         GROUP BY COALESCE(vp.venta_grupo_id, vp.id), vp.empresa_id
-      ),
-      combined AS (
+      )`;
+
+    const turnosBranch = `
         SELECT
           t.fecha::text                          AS sort_fecha,
           t.hora::text                           AS sort_hora,
@@ -114,17 +124,22 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
             'servicio_nombre',              s.nombre,
             'profesional_nombre',           u.nombre,
             'created_at',                   ct.created_at,
-            'updated_at',                   ct.updated_at
+            'updated_at',                   ct.updated_at,
+            'tiene_producto_pendiente',     EXISTS (
+              SELECT 1 FROM venta_productos vpp
+              WHERE vpp.turno_id = ct.turno_id
+                AND vpp.empresa_id = ct.empresa_id
+                AND vpp.metodo_pago = 'pendiente'
+            )
           ) AS entry
         FROM comisiones_turno ct
         JOIN  turnos   t ON ct.turno_id    = t.id
         JOIN  clientes c ON t.cliente_id   = c.id
         LEFT JOIN servicios s ON t.servicio_id  = s.id
         LEFT JOIN usuarios  u ON ct.profesional_id = u.id
-        WHERE ${whereTurnos.join(' AND ')}
+        WHERE ${whereTurnos.join(' AND ')}`;
 
-        UNION ALL
-
+    const ventasBranch = `
         SELECT
           va.fecha::text         AS sort_fecha,
           '00:00'::text          AS sort_hora,
@@ -145,7 +160,15 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
             'empresa_id',      va.empresa_id,
             'items',           va.items
           ) AS entry
-        FROM va
+        FROM va`;
+
+    const branches = [
+      ...(incluirTurnos ? [turnosBranch] : []),
+      ...(incluirVentas ? [ventasBranch] : []),
+    ].join('\n        UNION ALL\n');
+
+    const query = `
+      WITH ${incluirVentas ? `${vaCte},` : ''} combined AS (${branches}
       )
       SELECT entry
       FROM combined
@@ -153,24 +176,30 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       LIMIT $${limitIdx} OFFSET $${offsetIdx}
     `;
 
-    // COUNT sobre el mismo UNION (sin LIMIT/OFFSET)
+    // COUNT sobre el mismo UNION (sin LIMIT/OFFSET), con las mismas ramas y WHERE
     const countParams = params.slice(0, -2);
+    const countTurnos = `(
+        SELECT COUNT(*)
+        FROM comisiones_turno ct
+        JOIN turnos t ON ct.turno_id = t.id
+        WHERE ${whereTurnos.join(' AND ')}
+      )`;
+    const countVentas = `(
+        SELECT COUNT(*) FROM va
+      )`;
+    const countParts = [
+      ...(incluirTurnos ? [countTurnos] : []),
+      ...(incluirVentas ? [countVentas] : []),
+    ].join(' + ');
     const countQuery = `
-      WITH va AS (
+      ${incluirVentas ? `WITH va AS (
         SELECT COALESCE(vp.venta_grupo_id, vp.id) AS grupo_id
         FROM venta_productos vp
         LEFT JOIN turnos trn ON trn.id = vp.turno_id
         WHERE ${whereVentas.join(' AND ')}
         GROUP BY COALESCE(vp.venta_grupo_id, vp.id), vp.empresa_id
-      )
-      SELECT (
-        SELECT COUNT(*)
-        FROM comisiones_turno ct
-        JOIN turnos t ON ct.turno_id = t.id
-        WHERE ${whereTurnos.join(' AND ')}
-      ) + (
-        SELECT COUNT(*) FROM va
-      ) AS total
+      )` : ''}
+      SELECT ${countParts} AS total
     `;
 
     const [result, countResult] = await Promise.all([

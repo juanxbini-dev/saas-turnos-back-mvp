@@ -29,6 +29,8 @@ export interface ComisionProfesional {
 export interface FinanzasFilters {
   fecha_desde: string;
   fecha_hasta: string;
+  // 'pendientes' pisa metodo_pago: lista solo entradas con metodo_pago = 'pendiente'
+  tipo: 'todos' | 'turnos' | 'productos' | 'pendientes';
   metodo_pago: 'todos' | 'efectivo' | 'transferencia' | 'pendiente';
   estado_comision: 'todos' | 'pendiente' | 'pagada' | 'cancelada';
   ordenar_por: 'fecha' | 'total_venta' | 'total_neto_profesional';
@@ -97,6 +99,8 @@ export interface ComisionConDetalle extends ComisionProfesional {
   servicio_nombre: string;
   profesional_nombre?: string;
   tiene_productos: boolean;
+  // El turno tiene productos con metodo_pago = 'pendiente' (aunque no estén en la página actual)
+  tiene_producto_pendiente: boolean;
 }
 
 export type EntradaFinanzas = ComisionConDetalle | VentaGrupadaFinanzas;

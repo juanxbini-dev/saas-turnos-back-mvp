@@ -96,6 +96,29 @@ export class PostgresProductoRepository implements IProductoRepository {
     return result.rows[0] || null;
   }
 
+  async resetPreciosManuales(empresaId: string): Promise<number> {
+    const result = await pool.query(
+      `UPDATE productos
+       SET precio_efectivo = NULL, precio_transferencia = NULL, precio_tarjeta = NULL, updated_at = NOW()
+       WHERE empresa_id = $1
+         AND costo IS NOT NULL
+         AND (precio_efectivo IS NOT NULL OR precio_transferencia IS NOT NULL OR precio_tarjeta IS NOT NULL)`,
+      [empresaId]
+    );
+    return result.rowCount ?? 0;
+  }
+
+  async countManualesSinCosto(empresaId: string): Promise<number> {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM productos
+       WHERE empresa_id = $1
+         AND costo IS NULL
+         AND (precio_efectivo IS NOT NULL OR precio_transferencia IS NOT NULL OR precio_tarjeta IS NOT NULL)`,
+      [empresaId]
+    );
+    return result.rows[0].total;
+  }
+
   async findBajoStock(empresaId: string, umbral = 3): Promise<Producto[]> {
     const result = await pool.query(
       `${this.SELECT_PRODUCTO} WHERE p.empresa_id = $1 AND p.stock <= $2 AND p.activo = true ORDER BY p.stock ASC`,

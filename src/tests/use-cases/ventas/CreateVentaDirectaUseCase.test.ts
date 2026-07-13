@@ -145,6 +145,8 @@ function makeMocks() {
     getTopVendidos:   jest.fn(),
     getTopVendedores: jest.fn(),
     getVentasFinanzas: jest.fn(),
+    resetPreciosManuales: jest.fn(),
+    countManualesSinCosto: jest.fn(),
   };
 
   return { ventaProductoRepo, usuarioRepo, catalogoRepo };

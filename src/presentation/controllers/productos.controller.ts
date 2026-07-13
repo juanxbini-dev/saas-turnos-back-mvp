@@ -8,6 +8,7 @@ import { DeleteProductoUseCase } from '../../application/use-cases/productos/Del
 import { GetProductosStatsUseCase } from '../../application/use-cases/productos/GetProductosStatsUseCase';
 import { GetConfiguracionProductosUseCase } from '../../application/use-cases/productos/GetConfiguracionProductosUseCase';
 import { UpdateConfiguracionProductosUseCase } from '../../application/use-cases/productos/UpdateConfiguracionProductosUseCase';
+import { SincronizarPreciosProductosUseCase } from '../../application/use-cases/productos/SincronizarPreciosProductosUseCase';
 import { PostgresProductoRepository } from '../../infrastructure/repositories/PostgresProductoRepository';
 import { PostgresConfiguracionProductosRepository } from '../../infrastructure/repositories/PostgresConfiguracionProductosRepository';
 
@@ -20,6 +21,7 @@ export class ProductosController {
   private deleteProductoUseCase: DeleteProductoUseCase;
   private getConfiguracionUseCase: GetConfiguracionProductosUseCase;
   private updateConfiguracionUseCase: UpdateConfiguracionProductosUseCase;
+  private sincronizarPreciosUseCase: SincronizarPreciosProductosUseCase;
 
   constructor() {
     const repo = new PostgresProductoRepository();
@@ -32,6 +34,7 @@ export class ProductosController {
     this.getStatsUseCase = new GetProductosStatsUseCase(repo);
     this.getConfiguracionUseCase = new GetConfiguracionProductosUseCase(configRepo);
     this.updateConfiguracionUseCase = new UpdateConfiguracionProductosUseCase(configRepo);
+    this.sincronizarPreciosUseCase = new SincronizarPreciosProductosUseCase(repo);
   }
 
   async getProductos(req: Request, res: Response): Promise<void> {
@@ -148,6 +151,16 @@ export class ProductosController {
     } catch (error: any) {
       const status = error.statusCode || 500;
       res.status(status).json({ success: false, message: error.message || 'Error al actualizar la configuración de productos' });
+    }
+  }
+
+  async sincronizarPrecios(req: Request, res: Response): Promise<void> {
+    try {
+      const { empresaId } = req.user as AuthenticatedUser;
+      const result = await this.sincronizarPreciosUseCase.execute(empresaId);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error al sincronizar los precios' });
     }
   }
 

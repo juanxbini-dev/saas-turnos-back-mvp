@@ -9,6 +9,7 @@ router.use(authenticate);
 
 router.get('/configuracion', (req, res) => controller.getConfiguracion(req, res));
 router.put('/configuracion', requireAdmin, (req, res) => controller.updateConfiguracion(req, res));
+router.post('/sincronizar-precios', requireAdmin, (req, res) => controller.sincronizarPrecios(req, res));
 router.get('/stats', (req, res) => controller.getStats(req, res));
 router.get('/ventas-finanzas', (req, res) => controller.getVentasFinanzas(req, res));
 router.get('/', (req, res) => controller.getProductos(req, res));

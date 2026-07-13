@@ -185,11 +185,19 @@ export class FinanzasController {
       if (!['turno', 'turno_solo_servicio', 'venta_turno', 'venta'].includes(tipo)) {
         return res.status(400).json({ message: 'tipo debe ser "turno", "turno_solo_servicio", "venta_turno" o "venta"' });
       }
-      if (!['efectivo', 'transferencia'].includes(metodo_pago)) {
-        return res.status(400).json({ message: 'metodo_pago debe ser "efectivo" o "transferencia"' });
+      // 'tarjeta' solo vale para cobros de productos: el servicio del turno no la admite
+      const esCobroDeProductos = ['venta', 'venta_turno'].includes(tipo);
+      const metodosServicio = ['efectivo', 'transferencia'];
+      const metodosProductos = ['efectivo', 'transferencia', 'tarjeta'];
+      if (!(esCobroDeProductos ? metodosProductos : metodosServicio).includes(metodo_pago)) {
+        return res.status(400).json({
+          message: esCobroDeProductos
+            ? 'metodo_pago debe ser "efectivo", "transferencia" o "tarjeta"'
+            : 'metodo_pago debe ser "efectivo" o "transferencia"',
+        });
       }
-      if (metodo_pago_productos && !['efectivo', 'transferencia'].includes(metodo_pago_productos)) {
-        return res.status(400).json({ message: 'metodo_pago_productos debe ser "efectivo" o "transferencia"' });
+      if (metodo_pago_productos && !metodosProductos.includes(metodo_pago_productos)) {
+        return res.status(400).json({ message: 'metodo_pago_productos debe ser "efectivo", "transferencia" o "tarjeta"' });
       }
 
       await cobrarPagoRepo.cobrarPago(tipo, id, authUser.empresaId, metodo_pago, metodo_pago_productos);

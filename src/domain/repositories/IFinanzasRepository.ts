@@ -13,11 +13,12 @@ export interface IFinanzasRepository {
     filters: FinanzasFilters
   ): Promise<FinanzasSummary>;
 
+  // 'tarjeta' solo es válido para productos (tipos venta/venta_turno o metodoPagoProductos)
   cobrarPago(
     tipo: 'turno' | 'venta',
     id: string,
     empresaId: string,
-    metodoPago: 'efectivo' | 'transferencia',
-    metodoPagoProductos?: 'efectivo' | 'transferencia'
+    metodoPago: 'efectivo' | 'transferencia' | 'tarjeta',
+    metodoPagoProductos?: 'efectivo' | 'transferencia' | 'tarjeta'
   ): Promise<void>;
 }

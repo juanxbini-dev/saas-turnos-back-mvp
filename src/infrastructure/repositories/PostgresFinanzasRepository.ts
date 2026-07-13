@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { FinanzasFilters, FinanzasSummary, EntradaFinanzas } from '../../domain/entities/Finanzas';
 import { IFinanzasRepository } from '../../domain/repositories/IFinanzasRepository';
+import { calcularComisionProducto } from '../../shared/utils/calculos.utils';
 
 export class PostgresFinanzasRepository implements IFinanzasRepository {
   constructor(private pool: Pool) {}
@@ -330,8 +331,8 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     tipo: 'turno' | 'turno_solo_servicio' | 'venta_turno' | 'venta',
     id: string,
     empresaId: string,
-    metodoPago: 'efectivo' | 'transferencia',
-    metodoPagoProductos?: 'efectivo' | 'transferencia'
+    metodoPago: 'efectivo' | 'transferencia' | 'tarjeta',
+    metodoPagoProductos?: 'efectivo' | 'transferencia' | 'tarjeta'
   ): Promise<void> {
     if (tipo === 'turno') {
       // Actualiza turno Y todos sus productos (caso sin productos pendientes separados)
@@ -365,37 +366,51 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
   private async _actualizarProductosDeTurno(
     turnoId: string,
     empresaId: string,
-    metodo: 'efectivo' | 'transferencia'
+    metodo: 'efectivo' | 'transferencia' | 'tarjeta'
   ): Promise<void> {
-    // Productos con catálogo: recalcular precio según método de pago
-    await this.pool.query(
-      `UPDATE venta_productos vp
-       SET metodo_pago     = $1,
-           precio_unitario = CASE
-             WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia
-             WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo
-             ELSE vp.precio_unitario
-           END,
-           precio_total = CASE
-             WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
-             WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
-             ELSE vp.precio_total
-           END,
-           neto_vendedor = (CASE
-             WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
-             WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
-             ELSE vp.precio_total
-           END) * vp.comision_porcentaje / 100,
-           comision_monto = (CASE
-             WHEN $4 = 'transferencia' AND COALESCE(p.precio_transferencia, 0) > 0 THEN p.precio_transferencia * vp.cantidad
-             WHEN $4 = 'efectivo'      AND COALESCE(p.precio_efectivo, 0)      > 0 THEN p.precio_efectivo      * vp.cantidad
-             ELSE vp.precio_total
-           END) * (1 - vp.comision_porcentaje / 100),
-           updated_at = NOW()
-       FROM productos p
-       WHERE vp.turno_id = $2 AND vp.empresa_id = $3 AND vp.producto_id = p.id`,
-      [metodo, turnoId, empresaId, metodo]
+    // Productos con catálogo: recalcular precio según método de pago.
+    // Los precios NULL del catálogo se derivan de la configuración (costo × (1 + pct/100)).
+    // La comisión se recalcula sobre la GANANCIA (precio − costo), igual que al crear la venta.
+    const { rows } = await this.pool.query(
+      `SELECT vp.id, vp.cantidad, vp.comision_porcentaje, vp.precio_unitario, vp.precio_total,
+              vp.es_venta_costo, vp.costo_unitario_snapshot,
+              COALESCE(p.precio_efectivo,      ROUND(p.costo * (1 + COALESCE(cfg.pct_efectivo, 0)      / 100), 2)) AS precio_efectivo,
+              COALESCE(p.precio_transferencia, ROUND(p.costo * (1 + COALESCE(cfg.pct_transferencia, 0) / 100), 2)) AS precio_transferencia,
+              COALESCE(p.precio_tarjeta,       ROUND(p.costo * (1 + COALESCE(cfg.pct_tarjeta, 0)       / 100), 2)) AS precio_tarjeta,
+              p.costo AS costo_catalogo
+       FROM venta_productos vp
+       JOIN productos p ON p.id = vp.producto_id
+       LEFT JOIN configuracion_productos cfg ON cfg.empresa_id = vp.empresa_id
+       WHERE vp.turno_id = $1 AND vp.empresa_id = $2`,
+      [turnoId, empresaId]
     );
+
+    for (const row of rows) {
+      let precioUnitario = Number(row.precio_unitario);
+      // La venta al costo conserva su precio; el resto toma el precio del método elegido
+      if (!row.es_venta_costo) {
+        const precioMetodo = metodo === 'transferencia' ? row.precio_transferencia
+          : metodo === 'tarjeta' ? row.precio_tarjeta
+          : row.precio_efectivo;
+        if (precioMetodo != null && Number(precioMetodo) > 0) precioUnitario = Number(precioMetodo);
+      }
+      const precioTotal = precioUnitario * row.cantidad;
+      const costoUnitario = row.costo_unitario_snapshot != null
+        ? Number(row.costo_unitario_snapshot)
+        : (row.costo_catalogo != null ? Number(row.costo_catalogo) : null);
+      const { netoVendedor, comisionMonto } = calcularComisionProducto(
+        precioTotal, costoUnitario, row.cantidad, Number(row.comision_porcentaje)
+      );
+
+      await this.pool.query(
+        `UPDATE venta_productos
+         SET metodo_pago = $1, precio_unitario = $2, precio_total = $3,
+             neto_vendedor = $4, comision_monto = $5, updated_at = NOW()
+         WHERE id = $6`,
+        [metodo, precioUnitario, precioTotal, netoVendedor, comisionMonto, row.id]
+      );
+    }
+
     // Productos sin catálogo (custom): solo actualizar método
     await this.pool.query(
       `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW()

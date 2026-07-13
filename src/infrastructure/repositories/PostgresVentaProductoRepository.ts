@@ -40,12 +40,16 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
   }
 
   async findByTurnoWithPrices(turnoId: string, empresaId: string): Promise<any[]> {
+    // Precio NULL en productos = derivado de la configuración (costo × (1 + pct/100))
     const result = await pool.query(
       `SELECT vp.id, vp.producto_id, vp.nombre_producto, vp.cantidad,
               vp.precio_unitario, vp.precio_total, vp.metodo_pago,
-              p.precio_efectivo, p.precio_transferencia
+              COALESCE(p.precio_efectivo,      ROUND(p.costo * (1 + COALESCE(cfg.pct_efectivo, 0)      / 100), 2)) AS precio_efectivo,
+              COALESCE(p.precio_transferencia, ROUND(p.costo * (1 + COALESCE(cfg.pct_transferencia, 0) / 100), 2)) AS precio_transferencia,
+              COALESCE(p.precio_tarjeta,       ROUND(p.costo * (1 + COALESCE(cfg.pct_tarjeta, 0)       / 100), 2)) AS precio_tarjeta
        FROM venta_productos vp
        LEFT JOIN productos p ON p.id = vp.producto_id
+       LEFT JOIN configuracion_productos cfg ON cfg.empresa_id = vp.empresa_id
        WHERE vp.turno_id = $1 AND vp.empresa_id = $2
        ORDER BY vp.created_at ASC`,
       [turnoId, empresaId]

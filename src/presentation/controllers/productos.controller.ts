@@ -31,7 +31,7 @@ export class ProductosController {
     this.updateProductoUseCase = new UpdateProductoUseCase(repo, configRepo);
     this.addStockUseCase = new AddStockUseCase(repo);
     this.deleteProductoUseCase = new DeleteProductoUseCase(repo);
-    this.getStatsUseCase = new GetProductosStatsUseCase(repo);
+    this.getStatsUseCase = new GetProductosStatsUseCase(repo, configRepo);
     this.getConfiguracionUseCase = new GetConfiguracionProductosUseCase(configRepo);
     this.updateConfiguracionUseCase = new UpdateConfiguracionProductosUseCase(configRepo);
     this.sincronizarPreciosUseCase = new SincronizarPreciosProductosUseCase(repo);
@@ -141,11 +141,12 @@ export class ProductosController {
   async updateConfiguracion(req: Request, res: Response): Promise<void> {
     try {
       const { empresaId } = req.user as AuthenticatedUser;
-      const { pct_efectivo, pct_transferencia, pct_tarjeta } = req.body;
+      const { pct_efectivo, pct_transferencia, pct_tarjeta, stock_minimo } = req.body;
       const config = await this.updateConfiguracionUseCase.execute(empresaId, {
         pct_efectivo,
         pct_transferencia,
         pct_tarjeta,
+        stock_minimo,
       });
       res.json({ success: true, data: config });
     } catch (error: any) {

@@ -18,10 +18,16 @@ export class UpdateConfiguracionProductosUseCase {
       }
     }
 
+    const stockMinimo = Number(data.stock_minimo);
+    if (data.stock_minimo == null || !Number.isInteger(stockMinimo) || stockMinimo < 0) {
+      throw Object.assign(new Error('El stock mínimo debe ser un número entero mayor o igual a 0'), { statusCode: 400 });
+    }
+
     return this.configRepository.upsert(empresaId, {
       pct_efectivo: Number(data.pct_efectivo),
       pct_transferencia: Number(data.pct_transferencia),
       pct_tarjeta: Number(data.pct_tarjeta),
+      stock_minimo: stockMinimo,
     });
   }
 }

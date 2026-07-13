@@ -13,15 +13,16 @@ export class PostgresConfiguracionProductosRepository implements IConfiguracionP
 
   async upsert(empresaId: string, data: UpdateConfiguracionProductosData): Promise<ConfiguracionProductos> {
     const result = await pool.query(
-      `INSERT INTO configuracion_productos (empresa_id, pct_efectivo, pct_transferencia, pct_tarjeta, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, NOW(), NOW())
+      `INSERT INTO configuracion_productos (empresa_id, pct_efectivo, pct_transferencia, pct_tarjeta, stock_minimo, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
        ON CONFLICT (empresa_id) DO UPDATE SET
          pct_efectivo = EXCLUDED.pct_efectivo,
          pct_transferencia = EXCLUDED.pct_transferencia,
          pct_tarjeta = EXCLUDED.pct_tarjeta,
+         stock_minimo = EXCLUDED.stock_minimo,
          updated_at = NOW()
        RETURNING *`,
-      [empresaId, data.pct_efectivo, data.pct_transferencia, data.pct_tarjeta]
+      [empresaId, data.pct_efectivo, data.pct_transferencia, data.pct_tarjeta, data.stock_minimo]
     );
     return this.mapRow(result.rows[0]);
   }
@@ -33,6 +34,7 @@ export class PostgresConfiguracionProductosRepository implements IConfiguracionP
       pct_efectivo: Number(row.pct_efectivo),
       pct_transferencia: Number(row.pct_transferencia),
       pct_tarjeta: Number(row.pct_tarjeta),
+      stock_minimo: Number(row.stock_minimo),
     };
   }
 }

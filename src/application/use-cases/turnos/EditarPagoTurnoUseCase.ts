@@ -4,7 +4,7 @@ import { IComisionRepository } from '../../../domain/repositories/IComisionRepos
 import { IVentaProductoRepository } from '../../../domain/repositories/IVentaProductoRepository';
 import { IProductoRepository } from '../../../domain/repositories/IProductoRepository';
 import { Turno, EditarPagoData } from '../../../domain/entities/Turno';
-import { calcularComisiones } from '../../../shared/utils/calculos.utils';
+import { calcularComisiones, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
 
 export class EditarPagoTurnoUseCase {
   constructor(
@@ -66,8 +66,17 @@ export class EditarPagoTurnoUseCase {
 
         for (const producto of data.productos) {
           const precioTotal = Number(producto.precio_total);
-          const netoVendedor = precioTotal * comisionProductoPct / 100;
-          const comisionMonto = precioTotal - netoVendedor;
+          // Costo del producto para calcular la comisión sobre la ganancia
+          let costoUnitario: number | null = null;
+          if (producto.es_venta_costo) {
+            costoUnitario = Number(producto.precio_unitario);
+          } else if (producto.producto_id && this.catalogoProductoRepository) {
+            const prod = await this.catalogoProductoRepository.findById(producto.producto_id);
+            costoUnitario = prod?.costo != null ? Number(prod.costo) : null;
+          }
+          const { netoVendedor, comisionMonto } = calcularComisionProducto(
+            precioTotal, costoUnitario, producto.cantidad, comisionProductoPct
+          );
           await this.ventaProductoRepository.create({
             empresa_id: data.empresaId,
             vendedor_id: data.profesionalId,
@@ -83,7 +92,7 @@ export class EditarPagoTurnoUseCase {
             comision_monto: comisionMonto,
             neto_vendedor: netoVendedor,
             es_venta_costo: producto.es_venta_costo ?? false,
-            costo_unitario_snapshot: producto.es_venta_costo ? producto.precio_unitario : null,
+            costo_unitario_snapshot: costoUnitario,
           });
         }
       }

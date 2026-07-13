@@ -3,8 +3,10 @@
  *
  * Cubre la lógica crítica de cálculo financiero para ventas directas:
  *   precio_total    = cantidad × precio_unitario
- *   neto_vendedor   = precio_total × comision_porcentaje / 100  ← lo que recibe el profesional
- *   comision_monto  = precio_total - neto_vendedor               ← lo que recibe la empresa
+ *   ganancia        = max(0, precio_total − costo_unitario × cantidad)
+ *   neto_vendedor   = ganancia × comision_porcentaje / 100  ← lo que recibe el profesional
+ *   comision_monto  = precio_total - neto_vendedor           ← lo que retiene la empresa
+ * Si el costo es desconocido (null), se asume 0 y la base vuelve a ser el precio total.
  *
  * También verifica multi-tenancy, manejo de stock, fecha_venta y casos de error.
  */
@@ -45,6 +47,7 @@ function buildProductoCatalogo(overrides: Partial<Producto> = {}): Producto {
     descripcion:          null,
     precio_efectivo:      100,
     precio_transferencia: 110,
+    precio_tarjeta:       null,
     costo:                40,
     stock:                50,
     activo:               true,
@@ -170,7 +173,7 @@ describe('CreateVentaDirectaUseCase', () => {
 
   describe('cálculos financieros', () => {
 
-    it('comisión 10%: precio 100, cant 1 → neto_vendedor=10, comision_monto=90', async () => {
+    it('comisión 10% sobre ganancia: precio 100, costo 40, cant 1 → neto_vendedor=6, comision_monto=94', async () => {
       const mocks = makeMocks();
       mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
       mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
@@ -180,12 +183,13 @@ describe('CreateVentaDirectaUseCase', () => {
 
       const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
       expect(argCreado.precio_total).toBeCloseTo(100);
-      expect(argCreado.neto_vendedor).toBeCloseTo(10);
-      expect(argCreado.comision_monto).toBeCloseTo(90);
+      expect(argCreado.neto_vendedor).toBeCloseTo(6);       // ganancia 60 × 10%
+      expect(argCreado.comision_monto).toBeCloseTo(94);     // 100 - 6
       expect(argCreado.comision_porcentaje).toBe(10);
+      expect(argCreado.costo_unitario_snapshot).toBe(40);
     });
 
-    it('comisión 80%: precio 200, cant 2 → neto_vendedor=320, comision_monto=80', async () => {
+    it('comisión 80% sobre ganancia: precio 200, costo 40, cant 2 → neto_vendedor=256, comision_monto=144', async () => {
       const mocks = makeMocks();
       mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 80 }));
       mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo({ nombre: 'Tinte' }));
@@ -197,9 +201,38 @@ describe('CreateVentaDirectaUseCase', () => {
 
       const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
       expect(argCreado.precio_total).toBeCloseTo(400);      // 2 × 200
-      expect(argCreado.neto_vendedor).toBeCloseTo(320);     // 400 × 80%
-      expect(argCreado.comision_monto).toBeCloseTo(80);     // 400 - 320
+      expect(argCreado.neto_vendedor).toBeCloseTo(256);     // ganancia (400 - 80) × 80%
+      expect(argCreado.comision_monto).toBeCloseTo(144);    // 400 - 256
       expect(argCreado.comision_porcentaje).toBe(80);
+    });
+
+    it('costo desconocido (null en catálogo): la base de la comisión vuelve a ser el precio total', async () => {
+      const mocks = makeMocks();
+      mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
+      mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo({ costo: null }));
+      mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+      await buildUseCase(mocks).execute(buildInputBase());
+
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.neto_vendedor).toBeCloseTo(10);      // sin costo → base = 100
+      expect(argCreado.comision_monto).toBeCloseTo(90);
+      expect(argCreado.costo_unitario_snapshot).toBeNull();
+    });
+
+    it('venta por debajo del costo: ganancia negativa se trunca en 0 → neto_vendedor=0', async () => {
+      const mocks = makeMocks();
+      mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 50 }));
+      mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo({ costo: 40 }));
+      mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        items: [{ producto_id: 'prod-001', cantidad: 1, precio_unitario: 30 }],
+      }));
+
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.neto_vendedor).toBeCloseTo(0);
+      expect(argCreado.comision_monto).toBeCloseTo(30);
     });
 
     it('comisión 0%: empresa se queda con todo, profesional recibe 0', async () => {
@@ -218,7 +251,7 @@ describe('CreateVentaDirectaUseCase', () => {
       expect(argCreado.comision_monto).toBeCloseTo(500);
     });
 
-    it('comisión 100%: profesional se queda con todo, empresa recibe 0', async () => {
+    it('comisión 100%: profesional se queda con toda la ganancia, empresa retiene el costo', async () => {
       const mocks = makeMocks();
       mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 100 }));
       mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
@@ -230,8 +263,8 @@ describe('CreateVentaDirectaUseCase', () => {
 
       const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
       expect(argCreado.precio_total).toBeCloseTo(750);      // 3 × 250
-      expect(argCreado.neto_vendedor).toBeCloseTo(750);
-      expect(argCreado.comision_monto).toBeCloseTo(0);
+      expect(argCreado.neto_vendedor).toBeCloseTo(630);     // ganancia 750 - 120
+      expect(argCreado.comision_monto).toBeCloseTo(120);    // la empresa recupera el costo
     });
 
   });
@@ -350,7 +383,7 @@ describe('CreateVentaDirectaUseCase', () => {
       expect(argCreado.costo_unitario_snapshot).toBe(35);
     });
 
-    it('es_venta_costo=false: costo_unitario_snapshot es null aunque se envíe precio_costo', async () => {
+    it('es_venta_costo=false: costo_unitario_snapshot toma el costo del catálogo (ignora precio_costo)', async () => {
       const mocks = makeMocks();
       mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
       mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
@@ -368,7 +401,7 @@ describe('CreateVentaDirectaUseCase', () => {
 
       const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
       expect(argCreado.es_venta_costo).toBe(false);
-      expect(argCreado.costo_unitario_snapshot).toBeNull();
+      expect(argCreado.costo_unitario_snapshot).toBe(40);
     });
 
   });

@@ -3,7 +3,7 @@ import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioReposit
 import { IProductoRepository } from '../../../domain/repositories/IProductoRepository';
 import { VentaProducto } from '../../../domain/entities/Comision';
 import { MetodoPago } from '../../../domain/entities/Turno';
-import { generarId } from '../../../shared/utils/calculos.utils';
+import { generarId, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
 
 export interface CreateVentaDirectaItem {
   producto_id: string;
@@ -54,16 +54,25 @@ export class CreateVentaDirectaUseCase {
     const grupoId = generarId(); // mismo ID para todos los items de esta compra
 
     for (const item of data.items) {
-      const precioTotal = item.precio_unitario * item.cantidad;
-      const netoVendedor = precioTotal * comisionPct / 100;
-      const comisionMonto = precioTotal - netoVendedor;
-
-      // Obtener nombre del producto desde catálogo si existe
+      // Obtener nombre y costo del producto desde catálogo si existe
       let nombreProducto = `Producto ${item.producto_id}`;
+      let costoUnitario: number | null = null;
       if (this.catalogoProductoRepository) {
         const prod = await this.catalogoProductoRepository.findById(item.producto_id);
-        if (prod) nombreProducto = prod.nombre;
+        if (prod) {
+          nombreProducto = prod.nombre;
+          costoUnitario = prod.costo != null ? Number(prod.costo) : null;
+        }
       }
+      if (item.es_venta_costo && item.precio_costo != null) {
+        costoUnitario = Number(item.precio_costo);
+      }
+
+      const precioTotal = item.precio_unitario * item.cantidad;
+      // Comisión sobre la ganancia (precio - costo), no sobre el total
+      const { netoVendedor, comisionMonto } = calcularComisionProducto(
+        precioTotal, costoUnitario, item.cantidad, comisionPct
+      );
 
       const creado = await this.ventaProductoRepository.create({
         empresa_id: data.empresa_id,
@@ -82,7 +91,7 @@ export class CreateVentaDirectaUseCase {
         neto_vendedor: netoVendedor,
         fecha_venta: item.fecha_venta ?? null,
         es_venta_costo: item.es_venta_costo ?? false,
-        costo_unitario_snapshot: item.es_venta_costo ? item.precio_costo ?? null : null,
+        costo_unitario_snapshot: costoUnitario,
       });
 
       if (this.catalogoProductoRepository) {

@@ -5,7 +5,7 @@ import { IVentaProductoRepository } from '../../../domain/repositories/IVentaPro
 import { IProductoRepository } from '../../../domain/repositories/IProductoRepository';
 import { Turno, FinalizarTurnoData, CalculoCompletoTurno } from '../../../domain/entities/Turno';
 import { CreateComisionData } from '../../../domain/entities/Comision';
-import { calcularComisiones, generarId } from '../../../shared/utils/calculos.utils';
+import { calcularComisiones, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
 
 export class FinalizarTurnoUseCase {
   constructor(
@@ -70,8 +70,17 @@ export class FinalizarTurnoUseCase {
 
       for (const producto of data.productos) {
         const precioTotal = Number(producto.precio_total);
-        const netoVendedor = precioTotal * comisionProductoPct / 100;
-        const comisionMonto = precioTotal - netoVendedor;
+        // Costo del producto para calcular la comisión sobre la ganancia
+        let costoUnitario: number | null = null;
+        if (producto.es_venta_costo) {
+          costoUnitario = Number(producto.precio_unitario);
+        } else if (producto.producto_id && this.catalogoProductoRepository) {
+          const prod = await this.catalogoProductoRepository.findById(producto.producto_id);
+          costoUnitario = prod?.costo != null ? Number(prod.costo) : null;
+        }
+        const { netoVendedor, comisionMonto } = calcularComisionProducto(
+          precioTotal, costoUnitario, producto.cantidad, comisionProductoPct
+        );
         await this.productoRepository.create({
           empresa_id: data.empresaId,
           vendedor_id: data.profesionalId,
@@ -87,7 +96,7 @@ export class FinalizarTurnoUseCase {
           comision_monto: comisionMonto,
           neto_vendedor: netoVendedor,
           es_venta_costo: producto.es_venta_costo ?? false,
-          costo_unitario_snapshot: producto.es_venta_costo ? producto.precio_unitario : null,
+          costo_unitario_snapshot: costoUnitario,
         });
 
         if (producto.producto_id && this.catalogoProductoRepository) {

@@ -1,5 +1,6 @@
 export type TurnoEstado = 'pendiente' | 'confirmado' | 'completado' | 'cancelado';
-export type MetodoPago = 'efectivo' | 'transferencia' | 'pendiente';
+// 'tarjeta' solo se usa para venta de productos (el frontend no lo ofrece al cobrar turnos)
+export type MetodoPago = 'efectivo' | 'transferencia' | 'tarjeta' | 'pendiente';
 
 export interface Turno {
   id: string;

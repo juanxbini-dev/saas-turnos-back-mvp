@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { ProductosController } from '../controllers/productos.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate, requireAdmin } from '../middlewares/auth.middleware';
 
 const router = Router();
 const controller = new ProductosController();
 
 router.use(authenticate);
 
+router.get('/configuracion', (req, res) => controller.getConfiguracion(req, res));
+router.put('/configuracion', requireAdmin, (req, res) => controller.updateConfiguracion(req, res));
 router.get('/stats', (req, res) => controller.getStats(req, res));
 router.get('/ventas-finanzas', (req, res) => controller.getVentasFinanzas(req, res));
 router.get('/', (req, res) => controller.getProductos(req, res));

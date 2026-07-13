@@ -28,10 +28,10 @@ export class PostgresProductoRepository implements IProductoRepository {
 
   async create(data: CreateProductoData): Promise<Producto> {
     const result = await pool.query(
-      `INSERT INTO productos (id, empresa_id, nombre, descripcion, precio_efectivo, precio_transferencia, costo, stock, marca_id, activo, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW(), NOW())
+      `INSERT INTO productos (id, empresa_id, nombre, descripcion, precio_efectivo, precio_transferencia, precio_tarjeta, costo, stock, marca_id, activo, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, NOW(), NOW())
        RETURNING *`,
-      [generarId(), data.empresa_id, data.nombre, data.descripcion || null, data.precio_efectivo, data.precio_transferencia, data.costo ?? null, data.stock, data.marca_id || null]
+      [generarId(), data.empresa_id, data.nombre, data.descripcion || null, data.precio_efectivo ?? null, data.precio_transferencia ?? null, data.precio_tarjeta ?? null, data.costo, data.stock, data.marca_id || null]
     );
     const inserted = result.rows[0];
     return (await this.findById(inserted.id))!;
@@ -46,6 +46,7 @@ export class PostgresProductoRepository implements IProductoRepository {
     if (data.descripcion !== undefined) { fields.push(`descripcion = $${i++}`); values.push(data.descripcion); }
     if (data.precio_efectivo !== undefined) { fields.push(`precio_efectivo = $${i++}`); values.push(data.precio_efectivo); }
     if (data.precio_transferencia !== undefined) { fields.push(`precio_transferencia = $${i++}`); values.push(data.precio_transferencia); }
+    if (data.precio_tarjeta !== undefined) { fields.push(`precio_tarjeta = $${i++}`); values.push(data.precio_tarjeta); }
     if (data.costo !== undefined) { fields.push(`costo = $${i++}`); values.push(data.costo); }
     if (data.stock !== undefined) { fields.push(`stock = $${i++}`); values.push(data.stock); }
     if (data.activo !== undefined) { fields.push(`activo = $${i++}`); values.push(data.activo); }

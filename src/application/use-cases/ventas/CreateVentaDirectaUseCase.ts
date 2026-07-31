@@ -4,6 +4,7 @@ import { IProductoRepository } from '../../../domain/repositories/IProductoRepos
 import { VentaProducto } from '../../../domain/entities/Comision';
 import { MetodoPago } from '../../../domain/entities/Turno';
 import { generarId, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
+import { normalizarCanjeDetalle } from '../../../shared/utils/canje.utils';
 
 export interface CreateVentaDirectaItem {
   producto_id: string;
@@ -20,6 +21,9 @@ export interface CreateVentaDirectaData {
   cliente_id?: string | null;
   metodo_pago: MetodoPago;
   notas?: string;
+  // Texto libre del canje: solo se persiste cuando metodo_pago = 'canje'
+  // (el mismo texto va a todos los items del grupo).
+  canje_detalle?: string | null;
   items: CreateVentaDirectaItem[];
 }
 
@@ -55,6 +59,8 @@ export class CreateVentaDirectaUseCase {
     // Canje = entrega gratis: se guarda el detalle con importes en 0.
     // El costo_unitario_snapshot SÍ se guarda (informativo) y el stock se descuenta normal.
     const esCanje = data.metodo_pago === 'canje';
+    // Un solo detalle por operación: el mismo texto para todos los items del grupo.
+    const canjeDetalle = esCanje ? normalizarCanjeDetalle(data.canje_detalle) : null;
 
     for (const item of data.items) {
       // Obtener nombre y costo del producto desde catálogo si existe
@@ -96,6 +102,7 @@ export class CreateVentaDirectaUseCase {
         fecha_venta: item.fecha_venta ?? null,
         es_venta_costo: item.es_venta_costo ?? false,
         costo_unitario_snapshot: costoUnitario,
+        canje_detalle: canjeDetalle,
       });
 
       if (this.catalogoProductoRepository) {

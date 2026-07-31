@@ -84,6 +84,8 @@ export interface VentaGrupadaFinanzas {
   cliente_nombre: string | null;
   vendedor_nombre: string;
   empresa_id: string;
+  // Detalle del canje (solo cuando metodo_pago = 'canje'; NULL en caso contrario)
+  canje_detalle?: string | null;
   items: VentaItemFinanzas[];
 }
 
@@ -104,6 +106,8 @@ export interface ComisionConDetalle extends ComisionProfesional {
   tiene_productos: boolean;
   // El turno tiene productos con metodo_pago = 'pendiente' (aunque no estén en la página actual)
   tiene_producto_pendiente: boolean;
+  // Detalle del canje (turnos.canje_detalle; solo cuando el servicio se cobró como canje)
+  canje_detalle?: string | null;
 }
 
 export type EntradaFinanzas = ComisionConDetalle | VentaGrupadaFinanzas;

@@ -177,7 +177,7 @@ export class FinanzasController {
       const authUser = (req as any).user;
       if (!authUser) return res.status(401).json({ message: 'No autenticado' });
 
-      const { tipo, id, metodo_pago, metodo_pago_productos } = req.body;
+      const { tipo, id, metodo_pago, metodo_pago_productos, canje_detalle } = req.body;
 
       if (!tipo || !id || !metodo_pago) {
         return res.status(400).json({ message: 'tipo, id y metodo_pago son requeridos' });
@@ -201,7 +201,8 @@ export class FinanzasController {
         return res.status(400).json({ message: 'metodo_pago_productos debe ser "efectivo", "transferencia", "tarjeta" o "canje"' });
       }
 
-      await cobrarPagoRepo.cobrarPago(tipo, id, authUser.empresaId, metodo_pago, metodo_pago_productos);
+      // canje_detalle: texto libre del canje; el repo lo normaliza y solo lo persiste con método canje
+      await cobrarPagoRepo.cobrarPago(tipo, id, authUser.empresaId, metodo_pago, metodo_pago_productos, canje_detalle);
       res.json({ success: true });
     } catch (error) {
       console.error('Error en cobrarPago:', error);

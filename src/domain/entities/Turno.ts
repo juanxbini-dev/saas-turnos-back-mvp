@@ -26,6 +26,8 @@ export interface Turno {
   total_final?: number;
   finalizado_at?: string;
   finalizado_por_id?: string;
+  // Detalle del canje (solo cuando metodo_pago = 'canje'; NULL en caso contrario)
+  canje_detalle?: string | null;
   // Origen del turno
   origen?: 'web' | 'interno';
   // Notificaciones
@@ -69,11 +71,15 @@ export interface FinalizarTurnoData {
   descuentoPorcentaje?: number;
   descuentoAplicarA?: DescuentoAplicarA;
   productos?: VentaProductoData[];
+  // Input del request (camelCase): texto libre del canje. Solo se persiste si el método es 'canje'.
+  canjeDetalle?: string | null;
   precio_original?: number;
   descuento_monto?: number;
   total_final?: number;
   finalizado_at?: string;
   finalizado_por_id?: string;
+  // Valor ya normalizado que el use case pasa al repositorio (columna turnos.canje_detalle)
+  canje_detalle?: string | null;
 }
 
 export interface EditarPagoData {
@@ -85,6 +91,8 @@ export interface EditarPagoData {
   descuentoPorcentaje?: number;
   descuentoAplicarA?: DescuentoAplicarA;
   productos?: VentaProductoData[];
+  // Texto libre del canje. Solo se persiste si el método es 'canje'; si deja de serlo → NULL.
+  canjeDetalle?: string | null;
 }
 
 export interface VentaProductoData {

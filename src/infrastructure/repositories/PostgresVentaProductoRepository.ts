@@ -10,10 +10,10 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
         id, empresa_id, vendedor_id, cliente_id, turno_id, venta_grupo_id,
         producto_id, nombre_producto, cantidad, precio_unitario, precio_total,
         metodo_pago, comision_porcentaje, comision_monto, neto_vendedor,
-        fecha_venta, es_venta_costo, costo_unitario_snapshot,
+        fecha_venta, es_venta_costo, costo_unitario_snapshot, canje_detalle,
         created_at, updated_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW(),NOW())
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW())
       RETURNING *
     `;
     const result = await pool.query(query, [
@@ -27,6 +27,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       data.fecha_venta ?? null,
       data.es_venta_costo ?? false,
       data.costo_unitario_snapshot ?? null,
+      data.canje_detalle ?? null,
     ]);
     return result.rows[0];
   }
@@ -43,7 +44,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
     // Precio NULL en productos = derivado de la configuración (costo × (1 + pct/100))
     const result = await pool.query(
       `SELECT vp.id, vp.producto_id, vp.nombre_producto, vp.cantidad,
-              vp.precio_unitario, vp.precio_total, vp.metodo_pago,
+              vp.precio_unitario, vp.precio_total, vp.metodo_pago, vp.canje_detalle,
               COALESCE(p.precio_efectivo,      ROUND(p.costo * (1 + COALESCE(cfg.pct_efectivo, 0)      / 100), 2)) AS precio_efectivo,
               COALESCE(p.precio_transferencia, ROUND(p.costo * (1 + COALESCE(cfg.pct_transferencia, 0) / 100), 2)) AS precio_transferencia,
               COALESCE(p.precio_tarjeta,       ROUND(p.costo * (1 + COALESCE(cfg.pct_tarjeta, 0)       / 100), 2)) AS precio_tarjeta
@@ -122,6 +123,8 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
   }
 
   async updateById(id: string, empresaId: string, data: UpdateVentaProductoData): Promise<VentaProducto> {
+    // canje_detalle admite tres estados: undefined = no tocar (CASE con flag $14),
+    // string = guardar, null = limpiar. COALESCE no sirve porque nunca podría volver a NULL.
     const query = `
       UPDATE venta_productos
       SET vendedor_id = COALESCE($3, vendedor_id),
@@ -135,6 +138,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
           fecha_venta = COALESCE($11, fecha_venta),
           es_venta_costo = COALESCE($12, es_venta_costo),
           costo_unitario_snapshot = COALESCE($13, costo_unitario_snapshot),
+          canje_detalle = CASE WHEN $14 THEN $15::text ELSE canje_detalle END,
           updated_at = NOW()
       WHERE id = $1 AND empresa_id = $2
       RETURNING *
@@ -153,6 +157,8 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       data.fecha_venta ?? null,
       data.es_venta_costo ?? null,
       data.costo_unitario_snapshot ?? null,
+      data.canje_detalle !== undefined,
+      data.canje_detalle ?? null,
     ]);
     return result.rows[0] ?? null;
   }

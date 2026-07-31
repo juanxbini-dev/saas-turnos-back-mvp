@@ -380,6 +380,91 @@ describe('EditarPagoTurnoUseCase', () => {
     });
   });
 
+  // ── DETALLE DEL CANJE ─────────────────────────────────────────────────────
+
+  describe('detalle del canje', () => {
+    function setupHappyPath(mocks: ReturnType<typeof buildMocks>) {
+      mocks.turnoRepo.findById.mockResolvedValue(buildTurnoCompletado());
+      mocks.usuarioRepo.findById.mockResolvedValue(buildProfesional());
+      mocks.turnoRepo.finalizar.mockResolvedValue(buildTurnoActualizado());
+      mocks.comisionRepo.updateByTurno.mockResolvedValue(buildComision());
+      mocks.ventaProductoRepo.create.mockResolvedValue({} as any);
+    }
+
+    it('editar a canje con canjeDetalle: el texto (con trim) va a turnos.canje_detalle', async () => {
+      const mocks = buildMocks();
+      setupHappyPath(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago:   'canje',
+        canjeDetalle: '  A cambio de mercadería  ',
+      }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.metodoPago).toBe('canje');
+      expect(finalizarData.canje_detalle).toBe('A cambio de mercadería');
+    });
+
+    it('el servicio deja de ser canje: turnos.canje_detalle vuelve a NULL', async () => {
+      const mocks = buildMocks();
+      setupHappyPath(mocks);
+
+      // El turno estaba cobrado como canje y se edita a efectivo
+      mocks.turnoRepo.findById.mockResolvedValue(
+        buildTurnoCompletado({ metodo_pago: 'canje', canje_detalle: 'canje viejo' })
+      );
+
+      await buildUseCase(mocks).execute(buildInputBase({ metodoPago: 'efectivo' }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.canje_detalle).toBeNull();
+    });
+
+    it('producto canjeado en la edición: se recrea con el canje_detalle de la operación', async () => {
+      const mocks = buildMocks();
+      setupHappyPath(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago:   'canje',
+        canjeDetalle: 'Canje completo del turno',
+        productos: [{
+          id:              'vp-001',
+          nombre_producto: 'Shampoo',
+          cantidad:        1,
+          precio_unitario: 300,
+          precio_total:    300,
+        }],
+      }));
+
+      const productoCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(productoCreado.metodo_pago).toBe('canje');
+      expect(productoCreado.canje_detalle).toBe('Canje completo del turno');
+    });
+
+    it('producto que deja de ser canje: se recrea con canje_detalle null', async () => {
+      const mocks = buildMocks();
+      setupHappyPath(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'efectivo',
+        productos: [{
+          id:              'vp-001',
+          nombre_producto: 'Shampoo',
+          cantidad:        1,
+          precio_unitario: 300,
+          precio_total:    300,
+          metodo_pago:     'efectivo',
+        }],
+      }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.canje_detalle).toBeNull();
+
+      const productoCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(productoCreado.canje_detalle).toBeNull();
+    });
+  });
+
   // ── BUG CRÍTICO: turno completado por cron sin comisión ───────────────────
   //
   // Escenario:

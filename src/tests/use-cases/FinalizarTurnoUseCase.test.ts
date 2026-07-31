@@ -600,4 +600,144 @@ describe('FinalizarTurnoUseCase', () => {
       expect(ventaArg.neto_vendedor).toBeCloseTo(0);
     });
   });
+
+  // ── DETALLE DEL CANJE (texto libre persistido en turnos y venta_productos) ─
+
+  describe('detalle del canje', () => {
+    function setupCanje(mocks: ReturnType<typeof buildMocks>) {
+      mocks.turnoRepo.findById.mockResolvedValue(buildTurnoConfirmado({ precio: 1000 }));
+      mocks.usuarioRepo.findById.mockResolvedValue(buildProfesional({ comision_turno: 70, comision_producto: 50 }));
+      mocks.turnoRepo.finalizar.mockResolvedValue(buildTurnoFinalizado());
+      mocks.comisionRepo.create.mockResolvedValue(buildComision());
+      mocks.ventaProductoRepo.create.mockResolvedValue({} as any);
+    }
+
+    it('servicio canje con canjeDetalle: el texto (con trim) llega a turnos.canje_detalle', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'canje',
+        canjeDetalle: '  Corte a cambio de publicidad en redes  ',
+      }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.canje_detalle).toBe('Corte a cambio de publicidad en redes');
+    });
+
+    it('servicio NO canje: turnos.canje_detalle va en null aunque venga canjeDetalle', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'efectivo',
+        canjeDetalle: 'esto no debería guardarse',
+      }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.canje_detalle).toBeNull();
+    });
+
+    it('canje sin canjeDetalle (o vacío): se guarda null', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'canje',
+        canjeDetalle: '   ',
+      }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.metodoPago).toBe('canje');
+      expect(finalizarData.canje_detalle).toBeNull();
+    });
+
+    it('un solo detalle por operación: el mismo texto va al turno y al producto canjeado', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+      mocks.catalogoProductoRepo.findById.mockResolvedValue({ id: 'prod-catalogo-001', costo: 40 } as any);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'canje',
+        canjeDetalle: 'Canje por productos de la marca',
+        productos: [{
+          id:              'vp-001',
+          producto_id:     'prod-catalogo-001',
+          nombre_producto: 'Shampoo',
+          cantidad:        1,
+          precio_unitario: 500,
+          precio_total:    500,
+        }],
+      }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.canje_detalle).toBe('Canje por productos de la marca');
+
+      const ventaArg = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(ventaArg.canje_detalle).toBe('Canje por productos de la marca');
+    });
+
+    it('servicio efectivo + producto canje: el detalle solo va al producto, el turno queda null', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+      mocks.catalogoProductoRepo.findById.mockResolvedValue({ id: 'prod-catalogo-001', costo: 40 } as any);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'efectivo',
+        canjeDetalle: 'Producto de regalo por colaboración',
+        productos: [{
+          id:              'vp-001',
+          producto_id:     'prod-catalogo-001',
+          nombre_producto: 'Shampoo',
+          cantidad:        1,
+          precio_unitario: 500,
+          precio_total:    500,
+          metodo_pago:     'canje',
+        }],
+      }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.canje_detalle).toBeNull();
+
+      const ventaArg = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(ventaArg.canje_detalle).toBe('Producto de regalo por colaboración');
+    });
+
+    it('producto NO canje en turno canje: el producto se crea con canje_detalle null', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+      mocks.catalogoProductoRepo.findById.mockResolvedValue({ id: 'prod-catalogo-001', costo: 40 } as any);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'canje',
+        canjeDetalle: 'Solo el servicio es canje',
+        productos: [{
+          id:              'vp-001',
+          producto_id:     'prod-catalogo-001',
+          nombre_producto: 'Shampoo',
+          cantidad:        1,
+          precio_unitario: 500,
+          precio_total:    500,
+          metodo_pago:     'efectivo',
+        }],
+      }));
+
+      const ventaArg = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(ventaArg.metodo_pago).toBe('efectivo');
+      expect(ventaArg.canje_detalle).toBeNull();
+    });
+
+    it('el detalle se trunca a 500 caracteres', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'canje',
+        canjeDetalle: 'x'.repeat(600),
+      }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.canje_detalle).toHaveLength(500);
+    });
+  });
 });

@@ -56,6 +56,8 @@ export interface UpdateVentaProductoData {
   fecha_venta?: string;
   es_venta_costo?: boolean;
   costo_unitario_snapshot?: number | null;
+  // undefined = no tocar; string = guardar (canje); null = limpiar (dejó de ser canje)
+  canje_detalle?: string | null;
 }
 
 export interface IVentaProductoRepository {

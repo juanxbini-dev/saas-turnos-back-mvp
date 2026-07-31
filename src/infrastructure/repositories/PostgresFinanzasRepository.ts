@@ -2,6 +2,7 @@ import { Pool } from 'pg';
 import { FinanzasFilters, FinanzasSummary, EntradaFinanzas } from '../../domain/entities/Finanzas';
 import { IFinanzasRepository } from '../../domain/repositories/IFinanzasRepository';
 import { calcularComisionProducto } from '../../shared/utils/calculos.utils';
+import { normalizarCanjeDetalle } from '../../shared/utils/canje.utils';
 
 export class PostgresFinanzasRepository implements IFinanzasRepository {
   constructor(private pool: Pool) {}
@@ -74,6 +75,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
           SUM(vp.neto_vendedor)                                                                       AS neto_vendedor,
           MIN(c.nombre)                                                                               AS cliente_nombre,
           MIN(u.nombre)                                                                               AS vendedor_nombre,
+          MIN(vp.canje_detalle)                                                                       AS canje_detalle,
           vp.empresa_id,
           JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -114,6 +116,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
             'descuento_porcentaje',         t.descuento_porcentaje,
             'descuento_monto',              t.descuento_monto,
             'total_final',                  t.total_final,
+            'canje_detalle',                t.canje_detalle,
             'servicio_monto',               ct.servicio_monto,
             'servicio_comision_porcentaje', ct.servicio_comision_porcentaje,
             'servicio_comision_monto',      ct.servicio_comision_monto,
@@ -153,6 +156,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
             'turno_id',        va.turno_id,
             'fecha',           va.fecha,
             'metodo_pago',     va.metodo_pago,
+            'canje_detalle',   va.canje_detalle,
             'total',           va.total,
             'comision_monto',  va.comision_monto,
             'neto_vendedor',   va.neto_vendedor,
@@ -352,21 +356,26 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     id: string,
     empresaId: string,
     metodoPago: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje',
-    metodoPagoProductos?: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje'
+    metodoPagoProductos?: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje',
+    canjeDetalle?: string | null
   ): Promise<void> {
+    // Un solo detalle por operación: el mismo texto va al turno (si el servicio es canje)
+    // y/o a todos los productos cobrados como canje. Con métodos no-canje vuelve a NULL.
+    const detalle = normalizarCanjeDetalle(canjeDetalle);
+
     if (tipo === 'turno') {
       // Actualiza turno Y todos sus productos (caso sin productos pendientes separados)
-      await this._cobrarServicioDeTurno(id, empresaId, metodoPago);
+      await this._cobrarServicioDeTurno(id, empresaId, metodoPago, detalle);
       const metodoProd = metodoPagoProductos ?? metodoPago;
-      await this._actualizarProductosDeTurno(id, empresaId, metodoProd);
+      await this._actualizarProductosDeTurno(id, empresaId, metodoProd, detalle);
 
     } else if (tipo === 'turno_solo_servicio') {
       // Solo actualiza el turno — los productos se cobran por separado desde su propia fila
-      await this._cobrarServicioDeTurno(id, empresaId, metodoPago);
+      await this._cobrarServicioDeTurno(id, empresaId, metodoPago, detalle);
 
     } else if (tipo === 'venta_turno') {
       // Solo actualiza venta_productos del turno — no toca turnos.metodo_pago
-      await this._actualizarProductosDeTurno(id, empresaId, metodoPago);
+      await this._actualizarProductosDeTurno(id, empresaId, metodoPago, detalle);
 
     } else {
       // Venta directa: actualiza por venta_grupo_id.
@@ -375,31 +384,34 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
         await this.pool.query(
           `UPDATE venta_productos
            SET metodo_pago = 'canje', precio_unitario = 0, precio_total = 0,
-               neto_vendedor = 0, comision_monto = 0, updated_at = NOW()
+               neto_vendedor = 0, comision_monto = 0, canje_detalle = $3, updated_at = NOW()
            WHERE venta_grupo_id = $1 AND empresa_id = $2`,
-          [id, empresaId]
+          [id, empresaId, detalle]
         );
       } else {
         await this.pool.query(
-          `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW() WHERE venta_grupo_id = $2 AND empresa_id = $3`,
+          `UPDATE venta_productos SET metodo_pago = $1, canje_detalle = NULL, updated_at = NOW()
+           WHERE venta_grupo_id = $2 AND empresa_id = $3`,
           [metodoPago, id, empresaId]
         );
       }
     }
   }
 
-  // Cobra el servicio de un turno. Canje = servicio gratis: total_final del turno en 0
-  // y los montos del servicio en comisiones_turno también en 0.
+  // Cobra el servicio de un turno. Canje = servicio gratis: total_final del turno en 0,
+  // los montos del servicio en comisiones_turno también en 0 y se guarda canje_detalle.
+  // Con métodos no-canje, canje_detalle vuelve a NULL.
   private async _cobrarServicioDeTurno(
     turnoId: string,
     empresaId: string,
-    metodoPago: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje'
+    metodoPago: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje',
+    canjeDetalle: string | null = null
   ): Promise<void> {
     if (metodoPago === 'canje') {
       await this.pool.query(
-        `UPDATE turnos SET metodo_pago = 'canje', total_final = 0, updated_at = NOW()
+        `UPDATE turnos SET metodo_pago = 'canje', total_final = 0, canje_detalle = $3, updated_at = NOW()
          WHERE id = $1 AND empresa_id = $2`,
-        [turnoId, empresaId]
+        [turnoId, empresaId, canjeDetalle]
       );
       await this.pool.query(
         `UPDATE comisiones_turno
@@ -409,7 +421,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       );
     } else {
       await this.pool.query(
-        `UPDATE turnos SET metodo_pago = $1, updated_at = NOW() WHERE id = $2 AND empresa_id = $3`,
+        `UPDATE turnos SET metodo_pago = $1, canje_detalle = NULL, updated_at = NOW() WHERE id = $2 AND empresa_id = $3`,
         [metodoPago, turnoId, empresaId]
       );
     }
@@ -418,7 +430,8 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
   private async _actualizarProductosDeTurno(
     turnoId: string,
     empresaId: string,
-    metodo: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje'
+    metodo: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje',
+    canjeDetalle: string | null = null
   ): Promise<void> {
     // Canje = entrega gratis: NO se usa el precio por config; todos los importes en 0
     // (con y sin catálogo). El costo_unitario_snapshot queda como está (informativo).
@@ -426,9 +439,9 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       await this.pool.query(
         `UPDATE venta_productos
          SET metodo_pago = 'canje', precio_unitario = 0, precio_total = 0,
-             neto_vendedor = 0, comision_monto = 0, updated_at = NOW()
+             neto_vendedor = 0, comision_monto = 0, canje_detalle = $3, updated_at = NOW()
          WHERE turno_id = $1 AND empresa_id = $2`,
-        [turnoId, empresaId]
+        [turnoId, empresaId, canjeDetalle]
       );
       return;
     }
@@ -470,15 +483,15 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       await this.pool.query(
         `UPDATE venta_productos
          SET metodo_pago = $1, precio_unitario = $2, precio_total = $3,
-             neto_vendedor = $4, comision_monto = $5, updated_at = NOW()
+             neto_vendedor = $4, comision_monto = $5, canje_detalle = NULL, updated_at = NOW()
          WHERE id = $6`,
         [metodo, precioUnitario, precioTotal, netoVendedor, comisionMonto, row.id]
       );
     }
 
-    // Productos sin catálogo (custom): solo actualizar método
+    // Productos sin catálogo (custom): solo actualizar método (y limpiar canje_detalle)
     await this.pool.query(
-      `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW()
+      `UPDATE venta_productos SET metodo_pago = $1, canje_detalle = NULL, updated_at = NOW()
        WHERE turno_id = $2 AND empresa_id = $3 AND producto_id IS NULL`,
       [metodo, turnoId, empresaId]
     );

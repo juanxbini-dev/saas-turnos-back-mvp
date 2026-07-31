@@ -5,6 +5,7 @@ import { IVentaProductoRepository } from '../../../domain/repositories/IVentaPro
 import { IProductoRepository } from '../../../domain/repositories/IProductoRepository';
 import { Turno, EditarPagoData } from '../../../domain/entities/Turno';
 import { calcularComisiones, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
+import { normalizarCanjeDetalle } from '../../../shared/utils/canje.utils';
 
 export class EditarPagoTurnoUseCase {
   constructor(
@@ -34,6 +35,9 @@ export class EditarPagoTurnoUseCase {
     // 3. Calcular nuevos totales
     // Canje = entrega gratis: se guarda el detalle pero todos los importes van en 0.
     const esCanjeServicio = data.metodoPago === 'canje';
+    // Un solo texto por operación. Si el servicio deja de ser canje, turnos.canje_detalle
+    // vuelve a NULL (ídem por producto al recrear las ventas).
+    const canjeDetalle = normalizarCanjeDetalle(data.canjeDetalle);
     const precioServicio = (data.precioModificado !== undefined && data.precioModificado !== null)
       ? Number(data.precioModificado)
       : Number(turno.precio);
@@ -61,6 +65,7 @@ export class EditarPagoTurnoUseCase {
       descuentoPorcentaje: data.descuentoPorcentaje || 0,
       descuento_monto: calculo.descuentoMonto,
       total_final: calculo.totalConDescuento,
+      canje_detalle: esCanjeServicio ? canjeDetalle : null,
     });
 
     // 5. Actualizar productos si se enviaron
@@ -103,6 +108,7 @@ export class EditarPagoTurnoUseCase {
             neto_vendedor: netoVendedor,
             es_venta_costo: producto.es_venta_costo ?? false,
             costo_unitario_snapshot: costoUnitario,
+            canje_detalle: esCanjeProducto ? canjeDetalle : null,
           });
         }
       }

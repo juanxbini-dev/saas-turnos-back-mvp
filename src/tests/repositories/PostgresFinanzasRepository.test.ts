@@ -180,6 +180,15 @@ describe('PostgresFinanzasRepository.getEntradasPaginadas', () => {
     });
   });
 
+  describe('canje_detalle en el listado', () => {
+    it('la rama de turnos expone turnos.canje_detalle y la de ventas lo agrupa con MIN', async () => {
+      const { mainSql } = await runGetEntradas(buildFilters({ tipo: 'todos' }));
+      expect(mainSql).toMatch(/'canje_detalle',\s+t\.canje_detalle/);
+      expect(mainSql).toMatch(/MIN\(vp\.canje_detalle\)\s+AS canje_detalle/);
+      expect(mainSql).toMatch(/'canje_detalle',\s+va\.canje_detalle/);
+    });
+  });
+
   describe('resultado', () => {
     it('devuelve items del entry y total parseado del conteo', async () => {
       const { pool, query } = buildPoolMock();

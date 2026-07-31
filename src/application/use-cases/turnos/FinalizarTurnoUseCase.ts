@@ -6,6 +6,7 @@ import { IProductoRepository } from '../../../domain/repositories/IProductoRepos
 import { Turno, FinalizarTurnoData, CalculoCompletoTurno } from '../../../domain/entities/Turno';
 import { CreateComisionData } from '../../../domain/entities/Comision';
 import { calcularComisiones, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
+import { normalizarCanjeDetalle } from '../../../shared/utils/canje.utils';
 
 export class FinalizarTurnoUseCase {
   constructor(
@@ -37,6 +38,9 @@ export class FinalizarTurnoUseCase {
     // 3. Calcular totales (castear a Number explícitamente: node-pg devuelve NUMERIC como string)
     // Canje = entrega gratis: se guarda el detalle pero todos los importes van en 0.
     const esCanjeServicio = data.metodoPago === 'canje';
+    // Un solo texto por operación: va a turnos.canje_detalle (si el servicio es canje)
+    // y a venta_productos.canje_detalle de cada producto canjeado.
+    const canjeDetalle = normalizarCanjeDetalle(data.canjeDetalle);
     const precioServicio = (data.precioModificado !== undefined && data.precioModificado !== null)
       ? Number(data.precioModificado)
       : Number(turno.precio);
@@ -65,7 +69,8 @@ export class FinalizarTurnoUseCase {
       descuento_monto: calculo.descuentoMonto,
       total_final: calculo.totalConDescuento,
       finalizado_at: new Date().toISOString(),
-      finalizado_por_id: data.profesionalId
+      finalizado_por_id: data.profesionalId,
+      canje_detalle: esCanjeServicio ? canjeDetalle : null
     });
 
     // 5. Guardar productos si hay
@@ -107,6 +112,7 @@ export class FinalizarTurnoUseCase {
           neto_vendedor: netoVendedor,
           es_venta_costo: producto.es_venta_costo ?? false,
           costo_unitario_snapshot: costoUnitario,
+          canje_detalle: esCanjeProducto ? canjeDetalle : null,
         });
 
         if (producto.producto_id && this.catalogoProductoRepository) {

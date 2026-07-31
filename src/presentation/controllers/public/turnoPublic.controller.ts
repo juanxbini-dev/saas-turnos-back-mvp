@@ -31,7 +31,8 @@ export class TurnoPublicController {
       servicioRepository,
       disponibilidadRepository,
       bloqueoSlotRepository,
-      disponibilidadService
+      disponibilidadService,
+      new PostgresUsuarioRepository()
     );
     this.getClienteTurnosPublicUseCase = new GetClienteTurnosPublicUseCase(clienteRepository, turnoRepository);
     this.cancelarTurnoPublicUseCase = new CancelarTurnoPublicUseCase(clienteRepository, turnoRepository);

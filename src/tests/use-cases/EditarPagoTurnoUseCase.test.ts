@@ -143,6 +143,7 @@ function buildMocks() {
     updatePassword:               jest.fn(),
     updateRol:                    jest.fn(),
     delete:                       jest.fn(),
+    setActivo:                    jest.fn(),
     existeUsername:               jest.fn(),
     existeEmail:                  jest.fn(),
     findProfesionalesByEmpresa:   jest.fn(),

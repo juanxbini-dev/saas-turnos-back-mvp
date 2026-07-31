@@ -1,6 +1,6 @@
 -- Migración 013: detalle del canje (texto libre) en turnos y venta_productos
 -- Fecha: 2026-07-31
--- Pendiente de aplicar en producción (junto con la 010, 011 y 012, requiere confirmación)
+-- Aplicada en producción: 2026-07-31
 --
 -- Guarda por qué se canjeó / qué se recibió a cambio cuando metodo_pago = 'canje'.
 -- Es NULL para cualquier otro método (el backend lo resetea si un canje se edita

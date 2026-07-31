@@ -1,6 +1,6 @@
 -- Migración 010: Configuración de porcentajes de ganancia por método de pago + precio tarjeta
 -- Fecha: 2026-07-12
--- Pendiente de aplicar en producción (requiere confirmación explícita)
+-- Aplicada en producción: 2026-07-31
 
 -- 1. Tabla de configuración de precios de productos (una fila por empresa)
 --    Porcentaje de ganancia sobre el costo por método de pago.

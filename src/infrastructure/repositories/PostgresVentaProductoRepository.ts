@@ -130,9 +130,11 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
           precio_unitario = COALESCE($6, precio_unitario),
           precio_total = COALESCE($7, precio_total),
           metodo_pago = COALESCE($8, metodo_pago),
-          fecha_venta = COALESCE($9, fecha_venta),
-          es_venta_costo = COALESCE($10, es_venta_costo),
-          costo_unitario_snapshot = COALESCE($11, costo_unitario_snapshot),
+          comision_monto = COALESCE($9, comision_monto),
+          neto_vendedor = COALESCE($10, neto_vendedor),
+          fecha_venta = COALESCE($11, fecha_venta),
+          es_venta_costo = COALESCE($12, es_venta_costo),
+          costo_unitario_snapshot = COALESCE($13, costo_unitario_snapshot),
           updated_at = NOW()
       WHERE id = $1 AND empresa_id = $2
       RETURNING *
@@ -146,6 +148,8 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       data.precio_unitario ?? null,
       data.precio_total ?? null,
       data.metodo_pago ?? null,
+      data.comision_monto ?? null,
+      data.neto_vendedor ?? null,
       data.fecha_venta ?? null,
       data.es_venta_costo ?? null,
       data.costo_unitario_snapshot ?? null,
@@ -178,6 +182,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
         LEFT JOIN productos p ON p.id = vp.producto_id
         WHERE vp.empresa_id = $1
           AND vp.fecha_venta BETWEEN $2 AND $3
+          AND vp.metodo_pago IS DISTINCT FROM 'canje'
           ${vendedorFilter}
       )
       SELECT
@@ -212,6 +217,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       LEFT JOIN productos p ON p.id = vp.producto_id
       WHERE vp.empresa_id = $1
         AND vp.fecha_venta BETWEEN $2 AND $3
+        AND vp.metodo_pago IS DISTINCT FROM 'canje'
         ${vendedorFilter}
     `;
 
@@ -227,6 +233,7 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
       LEFT JOIN productos p ON p.id = vp.producto_id
       WHERE vp.empresa_id = $1
         AND vp.fecha_venta BETWEEN $2 AND $3
+        AND vp.metodo_pago IS DISTINCT FROM 'canje'
         ${vendedorFilter}
       GROUP BY vp.producto_id, vp.nombre_producto
       ORDER BY total_ventas DESC

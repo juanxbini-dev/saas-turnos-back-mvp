@@ -31,7 +31,7 @@ export interface FinanzasFilters {
   fecha_hasta: string;
   // 'pendientes' pisa metodo_pago: lista solo entradas con metodo_pago = 'pendiente'
   tipo: 'todos' | 'turnos' | 'productos' | 'pendientes';
-  metodo_pago: 'todos' | 'efectivo' | 'transferencia' | 'pendiente';
+  metodo_pago: 'todos' | 'efectivo' | 'transferencia' | 'pendiente' | 'canje';
   estado_comision: 'todos' | 'pendiente' | 'pagada' | 'cancelada';
   ordenar_por: 'fecha' | 'total_venta' | 'total_neto_profesional';
   orden: 'asc' | 'desc';
@@ -54,6 +54,9 @@ export interface FinanzasSummary {
   cantidad_productos_vendidos: number;
   promedio_por_turno: number;
   total_pendiente: number;
+  // Canjes: entregas gratis (importes 0). No suman a los totales; se cuentan aparte.
+  cantidad_canjes_servicios: number;
+  cantidad_canjes_productos: number;
 }
 
 // Item individual dentro de una venta agrupada
@@ -90,7 +93,7 @@ export interface ComisionConDetalle extends ComisionProfesional {
   turno_fecha: string;
   turno_hora: string;
   turno_estado: string;
-  metodo_pago: 'efectivo' | 'transferencia' | 'pendiente';
+  metodo_pago: 'efectivo' | 'transferencia' | 'pendiente' | 'canje';
   precio_original: number;
   descuento_porcentaje: number;
   descuento_monto: number;

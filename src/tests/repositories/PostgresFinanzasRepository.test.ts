@@ -61,7 +61,7 @@ async function runGetEntradas(filters: FinanzasFilters) {
 // ── Matriz completa de filtros: coherencia SQL ↔ parámetros ─────────────────
 
 const TIPOS: FinanzasFilters['tipo'][] = ['todos', 'turnos', 'productos', 'pendientes'];
-const METODOS: FinanzasFilters['metodo_pago'][] = ['todos', 'efectivo', 'transferencia', 'pendiente'];
+const METODOS: FinanzasFilters['metodo_pago'][] = ['todos', 'efectivo', 'transferencia', 'pendiente', 'canje'];
 const ESTADOS: FinanzasFilters['estado_comision'][] = ['todos', 'pendiente', 'pagada', 'cancelada'];
 
 describe('PostgresFinanzasRepository.getEntradasPaginadas', () => {

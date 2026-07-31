@@ -50,10 +50,12 @@ export interface ProductoVentaFinanzas {
   precio_efectivo: number | null;
   precio_transferencia: number | null;
   costo: number | null;
+  // total_unidades = unidades vendidas (excluye canjes); las canjeadas van aparte
   total_unidades: number;
   unidades_efectivo: number;
   unidades_transferencia: number;
   unidades_pendiente: number;
+  unidades_canje: number;
   total_efectivo: number;
   total_transferencia: number;
   total_pendiente: number;

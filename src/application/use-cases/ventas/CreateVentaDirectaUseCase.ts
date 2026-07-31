@@ -52,6 +52,9 @@ export class CreateVentaDirectaUseCase {
     const comisionPct = Number(vendedor.comision_producto) ?? 0;
     const creados: VentaProducto[] = [];
     const grupoId = generarId(); // mismo ID para todos los items de esta compra
+    // Canje = entrega gratis: se guarda el detalle con importes en 0.
+    // El costo_unitario_snapshot SÍ se guarda (informativo) y el stock se descuenta normal.
+    const esCanje = data.metodo_pago === 'canje';
 
     for (const item of data.items) {
       // Obtener nombre y costo del producto desde catálogo si existe
@@ -68,11 +71,12 @@ export class CreateVentaDirectaUseCase {
         costoUnitario = Number(item.precio_costo);
       }
 
-      const precioTotal = item.precio_unitario * item.cantidad;
-      // Comisión sobre la ganancia (precio - costo), no sobre el total
-      const { netoVendedor, comisionMonto } = calcularComisionProducto(
-        precioTotal, costoUnitario, item.cantidad, comisionPct
-      );
+      const precioUnitario = esCanje ? 0 : item.precio_unitario;
+      const precioTotal = precioUnitario * item.cantidad;
+      // Comisión sobre la ganancia (precio - costo), no sobre el total. Canje → todo en 0.
+      const { netoVendedor, comisionMonto } = esCanje
+        ? { netoVendedor: 0, comisionMonto: 0 }
+        : calcularComisionProducto(precioTotal, costoUnitario, item.cantidad, comisionPct);
 
       const creado = await this.ventaProductoRepository.create({
         empresa_id: data.empresa_id,
@@ -83,7 +87,7 @@ export class CreateVentaDirectaUseCase {
         producto_id: item.producto_id,
         nombre_producto: nombreProducto,
         cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
+        precio_unitario: precioUnitario,
         precio_total: precioTotal,
         metodo_pago: data.metodo_pago,
         comision_porcentaje: comisionPct,

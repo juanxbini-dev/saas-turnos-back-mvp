@@ -50,6 +50,9 @@ export interface UpdateVentaProductoData {
   precio_unitario?: number;
   precio_total?: number;
   metodo_pago?: string;
+  // Solo los setea el use case (p.ej. canje fuerza importes en 0); no vienen del frontend
+  comision_monto?: number;
+  neto_vendedor?: number;
   fecha_venta?: string;
   es_venta_costo?: boolean;
   costo_unitario_snapshot?: number | null;

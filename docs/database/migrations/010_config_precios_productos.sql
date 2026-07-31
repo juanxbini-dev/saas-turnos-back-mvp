@@ -26,11 +26,16 @@ ALTER TABLE public.productos ALTER COLUMN precio_efectivo DROP NOT NULL;
 ALTER TABLE public.productos ALTER COLUMN precio_transferencia DROP NOT NULL;
 
 -- 4. NOTA metodo_pago: se agrega 'tarjeta' como valor posible en venta_productos.metodo_pago.
---    En el repo no existe ningún CHECK sobre esa columna, pero como la tabla se creó
---    directo en producción, verificar antes de aplicar:
+--    Además se usará el valor 'canje' tanto en turnos.metodo_pago como en
+--    venta_productos.metodo_pago (canje = entrega gratis: se guarda el detalle con
+--    todos los importes en 0; el costo_unitario_snapshot y el descuento de stock son normales).
+--    En el repo no existe ningún CHECK sobre esas columnas, pero como las tablas se crearon
+--    directo en producción, verificar antes de aplicar (para AMBAS tablas):
 --      SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
 --      WHERE conrelid = 'venta_productos'::regclass AND contype = 'c';
---    Si existiera un CHECK sobre metodo_pago, ampliarlo para incluir 'tarjeta'.
+--      SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--      WHERE conrelid = 'turnos'::regclass AND contype = 'c';
+--    Si existiera un CHECK sobre metodo_pago, ampliarlo para incluir 'tarjeta' y 'canje'.
 
 -- 5. NOTA costo: pasa a ser obligatorio a nivel de aplicación (no se agrega NOT NULL
 --    en DB para no romper filas legacy con costo NULL).

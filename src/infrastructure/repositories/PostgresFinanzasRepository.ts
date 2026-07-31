@@ -233,8 +233,9 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       sParams.push(filters.metodo_pago);
       si++;
     } else {
-      // Los pendientes no cuentan como vendido hasta que se cobren
-      whereServicios.push(`t.metodo_pago != 'pendiente'`);
+      // Los pendientes no cuentan como vendido hasta que se cobren.
+      // Los canjes (importes 0) tampoco: no deben inflar cantidades ni promedios.
+      whereServicios.push(`t.metodo_pago NOT IN ('pendiente', 'canje')`);
     }
     if (filters.estado_comision !== 'todos') {
       whereServicios.push(`ct.estado = $${si}`);
@@ -251,8 +252,9 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       whereProductos.push(`vp.metodo_pago = $${pParams.length + 1}`);
       pParams.push(filters.metodo_pago);
     } else {
-      // Los pendientes no cuentan como vendido hasta que se cobren
-      whereProductos.push(`vp.metodo_pago != 'pendiente'`);
+      // Los pendientes no cuentan como vendido hasta que se cobren.
+      // Los canjes (importes 0) tampoco: no deben inflar cantidades ni promedios.
+      whereProductos.push(`vp.metodo_pago NOT IN ('pendiente', 'canje')`);
     }
 
     const [sResult, pResult] = await Promise.all([
@@ -291,7 +293,7 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     const ct   = parseInt(s.cantidad_turnos) || 0;
 
     const baseParams = [profesionalId, empresaId, filters.fecha_desde, filters.fecha_hasta];
-    const [pendTResult, pendVResult] = await Promise.all([
+    const [pendTResult, pendVResult, canjeTResult, canjeVResult] = await Promise.all([
       this.pool.query(`
         SELECT COALESCE(SUM(t.total_final), 0) AS total_pendiente
         FROM comisiones_turno ct
@@ -306,6 +308,22 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
         WHERE vp.vendedor_id = $1 AND vp.empresa_id = $2
           AND COALESCE(trn.fecha, DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires')) BETWEEN $3 AND $4
           AND vp.metodo_pago = 'pendiente'
+      `, baseParams),
+      // Canjes: siempre con los mismos filtros de fecha/profesional/empresa, ignorando el filtro de método
+      this.pool.query(`
+        SELECT COUNT(*) AS cantidad_canjes
+        FROM comisiones_turno ct
+        JOIN turnos t ON ct.turno_id = t.id
+        WHERE ct.profesional_id = $1 AND ct.empresa_id = $2
+          AND t.fecha BETWEEN $3 AND $4 AND t.metodo_pago = 'canje'
+      `, baseParams),
+      this.pool.query(`
+        SELECT COALESCE(SUM(vp.cantidad), 0) AS cantidad_canjes
+        FROM venta_productos vp
+        LEFT JOIN turnos trn ON trn.id = vp.turno_id
+        WHERE vp.vendedor_id = $1 AND vp.empresa_id = $2
+          AND COALESCE(trn.fecha, DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires')) BETWEEN $3 AND $4
+          AND vp.metodo_pago = 'canje'
       `, baseParams),
     ]);
 
@@ -324,6 +342,8 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
       cantidad_productos_vendidos: parseInt(p.cantidad_productos_vendidos) || 0,
       promedio_por_turno: ct > 0 ? (tvs + tvp) / ct : 0,
       total_pendiente: (parseFloat(pendTResult.rows[0].total_pendiente) || 0) + (parseFloat(pendVResult.rows[0].total_pendiente) || 0),
+      cantidad_canjes_servicios: parseInt(canjeTResult.rows[0].cantidad_canjes) || 0,
+      cantidad_canjes_productos: parseInt(canjeVResult.rows[0].cantidad_canjes) || 0,
     };
   }
 
@@ -331,34 +351,66 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
     tipo: 'turno' | 'turno_solo_servicio' | 'venta_turno' | 'venta',
     id: string,
     empresaId: string,
-    metodoPago: 'efectivo' | 'transferencia' | 'tarjeta',
-    metodoPagoProductos?: 'efectivo' | 'transferencia' | 'tarjeta'
+    metodoPago: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje',
+    metodoPagoProductos?: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje'
   ): Promise<void> {
     if (tipo === 'turno') {
       // Actualiza turno Y todos sus productos (caso sin productos pendientes separados)
-      await this.pool.query(
-        `UPDATE turnos SET metodo_pago = $1, updated_at = NOW() WHERE id = $2 AND empresa_id = $3`,
-        [metodoPago, id, empresaId]
-      );
+      await this._cobrarServicioDeTurno(id, empresaId, metodoPago);
       const metodoProd = metodoPagoProductos ?? metodoPago;
       await this._actualizarProductosDeTurno(id, empresaId, metodoProd);
 
     } else if (tipo === 'turno_solo_servicio') {
       // Solo actualiza el turno — los productos se cobran por separado desde su propia fila
-      await this.pool.query(
-        `UPDATE turnos SET metodo_pago = $1, updated_at = NOW() WHERE id = $2 AND empresa_id = $3`,
-        [metodoPago, id, empresaId]
-      );
+      await this._cobrarServicioDeTurno(id, empresaId, metodoPago);
 
     } else if (tipo === 'venta_turno') {
       // Solo actualiza venta_productos del turno — no toca turnos.metodo_pago
       await this._actualizarProductosDeTurno(id, empresaId, metodoPago);
 
     } else {
-      // Venta directa: actualiza por venta_grupo_id
+      // Venta directa: actualiza por venta_grupo_id.
+      // Canje = entrega gratis: además del método, se zerean todos los importes.
+      if (metodoPago === 'canje') {
+        await this.pool.query(
+          `UPDATE venta_productos
+           SET metodo_pago = 'canje', precio_unitario = 0, precio_total = 0,
+               neto_vendedor = 0, comision_monto = 0, updated_at = NOW()
+           WHERE venta_grupo_id = $1 AND empresa_id = $2`,
+          [id, empresaId]
+        );
+      } else {
+        await this.pool.query(
+          `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW() WHERE venta_grupo_id = $2 AND empresa_id = $3`,
+          [metodoPago, id, empresaId]
+        );
+      }
+    }
+  }
+
+  // Cobra el servicio de un turno. Canje = servicio gratis: total_final del turno en 0
+  // y los montos del servicio en comisiones_turno también en 0.
+  private async _cobrarServicioDeTurno(
+    turnoId: string,
+    empresaId: string,
+    metodoPago: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje'
+  ): Promise<void> {
+    if (metodoPago === 'canje') {
       await this.pool.query(
-        `UPDATE venta_productos SET metodo_pago = $1, updated_at = NOW() WHERE venta_grupo_id = $2 AND empresa_id = $3`,
-        [metodoPago, id, empresaId]
+        `UPDATE turnos SET metodo_pago = 'canje', total_final = 0, updated_at = NOW()
+         WHERE id = $1 AND empresa_id = $2`,
+        [turnoId, empresaId]
+      );
+      await this.pool.query(
+        `UPDATE comisiones_turno
+         SET servicio_monto = 0, servicio_comision_monto = 0, servicio_neto_profesional = 0, updated_at = NOW()
+         WHERE turno_id = $1 AND empresa_id = $2`,
+        [turnoId, empresaId]
+      );
+    } else {
+      await this.pool.query(
+        `UPDATE turnos SET metodo_pago = $1, updated_at = NOW() WHERE id = $2 AND empresa_id = $3`,
+        [metodoPago, turnoId, empresaId]
       );
     }
   }
@@ -366,8 +418,21 @@ export class PostgresFinanzasRepository implements IFinanzasRepository {
   private async _actualizarProductosDeTurno(
     turnoId: string,
     empresaId: string,
-    metodo: 'efectivo' | 'transferencia' | 'tarjeta'
+    metodo: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje'
   ): Promise<void> {
+    // Canje = entrega gratis: NO se usa el precio por config; todos los importes en 0
+    // (con y sin catálogo). El costo_unitario_snapshot queda como está (informativo).
+    if (metodo === 'canje') {
+      await this.pool.query(
+        `UPDATE venta_productos
+         SET metodo_pago = 'canje', precio_unitario = 0, precio_total = 0,
+             neto_vendedor = 0, comision_monto = 0, updated_at = NOW()
+         WHERE turno_id = $1 AND empresa_id = $2`,
+        [turnoId, empresaId]
+      );
+      return;
+    }
+
     // Productos con catálogo: recalcular precio según método de pago.
     // Los precios NULL del catálogo se derivan de la configuración (costo × (1 + pct/100)).
     // La comisión se recalcula sobre la GANANCIA (precio − costo), igual que al crear la venta.

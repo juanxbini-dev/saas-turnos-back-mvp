@@ -271,6 +271,57 @@ describe('CreateVentaDirectaUseCase', () => {
 
   });
 
+  // ── CANJE (entrega gratis: todos los importes en 0) ───────────────────────
+
+  describe('canje', () => {
+
+    it('metodo_pago=canje: precio_unitario, precio_total, neto_vendedor y comision_monto en 0', async () => {
+      const mocks = makeMocks();
+      mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
+      mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
+      mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodo_pago: 'canje',
+        items: [{ producto_id: 'prod-001', cantidad: 2, precio_unitario: 100 }],
+      }));
+
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.metodo_pago).toBe('canje');
+      expect(argCreado.precio_unitario).toBeCloseTo(0);
+      expect(argCreado.precio_total).toBeCloseTo(0);
+      expect(argCreado.neto_vendedor).toBeCloseTo(0);
+      expect(argCreado.comision_monto).toBeCloseTo(0);
+    });
+
+    it('metodo_pago=canje: el costo_unitario_snapshot SÍ se guarda (informativo)', async () => {
+      const mocks = makeMocks();
+      mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
+      mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo({ costo: 40 }));
+      mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+      await buildUseCase(mocks).execute(buildInputBase({ metodo_pago: 'canje' }));
+
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.costo_unitario_snapshot).toBe(40);
+    });
+
+    it('metodo_pago=canje: el stock se descuenta normal', async () => {
+      const mocks = makeMocks();
+      mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
+      mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
+      mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodo_pago: 'canje',
+        items: [{ producto_id: 'prod-001', cantidad: 3, precio_unitario: 100 }],
+      }));
+
+      expect(mocks.catalogoRepo.deductStock).toHaveBeenCalledWith('prod-001', 3);
+    });
+
+  });
+
   // ── MÚLTIPLES ÍTEMS ───────────────────────────────────────────────────────
 
   describe('múltiples ítems', () => {

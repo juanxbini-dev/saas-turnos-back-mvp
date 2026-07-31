@@ -500,4 +500,104 @@ describe('FinalizarTurnoUseCase', () => {
       expect(comisionArg.servicio_neto_profesional).toBeCloseTo(0);
     });
   });
+
+  // ── CANJE (entrega gratis: todos los importes en 0) ───────────────────────
+
+  describe('finalización con canje', () => {
+    function setupCanje(mocks: ReturnType<typeof buildMocks>) {
+      mocks.turnoRepo.findById.mockResolvedValue(buildTurnoConfirmado({ precio: 1000 }));
+      mocks.usuarioRepo.findById.mockResolvedValue(buildProfesional({ comision_turno: 70, comision_producto: 50 }));
+      mocks.turnoRepo.finalizar.mockResolvedValue(buildTurnoFinalizado());
+      mocks.comisionRepo.create.mockResolvedValue(buildComision());
+      mocks.ventaProductoRepo.create.mockResolvedValue({} as any);
+    }
+
+    it('metodoPago=canje: el turno se finaliza con total_final=0 y descuento_monto=0', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({ metodoPago: 'canje' }));
+
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.metodoPago).toBe('canje');
+      expect(finalizarData.total_final).toBeCloseTo(0);
+      expect(finalizarData.descuento_monto).toBeCloseTo(0);
+    });
+
+    it('metodoPago=canje: la comisión del servicio se registra con todos los montos en 0', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({ metodoPago: 'canje' }));
+
+      const comisionArg = mocks.comisionRepo.create.mock.calls[0][0];
+      expect(comisionArg.servicio_monto).toBeCloseTo(0);
+      expect(comisionArg.servicio_comision_monto).toBeCloseTo(0);
+      expect(comisionArg.servicio_neto_profesional).toBeCloseTo(0);
+    });
+
+    it('producto que hereda canje del turno: importes 0, costo_unitario_snapshot guardado y stock descontado', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+      mocks.catalogoProductoRepo.findById.mockResolvedValue({ id: 'prod-catalogo-001', costo: 40 } as any);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'canje',
+        productos: [{
+          id:              'vp-001',
+          producto_id:     'prod-catalogo-001',
+          nombre_producto: 'Shampoo',
+          cantidad:        2,
+          precio_unitario: 500,
+          precio_total:    1000,
+        }],
+      }));
+
+      const ventaArg = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(ventaArg.metodo_pago).toBe('canje');
+      expect(ventaArg.precio_unitario).toBeCloseTo(0);
+      expect(ventaArg.precio_total).toBeCloseTo(0);
+      expect(ventaArg.comision_monto).toBeCloseTo(0);
+      expect(ventaArg.neto_vendedor).toBeCloseTo(0);
+      // El costo es informativo y SÍ se guarda
+      expect(ventaArg.costo_unitario_snapshot).toBe(40);
+      // El stock se descuenta normal
+      expect(mocks.catalogoProductoRepo.deductStock).toHaveBeenCalledWith('prod-catalogo-001', 2);
+    });
+
+    it('producto con canje por-producto y servicio efectivo: solo el producto va en 0', async () => {
+      const mocks = buildMocks();
+      setupCanje(mocks);
+      mocks.catalogoProductoRepo.findById.mockResolvedValue({ id: 'prod-catalogo-001', costo: 40 } as any);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        metodoPago: 'efectivo',
+        productos: [{
+          id:              'vp-001',
+          producto_id:     'prod-catalogo-001',
+          nombre_producto: 'Shampoo',
+          cantidad:        1,
+          precio_unitario: 500,
+          precio_total:    500,
+          metodo_pago:     'canje',
+        }],
+      }));
+
+      // Servicio normal (1000, comisión 70% → 700 profesional / 300 empresa)
+      const comisionArg = mocks.comisionRepo.create.mock.calls[0][0];
+      expect(comisionArg.servicio_monto).toBeCloseTo(1000);
+      expect(comisionArg.servicio_neto_profesional).toBeCloseTo(700);
+
+      // El producto canjeado no aporta al total_final del turno
+      const [, finalizarData] = mocks.turnoRepo.finalizar.mock.calls[0];
+      expect(finalizarData.total_final).toBeCloseTo(1000);
+
+      // Producto en 0
+      const ventaArg = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(ventaArg.metodo_pago).toBe('canje');
+      expect(ventaArg.precio_total).toBeCloseTo(0);
+      expect(ventaArg.comision_monto).toBeCloseTo(0);
+      expect(ventaArg.neto_vendedor).toBeCloseTo(0);
+    });
+  });
 });

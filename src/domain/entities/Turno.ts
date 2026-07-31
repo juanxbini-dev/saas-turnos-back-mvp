@@ -1,6 +1,7 @@
 export type TurnoEstado = 'pendiente' | 'confirmado' | 'completado' | 'cancelado';
-// 'tarjeta' solo se usa para venta de productos (el frontend no lo ofrece al cobrar turnos)
-export type MetodoPago = 'efectivo' | 'transferencia' | 'tarjeta' | 'pendiente';
+// 'tarjeta' solo se usa para venta de productos (el frontend no lo ofrece al cobrar turnos).
+// 'canje' vale para servicios y productos: se guarda el detalle pero con todos los importes en 0.
+export type MetodoPago = 'efectivo' | 'transferencia' | 'tarjeta' | 'pendiente' | 'canje';
 
 export interface Turno {
   id: string;
@@ -93,7 +94,7 @@ export interface VentaProductoData {
   cantidad: number;
   precio_unitario: number;
   precio_total: number;
-  metodo_pago?: 'efectivo' | 'transferencia' | 'pendiente';
+  metodo_pago?: 'efectivo' | 'transferencia' | 'tarjeta' | 'pendiente' | 'canje';
   es_venta_costo?: boolean;
 }
 

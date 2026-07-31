@@ -76,7 +76,7 @@ export class VentasController {
   async createVenta(req: Request, res: Response): Promise<void> {
     try {
       const { empresaId } = req.user as AuthenticatedUser;
-      const { cliente_id, vendedor_id, metodo_pago, notas, items, fecha_venta } = req.body;
+      const { cliente_id, vendedor_id, metodo_pago, notas, items, fecha_venta, canje_detalle } = req.body;
 
       if (!vendedor_id) {
         res.status(400).json({ success: false, message: 'vendedor_id es requerido' });
@@ -96,6 +96,7 @@ export class VentasController {
         vendedor_id,
         metodo_pago: (metodo_pago || 'pendiente') as MetodoPago,
         notas,
+        canje_detalle: canje_detalle ?? null,
         items: itemsConFecha,
       });
 
@@ -126,6 +127,7 @@ export class VentasController {
         fecha_venta,
         es_venta_costo,
         costo_unitario_snapshot,
+        canje_detalle,
       } = req.body;
 
       const updated = await this.updateVentaUseCase.execute(id, empresaId, {
@@ -138,6 +140,7 @@ export class VentasController {
         fecha_venta,
         es_venta_costo,
         costo_unitario_snapshot,
+        canje_detalle,
       });
 
       res.status(200).json({ success: true, data: updated });

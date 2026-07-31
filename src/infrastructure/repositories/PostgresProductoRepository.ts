@@ -28,10 +28,10 @@ export class PostgresProductoRepository implements IProductoRepository {
 
   async create(data: CreateProductoData): Promise<Producto> {
     const result = await pool.query(
-      `INSERT INTO productos (id, empresa_id, nombre, descripcion, precio_efectivo, precio_transferencia, costo, stock, marca_id, activo, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW(), NOW())
+      `INSERT INTO productos (id, empresa_id, nombre, descripcion, precio_efectivo, precio_transferencia, precio_tarjeta, costo, stock, marca_id, activo, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, NOW(), NOW())
        RETURNING *`,
-      [generarId(), data.empresa_id, data.nombre, data.descripcion || null, data.precio_efectivo, data.precio_transferencia, data.costo ?? null, data.stock, data.marca_id || null]
+      [generarId(), data.empresa_id, data.nombre, data.descripcion || null, data.precio_efectivo ?? null, data.precio_transferencia ?? null, data.precio_tarjeta ?? null, data.costo, data.stock, data.marca_id || null]
     );
     const inserted = result.rows[0];
     return (await this.findById(inserted.id))!;
@@ -46,6 +46,7 @@ export class PostgresProductoRepository implements IProductoRepository {
     if (data.descripcion !== undefined) { fields.push(`descripcion = $${i++}`); values.push(data.descripcion); }
     if (data.precio_efectivo !== undefined) { fields.push(`precio_efectivo = $${i++}`); values.push(data.precio_efectivo); }
     if (data.precio_transferencia !== undefined) { fields.push(`precio_transferencia = $${i++}`); values.push(data.precio_transferencia); }
+    if (data.precio_tarjeta !== undefined) { fields.push(`precio_tarjeta = $${i++}`); values.push(data.precio_tarjeta); }
     if (data.costo !== undefined) { fields.push(`costo = $${i++}`); values.push(data.costo); }
     if (data.stock !== undefined) { fields.push(`stock = $${i++}`); values.push(data.stock); }
     if (data.activo !== undefined) { fields.push(`activo = $${i++}`); values.push(data.activo); }
@@ -93,6 +94,29 @@ export class PostgresProductoRepository implements IProductoRepository {
     const params = excludeId ? [empresaId, nombre, excludeId] : [empresaId, nombre];
     const result = await pool.query(query, params);
     return result.rows[0] || null;
+  }
+
+  async resetPreciosManuales(empresaId: string): Promise<number> {
+    const result = await pool.query(
+      `UPDATE productos
+       SET precio_efectivo = NULL, precio_transferencia = NULL, precio_tarjeta = NULL, updated_at = NOW()
+       WHERE empresa_id = $1
+         AND costo IS NOT NULL
+         AND (precio_efectivo IS NOT NULL OR precio_transferencia IS NOT NULL OR precio_tarjeta IS NOT NULL)`,
+      [empresaId]
+    );
+    return result.rowCount ?? 0;
+  }
+
+  async countManualesSinCosto(empresaId: string): Promise<number> {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM productos
+       WHERE empresa_id = $1
+         AND costo IS NULL
+         AND (precio_efectivo IS NOT NULL OR precio_transferencia IS NOT NULL OR precio_tarjeta IS NOT NULL)`,
+      [empresaId]
+    );
+    return result.rows[0].total;
   }
 
   async findBajoStock(empresaId: string, umbral = 3): Promise<Producto[]> {
@@ -153,10 +177,11 @@ export class PostgresProductoRepository implements IProductoRepository {
          p.precio_efectivo,
          p.precio_transferencia,
          p.costo,
-         COALESCE(SUM(vp.cantidad), 0)::int AS total_unidades,
+         COALESCE(SUM(CASE WHEN vp.metodo_pago IS DISTINCT FROM 'canje' THEN vp.cantidad ELSE 0 END), 0)::int AS total_unidades,
          COALESCE(SUM(CASE WHEN vp.metodo_pago = 'efectivo' THEN vp.cantidad ELSE 0 END), 0)::int AS unidades_efectivo,
          COALESCE(SUM(CASE WHEN vp.metodo_pago = 'transferencia' THEN vp.cantidad ELSE 0 END), 0)::int AS unidades_transferencia,
          COALESCE(SUM(CASE WHEN vp.metodo_pago = 'pendiente' THEN vp.cantidad ELSE 0 END), 0)::int AS unidades_pendiente,
+         COALESCE(SUM(CASE WHEN vp.metodo_pago = 'canje' THEN vp.cantidad ELSE 0 END), 0)::int AS unidades_canje,
          COALESCE(SUM(CASE WHEN vp.metodo_pago = 'efectivo' THEN vp.precio_total ELSE 0 END), 0) AS total_efectivo,
          COALESCE(SUM(CASE WHEN vp.metodo_pago = 'transferencia' THEN vp.precio_total ELSE 0 END), 0) AS total_transferencia,
          COALESCE(SUM(CASE WHEN vp.metodo_pago = 'pendiente' THEN vp.precio_total ELSE 0 END), 0) AS total_pendiente,

@@ -31,8 +31,11 @@ router.put('/:id/password', (req, res) => usuariosController.updatePassword(req,
 // PUT /api/usuarios/:id/rol - Cambiar rol
 router.put('/:id/rol', (req, res) => usuariosController.updateRol(req, res));
 
-// DELETE /api/usuarios/:id - Eliminar usuario (solo admin)
+// DELETE /api/usuarios/:id - Deshabilitar usuario (soft-delete, solo admin)
 router.delete('/:id', (req, res) => usuariosController.deleteUsuario(req, res));
+
+// PATCH /api/usuarios/:id/reactivar - Rehabilitar usuario deshabilitado (solo admin)
+router.patch('/:id/reactivar', (req, res) => usuariosController.reactivarUsuario(req, res));
 
 // POST /api/usuarios/:id/avatar - Subir/actualizar avatar (admin)
 router.post('/:id/avatar', uploadAvatar, (req, res) => usuariosController.uploadAvatar(req, res));

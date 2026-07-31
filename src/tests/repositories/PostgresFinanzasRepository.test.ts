@@ -61,7 +61,7 @@ async function runGetEntradas(filters: FinanzasFilters) {
 // ── Matriz completa de filtros: coherencia SQL ↔ parámetros ─────────────────
 
 const TIPOS: FinanzasFilters['tipo'][] = ['todos', 'turnos', 'productos', 'pendientes'];
-const METODOS: FinanzasFilters['metodo_pago'][] = ['todos', 'efectivo', 'transferencia', 'pendiente'];
+const METODOS: FinanzasFilters['metodo_pago'][] = ['todos', 'efectivo', 'transferencia', 'pendiente', 'canje'];
 const ESTADOS: FinanzasFilters['estado_comision'][] = ['todos', 'pendiente', 'pagada', 'cancelada'];
 
 describe('PostgresFinanzasRepository.getEntradasPaginadas', () => {
@@ -177,6 +177,15 @@ describe('PostgresFinanzasRepository.getEntradasPaginadas', () => {
       expect(mainSql).toMatch(/vpp\.turno_id = ct\.turno_id/);
       expect(mainSql).toMatch(/vpp\.empresa_id = ct\.empresa_id/);
       expect(mainSql).toMatch(/vpp\.metodo_pago = 'pendiente'/);
+    });
+  });
+
+  describe('canje_detalle en el listado', () => {
+    it('la rama de turnos expone turnos.canje_detalle y la de ventas lo agrupa con MIN', async () => {
+      const { mainSql } = await runGetEntradas(buildFilters({ tipo: 'todos' }));
+      expect(mainSql).toMatch(/'canje_detalle',\s+t\.canje_detalle/);
+      expect(mainSql).toMatch(/MIN\(vp\.canje_detalle\)\s+AS canje_detalle/);
+      expect(mainSql).toMatch(/'canje_detalle',\s+va\.canje_detalle/);
     });
   });
 

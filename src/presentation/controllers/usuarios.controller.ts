@@ -5,6 +5,7 @@ import { UpdateUsuarioDatosUseCase } from '../../application/use-cases/usuarios/
 import { UpdateUsuarioPasswordUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioPasswordUseCase';
 import { UpdateUsuarioRolUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioRolUseCase';
 import { DeleteUsuarioUseCase } from '../../application/use-cases/usuarios/DeleteUsuarioUseCase';
+import { ReactivarUsuarioUseCase } from '../../application/use-cases/usuarios/ReactivarUsuarioUseCase';
 import { GetProfesionalesUseCase } from '../../application/use-cases/usuarios/GetProfesionalesUseCase';
 import { UpdateUsuarioAvatarUseCase } from '../../application/use-cases/usuarios/UpdateUsuarioAvatarUseCase';
 import { DeleteUsuarioAvatarUseCase } from '../../application/use-cases/usuarios/DeleteUsuarioAvatarUseCase';
@@ -22,6 +23,7 @@ export class UsuariosController {
   private updateUsuarioPasswordUseCase: UpdateUsuarioPasswordUseCase;
   private updateUsuarioRolUseCase: UpdateUsuarioRolUseCase;
   private deleteUsuarioUseCase: DeleteUsuarioUseCase;
+  private reactivarUsuarioUseCase: ReactivarUsuarioUseCase;
   private getProfesionalesUseCase: GetProfesionalesUseCase;
   private updateUsuarioAvatarUseCase: UpdateUsuarioAvatarUseCase;
   private deleteUsuarioAvatarUseCase: DeleteUsuarioAvatarUseCase;
@@ -46,7 +48,8 @@ export class UsuariosController {
       passwordService
     );
     this.updateUsuarioRolUseCase = new UpdateUsuarioRolUseCase(usuarioRepository);
-    this.deleteUsuarioUseCase = new DeleteUsuarioUseCase(usuarioRepository, imageRepository);
+    this.deleteUsuarioUseCase = new DeleteUsuarioUseCase(usuarioRepository);
+    this.reactivarUsuarioUseCase = new ReactivarUsuarioUseCase(usuarioRepository);
     this.getProfesionalesUseCase = new GetProfesionalesUseCase(usuarioRepository);
     this.updateUsuarioAvatarUseCase = new UpdateUsuarioAvatarUseCase(imageRepository, usuarioRepository);
     this.deleteUsuarioAvatarUseCase = new DeleteUsuarioAvatarUseCase(imageRepository, usuarioRepository);
@@ -293,11 +296,34 @@ export class UsuariosController {
 
       res.json({
         success: true,
-        message: 'Usuario eliminado correctamente'
+        message: 'Usuario deshabilitado correctamente'
       });
     } catch (error) {
       const statusCode = (error as any).statusCode || 500;
-      const message = error instanceof Error ? error.message : 'Error al eliminar el usuario';
+      const message = error instanceof Error ? error.message : 'Error al deshabilitar el usuario';
+
+      res.status(statusCode).json({
+        success: false,
+        message
+      });
+    }
+  }
+
+  async reactivarUsuario(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const adminUser = req.user as AuthenticatedUser;
+
+      const usuario = await this.reactivarUsuarioUseCase.execute(id as string, adminUser.empresaId);
+
+      res.json({
+        success: true,
+        message: 'Usuario rehabilitado correctamente',
+        data: usuario
+      });
+    } catch (error) {
+      const statusCode = (error as any).statusCode || 500;
+      const message = error instanceof Error ? error.message : 'Error al rehabilitar el usuario';
 
       res.status(statusCode).json({
         success: false,

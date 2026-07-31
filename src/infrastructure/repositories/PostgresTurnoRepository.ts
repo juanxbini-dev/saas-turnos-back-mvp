@@ -99,7 +99,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
         TO_CHAR(t.hora::time, 'HH24:MI') as hora,
         t.estado, t.notas, t.servicio, t.servicio_precio, t.duracion,
         t.empresa_id, t.origen, t.confirmacion_whatsapp_enviada, t.recordatorio_enviado, t.created_at, t.updated_at,
-        t.metodo_pago, t.descuento_porcentaje, t.total_final,
+        t.metodo_pago, t.descuento_porcentaje, t.total_final, t.canje_detalle,
         COALESCE((
           SELECT SUM(vp.precio_total)
           FROM venta_productos vp
@@ -190,10 +190,14 @@ export class PostgresTurnoRepository implements ITurnoRepository {
     total_final?: number;
     finalizado_at?: string;
     finalizado_por_id?: string;
+    canje_detalle?: string | null;
   }): Promise<Turno> {
+    // canje_detalle se setea SIN COALESCE: los use cases siempre mandan el valor
+    // calculado (texto si el servicio es canje, NULL en caso contrario) y un pago
+    // que deja de ser canje debe poder volver a NULL.
     const query = `
       UPDATE turnos
-      SET 
+      SET
         estado = 'completado',
         metodo_pago = COALESCE($1, metodo_pago),
         precio_original = COALESCE($2, precio_original),
@@ -202,15 +206,16 @@ export class PostgresTurnoRepository implements ITurnoRepository {
         total_final = COALESCE($5, total_final),
         finalizado_at = COALESCE($6, finalizado_at),
         finalizado_por_id = COALESCE($7, finalizado_por_id),
+        canje_detalle = $8,
         updated_at = NOW()
-      WHERE id = $8
-      RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado, 
-                notas, servicio, servicio_precio as precio, duracion as duracion_minutos, 
+      WHERE id = $9
+      RETURNING id, cliente_id, usuario_id, servicio_id, fecha, hora, estado,
+                notas, servicio, servicio_precio as precio, duracion as duracion_minutos,
                 empresa_id, created_at, updated_at,
-                metodo_pago, precio_original, descuento_porcentaje, descuento_monto, 
-                total_final, finalizado_at, finalizado_por_id
+                metodo_pago, precio_original, descuento_porcentaje, descuento_monto,
+                total_final, finalizado_at, finalizado_por_id, canje_detalle
     `;
-    
+
     const result = await pool.query(query, [
       data.metodoPago,
       data.precio_original,
@@ -219,6 +224,7 @@ export class PostgresTurnoRepository implements ITurnoRepository {
       data.total_final,
       data.finalizado_at,
       data.finalizado_por_id,
+      data.canje_detalle ?? null,
       id
     ]);
     

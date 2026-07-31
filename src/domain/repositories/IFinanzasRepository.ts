@@ -13,11 +13,15 @@ export interface IFinanzasRepository {
     filters: FinanzasFilters
   ): Promise<FinanzasSummary>;
 
+  // 'tarjeta' solo es válido para productos (tipos venta/venta_turno o metodoPagoProductos).
+  // 'canje' vale para servicios y productos: al cobrar como canje se zerean los importes.
+  // canjeDetalle: texto libre del canje; solo se persiste cuando el método elegido es 'canje'.
   cobrarPago(
     tipo: 'turno' | 'venta',
     id: string,
     empresaId: string,
-    metodoPago: 'efectivo' | 'transferencia',
-    metodoPagoProductos?: 'efectivo' | 'transferencia'
+    metodoPago: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje',
+    metodoPagoProductos?: 'efectivo' | 'transferencia' | 'tarjeta' | 'canje',
+    canjeDetalle?: string | null
   ): Promise<void>;
 }

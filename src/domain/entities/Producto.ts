@@ -3,8 +3,14 @@ export interface Producto {
   empresa_id: string;
   nombre: string;
   descripcion: string | null;
+  // Precio NULL en DB = derivado de la configuración (costo × (1 + pct/100));
+  // valor cargado = override manual. Los flags *_manual los completa el use case.
   precio_efectivo: number | null;
   precio_transferencia: number | null;
+  precio_tarjeta: number | null;
+  precio_efectivo_manual?: boolean;
+  precio_transferencia_manual?: boolean;
+  precio_tarjeta_manual?: boolean;
   costo: number | null;
   stock: number;
   activo: boolean;
@@ -17,9 +23,10 @@ export interface Producto {
 export interface CreateProductoData {
   nombre: string;
   descripcion?: string;
-  precio_efectivo: number;
-  precio_transferencia: number;
-  costo?: number | null;
+  precio_efectivo?: number | null;
+  precio_transferencia?: number | null;
+  precio_tarjeta?: number | null;
+  costo: number;
   stock: number;
   empresa_id: string;
   marca_id?: string | null;
@@ -28,9 +35,10 @@ export interface CreateProductoData {
 export interface UpdateProductoData {
   nombre?: string;
   descripcion?: string;
-  precio_efectivo?: number;
-  precio_transferencia?: number;
-  costo?: number | null;
+  precio_efectivo?: number | null;
+  precio_transferencia?: number | null;
+  precio_tarjeta?: number | null;
+  costo?: number;
   stock?: number;
   activo?: boolean;
   marca_id?: string | null;
@@ -42,10 +50,12 @@ export interface ProductoVentaFinanzas {
   precio_efectivo: number | null;
   precio_transferencia: number | null;
   costo: number | null;
+  // total_unidades = unidades vendidas (excluye canjes); las canjeadas van aparte
   total_unidades: number;
   unidades_efectivo: number;
   unidades_transferencia: number;
   unidades_pendiente: number;
+  unidades_canje: number;
   total_efectivo: number;
   total_transferencia: number;
   total_pendiente: number;

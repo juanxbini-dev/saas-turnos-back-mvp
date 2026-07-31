@@ -66,6 +66,13 @@ export class RefreshUseCase {
       throw new Error('Usuario no encontrado');
     }
 
+    // Un usuario deshabilitado no puede renovar la sesión: sin este chequeo,
+    // el refresh token le permitiría seguir operando indefinidamente.
+    if (!user.activo) {
+      await this.refreshTokenRepository.revokeToken(tokenHash);
+      throw new Error('Tu usuario está inactivo. Contactá al administrador.');
+    }
+
     // Generate new token pair
     const newRefreshToken = this.tokenService.generateRefreshToken();
     

@@ -155,7 +155,7 @@ export class TurnosController {
     try {
       const id = req.params['id'] as string;
       const { empresaId } = req.user!;
-      const { metodoPago, precioModificado, descuentoPorcentaje, descuentoAplicarA, productos } = req.body;
+      const { metodoPago, precioModificado, descuentoPorcentaje, descuentoAplicarA, productos, canjeDetalle } = req.body;
 
       // Importamos dinámicamente para evitar dependencia circular
       const { FinalizarTurnoUseCase } = await import('../../application/use-cases/turnos/FinalizarTurnoUseCase');
@@ -188,9 +188,10 @@ export class TurnosController {
         precioModificado,
         descuentoPorcentaje,
         descuentoAplicarA,
-        productos
+        productos,
+        canjeDetalle
       });
-      
+
       res.json({ success: true, data: turno });
     } catch (error: any) {
       const statusCode = error.statusCode || 500;
@@ -205,7 +206,7 @@ export class TurnosController {
     try {
       const id = req.params['id'] as string;
       const { empresaId } = req.user!;
-      const { metodoPago, precioModificado, descuentoPorcentaje, descuentoAplicarA, productos } = req.body;
+      const { metodoPago, precioModificado, descuentoPorcentaje, descuentoAplicarA, productos, canjeDetalle } = req.body;
 
       const { EditarPagoTurnoUseCase } = await import('../../application/use-cases/turnos/EditarPagoTurnoUseCase');
       const { PostgresComisionRepository } = await import('../../infrastructure/repositories/PostgresComisionRepository');
@@ -235,7 +236,8 @@ export class TurnosController {
         precioModificado,
         descuentoPorcentaje,
         descuentoAplicarA,
-        productos
+        productos,
+        canjeDetalle
       });
 
       res.json({ success: true, data: turno });

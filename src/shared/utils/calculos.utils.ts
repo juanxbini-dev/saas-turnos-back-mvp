@@ -101,6 +101,29 @@ export const calcularComisionesSeparadas = (
   };
 };
 
+export interface ComisionProductoCalculada {
+  ganancia: number;
+  netoVendedor: number;
+  comisionMonto: number;
+}
+
+/**
+ * Comisión de venta de producto: el vendedor recibe su % sobre la GANANCIA
+ * (precio de venta − costo), no sobre el precio total.
+ * Si el costo es desconocido (null), se asume 0 y la base vuelve a ser el precio total.
+ * comisionMonto mantiene su semántica histórica: lo que retiene la empresa del total.
+ */
+export const calcularComisionProducto = (
+  precioTotal: number,
+  costoUnitario: number | null,
+  cantidad: number,
+  comisionPct: number
+): ComisionProductoCalculada => {
+  const ganancia = Math.max(0, precioTotal - (costoUnitario ?? 0) * cantidad);
+  const netoVendedor = ganancia * comisionPct / 100;
+  return { ganancia, netoVendedor, comisionMonto: precioTotal - netoVendedor };
+};
+
 export const generarId = (): string => {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);

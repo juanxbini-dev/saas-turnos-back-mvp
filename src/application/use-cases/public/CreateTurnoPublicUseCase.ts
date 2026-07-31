@@ -1,6 +1,7 @@
 import { ITurnoRepository } from '../../../domain/repositories/ITurnoRepository';
 import { IClienteRepository } from '../../../domain/repositories/IClienteRepository';
 import { IServicioRepository } from '../../../domain/repositories/IServicioRepository';
+import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
 import { IDisponibilidadRepository } from '../../../domain/repositories/IDisponibilidadRepository';
 import { IBloqueoSlotRepository } from '../../../domain/repositories/IBloqueoSlotRepository';
 import { DisponibilidadService } from '../../../domain/services/DisponibilidadService';
@@ -37,7 +38,8 @@ export class CreateTurnoPublicUseCase {
     private servicioRepository: IServicioRepository,
     private disponibilidadRepository: IDisponibilidadRepository,
     private bloqueoSlotRepository: IBloqueoSlotRepository,
-    private disponibilidadService: DisponibilidadService
+    private disponibilidadService: DisponibilidadService,
+    private usuarioRepository: IUsuarioRepository
   ) {}
 
   async execute(request: CreateTurnoPublicRequest): Promise<CreateTurnoPublicResponse> {
@@ -55,6 +57,13 @@ export class CreateTurnoPublicUseCase {
     const servicio = await this.servicioRepository.findById(servicio_id);
     if (!servicio) {
       throw new Error('Servicio no encontrado');
+    }
+
+    // Barrera de servidor: un profesional deshabilitado no aparece en la landing,
+    // pero conociendo su id se podría intentar reservar igual por API.
+    const profesional = await this.usuarioRepository.findById(profesional_id);
+    if (!profesional || !profesional.activo || profesional.empresa_id !== servicio.empresa_id) {
+      throw Object.assign(new Error('El profesional no está disponible para reservas.'), { statusCode: 400 });
     }
 
     // Rechazar reservas en el pasado (hora de Argentina). Barrera de servidor:

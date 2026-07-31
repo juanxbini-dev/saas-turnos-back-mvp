@@ -4,7 +4,8 @@ import { IComisionRepository } from '../../../domain/repositories/IComisionRepos
 import { IVentaProductoRepository } from '../../../domain/repositories/IVentaProductoRepository';
 import { IProductoRepository } from '../../../domain/repositories/IProductoRepository';
 import { Turno, EditarPagoData } from '../../../domain/entities/Turno';
-import { calcularComisiones } from '../../../shared/utils/calculos.utils';
+import { calcularComisiones, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
+import { normalizarCanjeDetalle } from '../../../shared/utils/canje.utils';
 
 export class EditarPagoTurnoUseCase {
   constructor(
@@ -32,13 +33,22 @@ export class EditarPagoTurnoUseCase {
     }
 
     // 3. Calcular nuevos totales
+    // Canje = entrega gratis: se guarda el detalle pero todos los importes van en 0.
+    const esCanjeServicio = data.metodoPago === 'canje';
+    // Un solo texto por operación. Si el servicio deja de ser canje, turnos.canje_detalle
+    // vuelve a NULL (ídem por producto al recrear las ventas).
+    const canjeDetalle = normalizarCanjeDetalle(data.canjeDetalle);
     const precioServicio = (data.precioModificado !== undefined && data.precioModificado !== null)
       ? Number(data.precioModificado)
       : Number(turno.precio);
-    const montoProductos = data.productos?.reduce((sum, p) => sum + Number(p.precio_total), 0) || 0;
+    // Los productos canjeados no aportan al monto (importe 0)
+    const montoProductos = data.productos?.reduce((sum, p) => {
+      const esCanjeProducto = (p.metodo_pago ?? data.metodoPago) === 'canje';
+      return sum + (esCanjeProducto ? 0 : Number(p.precio_total));
+    }, 0) || 0;
 
     const calculo = calcularComisiones(
-      precioServicio,
+      esCanjeServicio ? 0 : precioServicio,
       montoProductos,
       data.descuentoPorcentaje || 0,
       {
@@ -55,6 +65,7 @@ export class EditarPagoTurnoUseCase {
       descuentoPorcentaje: data.descuentoPorcentaje || 0,
       descuento_monto: calculo.descuentoMonto,
       total_final: calculo.totalConDescuento,
+      canje_detalle: esCanjeServicio ? canjeDetalle : null,
     });
 
     // 5. Actualizar productos si se enviaron
@@ -65,9 +76,22 @@ export class EditarPagoTurnoUseCase {
         const comisionProductoPct = profesional.comision_producto ?? 0;
 
         for (const producto of data.productos) {
-          const precioTotal = Number(producto.precio_total);
-          const netoVendedor = precioTotal * comisionProductoPct / 100;
-          const comisionMonto = precioTotal - netoVendedor;
+          // Canje (por producto o heredado del turno): todos los importes en 0.
+          // El costo_unitario_snapshot SÍ se guarda (informativo).
+          const esCanjeProducto = (producto.metodo_pago ?? data.metodoPago) === 'canje';
+          const precioUnitario = esCanjeProducto ? 0 : Number(producto.precio_unitario);
+          const precioTotal = esCanjeProducto ? 0 : Number(producto.precio_total);
+          // Costo del producto para calcular la comisión sobre la ganancia
+          let costoUnitario: number | null = null;
+          if (producto.es_venta_costo) {
+            costoUnitario = Number(producto.precio_unitario);
+          } else if (producto.producto_id && this.catalogoProductoRepository) {
+            const prod = await this.catalogoProductoRepository.findById(producto.producto_id);
+            costoUnitario = prod?.costo != null ? Number(prod.costo) : null;
+          }
+          const { netoVendedor, comisionMonto } = esCanjeProducto
+            ? { netoVendedor: 0, comisionMonto: 0 }
+            : calcularComisionProducto(precioTotal, costoUnitario, producto.cantidad, comisionProductoPct);
           await this.ventaProductoRepository.create({
             empresa_id: data.empresaId,
             vendedor_id: data.profesionalId,
@@ -76,14 +100,15 @@ export class EditarPagoTurnoUseCase {
             producto_id: producto.producto_id || null,
             nombre_producto: producto.nombre_producto,
             cantidad: producto.cantidad,
-            precio_unitario: producto.precio_unitario,
-            precio_total: producto.precio_total,
+            precio_unitario: precioUnitario,
+            precio_total: precioTotal,
             metodo_pago: producto.metodo_pago ?? data.metodoPago,
             comision_porcentaje: comisionProductoPct,
             comision_monto: comisionMonto,
             neto_vendedor: netoVendedor,
             es_venta_costo: producto.es_venta_costo ?? false,
-            costo_unitario_snapshot: producto.es_venta_costo ? producto.precio_unitario : null,
+            costo_unitario_snapshot: costoUnitario,
+            canje_detalle: esCanjeProducto ? canjeDetalle : null,
           });
         }
       }

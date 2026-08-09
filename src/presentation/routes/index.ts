@@ -15,6 +15,7 @@ import turnosRoutes from './turnos.routes';
 import mailDeliveryRoutes from './mailDelivery.routes';
 import publicRoutes from './public.routes';
 import finanzasRoutes from './finanzas.routes';
+import metricasRoutes from './metricas.routes';
 import perfilRoutes from './perfil.routes';
 import configuracionRoutes from './configuracion.routes';
 import productosRoutes from './productos.routes';
@@ -59,6 +60,9 @@ router.use('/api/turnos', turnosRoutes);
 
 // Finanzas routes
 router.use('/api/finanzas', finanzasRoutes);
+
+// Metricas routes (solo admin)
+router.use('/api/metricas', metricasRoutes);
 
 // Perfil routes
 router.use('/api/perfil', perfilRoutes);

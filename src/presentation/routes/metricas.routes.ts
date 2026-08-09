@@ -18,4 +18,10 @@ router.get('/evolucion', (req, res) => metricasController.getEvolucion(req, res)
 // GET /api/metricas/equipo - Comparativa de profesionales
 router.get('/equipo', (req, res) => metricasController.getEquipo(req, res));
 
+// GET /api/metricas/clientes-nuevos - Clientes nuevos del período y qué profesional eligieron
+router.get('/clientes-nuevos', (req, res) => metricasController.getClientesNuevos(req, res));
+
+// GET /api/metricas/comparativa - Comparativa detallada de profesionales (agrupar=dia|mes)
+router.get('/comparativa', (req, res) => metricasController.getComparativa(req, res));
+
 export default router;

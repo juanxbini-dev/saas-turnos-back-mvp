@@ -3,6 +3,8 @@ import {
   GetMetricasResumenUseCase,
   GetMetricasEvolucionUseCase,
   GetMetricasEquipoUseCase,
+  GetMetricasClientesNuevosUseCase,
+  GetMetricasComparativaUseCase,
 } from '../../application/use-cases/metricas/GetMetricasUseCase';
 import { PostgresMetricasRepository } from '../../infrastructure/repositories/PostgresMetricasRepository';
 import { pool } from '../../infrastructure/database/postgres.connection';
@@ -13,6 +15,8 @@ const metricasRepository = new PostgresMetricasRepository(pool);
 const getResumenUseCase = new GetMetricasResumenUseCase(metricasRepository);
 const getEvolucionUseCase = new GetMetricasEvolucionUseCase(metricasRepository);
 const getEquipoUseCase = new GetMetricasEquipoUseCase(metricasRepository);
+const getClientesNuevosUseCase = new GetMetricasClientesNuevosUseCase(metricasRepository);
+const getComparativaUseCase = new GetMetricasComparativaUseCase(metricasRepository);
 
 const FECHA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -86,6 +90,45 @@ export class MetricasController {
       res.json({ success: true, data: equipo });
     } catch (error) {
       console.error('Error en getEquipo de métricas:', error);
+      res.status(500).json({
+        message: 'Error interno del servidor',
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      });
+    }
+  }
+
+  async getClientesNuevos(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const authUser = req.user!;
+      const periodo = extraerPeriodo(req, res);
+      if (!periodo) return;
+
+      const clientesNuevos = await getClientesNuevosUseCase.execute(authUser.empresaId, periodo);
+      res.json({ success: true, data: clientesNuevos });
+    } catch (error) {
+      console.error('Error en getClientesNuevos de métricas:', error);
+      res.status(500).json({
+        message: 'Error interno del servidor',
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      });
+    }
+  }
+
+  async getComparativa(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const authUser = req.user!;
+      const periodo = extraerPeriodo(req, res);
+      if (!periodo) return;
+
+      const agrupar = ((req.query.agrupar as string) || 'dia') as MetricasAgrupacion;
+      if (!['dia', 'mes'].includes(agrupar)) {
+        return res.status(400).json({ message: 'agrupar debe ser "dia" o "mes"' });
+      }
+
+      const comparativa = await getComparativaUseCase.execute(authUser.empresaId, periodo, agrupar);
+      res.json({ success: true, data: comparativa });
+    } catch (error) {
+      console.error('Error en getComparativa de métricas:', error);
       res.status(500).json({
         message: 'Error interno del servidor',
         error: error instanceof Error ? error.message : 'Error desconocido',

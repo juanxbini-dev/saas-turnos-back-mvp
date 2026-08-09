@@ -4,6 +4,8 @@ import {
   MetricasAgrupacion,
   MetricasEvolucionPunto,
   MetricasEquipoItem,
+  MetricasClientesNuevos,
+  MetricasComparativaItem,
 } from '../entities/Metricas';
 
 export interface IMetricasRepository {
@@ -16,4 +18,12 @@ export interface IMetricasRepository {
   ): Promise<MetricasEvolucionPunto[]>;
 
   getEquipo(empresaId: string, periodo: MetricasPeriodo): Promise<MetricasEquipoItem[]>;
+
+  getClientesNuevos(empresaId: string, periodo: MetricasPeriodo): Promise<MetricasClientesNuevos>;
+
+  getComparativa(
+    empresaId: string,
+    periodo: MetricasPeriodo,
+    agrupar: MetricasAgrupacion
+  ): Promise<MetricasComparativaItem[]>;
 }

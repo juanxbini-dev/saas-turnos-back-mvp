@@ -29,7 +29,9 @@ export interface ComisionProfesional {
 export interface FinanzasFilters {
   fecha_desde: string;
   fecha_hasta: string;
-  metodo_pago: 'todos' | 'efectivo' | 'transferencia' | 'pendiente';
+  // 'pendientes' pisa metodo_pago: lista solo entradas con metodo_pago = 'pendiente'
+  tipo: 'todos' | 'turnos' | 'productos' | 'pendientes';
+  metodo_pago: 'todos' | 'efectivo' | 'transferencia' | 'pendiente' | 'canje';
   estado_comision: 'todos' | 'pendiente' | 'pagada' | 'cancelada';
   ordenar_por: 'fecha' | 'total_venta' | 'total_neto_profesional';
   orden: 'asc' | 'desc';
@@ -52,6 +54,9 @@ export interface FinanzasSummary {
   cantidad_productos_vendidos: number;
   promedio_por_turno: number;
   total_pendiente: number;
+  // Canjes: entregas gratis (importes 0). No suman a los totales; se cuentan aparte.
+  cantidad_canjes_servicios: number;
+  cantidad_canjes_productos: number;
 }
 
 // Item individual dentro de una venta agrupada
@@ -79,6 +84,8 @@ export interface VentaGrupadaFinanzas {
   cliente_nombre: string | null;
   vendedor_nombre: string;
   empresa_id: string;
+  // Detalle del canje (solo cuando metodo_pago = 'canje'; NULL en caso contrario)
+  canje_detalle?: string | null;
   items: VentaItemFinanzas[];
 }
 
@@ -88,7 +95,7 @@ export interface ComisionConDetalle extends ComisionProfesional {
   turno_fecha: string;
   turno_hora: string;
   turno_estado: string;
-  metodo_pago: 'efectivo' | 'transferencia' | 'pendiente';
+  metodo_pago: 'efectivo' | 'transferencia' | 'pendiente' | 'canje';
   precio_original: number;
   descuento_porcentaje: number;
   descuento_monto: number;
@@ -97,6 +104,10 @@ export interface ComisionConDetalle extends ComisionProfesional {
   servicio_nombre: string;
   profesional_nombre?: string;
   tiene_productos: boolean;
+  // El turno tiene productos con metodo_pago = 'pendiente' (aunque no estén en la página actual)
+  tiene_producto_pendiente: boolean;
+  // Detalle del canje (turnos.canje_detalle; solo cuando el servicio se cobró como canje)
+  canje_detalle?: string | null;
 }
 
 export type EntradaFinanzas = ComisionConDetalle | VentaGrupadaFinanzas;

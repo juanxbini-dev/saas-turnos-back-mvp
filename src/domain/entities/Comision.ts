@@ -45,6 +45,8 @@ export interface VentaProducto {
   fecha_venta?: string | null;
   es_venta_costo?: boolean;
   costo_unitario_snapshot?: number | null;
+  // Detalle del canje (solo cuando metodo_pago = 'canje'; NULL en caso contrario)
+  canje_detalle?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -67,4 +69,6 @@ export interface CreateVentaProductoData {
   fecha_venta?: string | null;
   es_venta_costo?: boolean;
   costo_unitario_snapshot?: number | null;
+  // Solo se guarda cuando metodo_pago = 'canje' (los use cases lo garantizan)
+  canje_detalle?: string | null;
 }

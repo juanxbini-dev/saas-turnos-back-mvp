@@ -1,21 +1,21 @@
-import { IImageRepository } from '../../../domain/repositories/IImageRepository';
 import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
-import { pool } from '../../../infrastructure/database/postgres.connection';
 
+// "Eliminar" un usuario = deshabilitarlo (soft-delete). No se borra la fila:
+// sus turnos/ventas históricos referencian al usuario por FK. Deshabilitado
+// no puede iniciar sesión ni renovar tokens, y desaparece de la landing y de
+// los selectores internos (que ya filtran por activo = true). Reversible
+// desde la lista de deshabilitados.
 export class DeleteUsuarioUseCase {
-  constructor(
-    private usuarioRepository: IUsuarioRepository,
-    private imageRepository: IImageRepository
-  ) {}
+  constructor(private usuarioRepository: IUsuarioRepository) {}
 
   async execute(id: string, adminId: string, empresaId: string): Promise<void> {
     if (id === adminId) {
-      const error: any = new Error('No podés eliminar tu propia cuenta');
+      const error: any = new Error('No podés deshabilitar tu propia cuenta');
       error.statusCode = 403;
       throw error;
     }
 
-    const usuario = await this.usuarioRepository.findByIdWithPassword(id);
+    const usuario = await this.usuarioRepository.findById(id);
 
     if (!usuario) {
       const error: any = new Error('Usuario no encontrado');
@@ -24,23 +24,11 @@ export class DeleteUsuarioUseCase {
     }
 
     if (usuario.empresa_id !== empresaId) {
-      const error: any = new Error('No tenés permisos para eliminar este usuario');
+      const error: any = new Error('No tenés permisos para deshabilitar este usuario');
       error.statusCode = 403;
       throw error;
     }
 
-    // Limpiar avatar de Cloudinary si existe
-    if (usuario.avatar_public_id) {
-      try {
-        await this.imageRepository.delete(usuario.avatar_public_id);
-      } catch {
-        // Si falla el delete de Cloudinary, continuamos con el delete del usuario
-      }
-    }
-
-    // Eliminar registro de landing_profesionales si existe (FK sin CASCADE)
-    await pool.query('DELETE FROM landing_profesionales WHERE usuario_id = $1', [id]);
-
-    await this.usuarioRepository.delete(id);
+    await this.usuarioRepository.setActivo(id, false);
   }
 }

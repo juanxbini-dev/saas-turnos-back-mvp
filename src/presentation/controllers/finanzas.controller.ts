@@ -27,6 +27,7 @@ export class FinanzasController {
       const filters: FinanzasFilters = {
         fecha_desde: req.query.fecha_desde as string || '',
         fecha_hasta: req.query.fecha_hasta as string || '',
+        tipo: ((req.query.tipo as string) || 'todos') as FinanzasFilters['tipo'],
         metodo_pago: ((req.query.metodo_pago as string) || 'todos') as FinanzasFilters['metodo_pago'],
         estado_comision: ((req.query.estado_comision as string) || 'todos') as FinanzasFilters['estado_comision'],
         ordenar_por: ((req.query.ordenar_por as string) || 'fecha') as FinanzasFilters['ordenar_por'],
@@ -43,10 +44,15 @@ export class FinanzasController {
       }
 
       // Validar valores de filtros
-      const validMetodosPago = ['todos', 'efectivo', 'transferencia', 'pendiente'];
+      const validTipos = ['todos', 'turnos', 'productos', 'pendientes'];
+      const validMetodosPago = ['todos', 'efectivo', 'transferencia', 'pendiente', 'canje'];
       const validEstados = ['todos', 'pendiente', 'pagada', 'cancelada'];
       const validOrdenarPor = ['fecha', 'total_venta', 'total_neto_profesional'];
       const validOrden = ['asc', 'desc'];
+
+      if (!validTipos.includes(filters.tipo)) {
+        return res.status(400).json({ message: 'Tipo de entrada inválido' });
+      }
 
       if (!validMetodosPago.includes(filters.metodo_pago)) {
         return res.status(400).json({ message: 'Método de pago inválido' });
@@ -106,6 +112,7 @@ export class FinanzasController {
       const filters: FinanzasFilters = {
         fecha_desde: req.query.fecha_desde as string || '',
         fecha_hasta: req.query.fecha_hasta as string || '',
+        tipo: ((req.query.tipo as string) || 'todos') as FinanzasFilters['tipo'],
         metodo_pago: ((req.query.metodo_pago as string) || 'todos') as FinanzasFilters['metodo_pago'],
         estado_comision: ((req.query.estado_comision as string) || 'todos') as FinanzasFilters['estado_comision'],
         ordenar_por: ((req.query.ordenar_por as string) || 'fecha') as FinanzasFilters['ordenar_por'],
@@ -121,12 +128,14 @@ export class FinanzasController {
         });
       }
 
-      const validMetodosPago = ['todos', 'efectivo', 'transferencia', 'pendiente'];
+      const validTipos = ['todos', 'turnos', 'productos', 'pendientes'];
+      const validMetodosPago = ['todos', 'efectivo', 'transferencia', 'pendiente', 'canje'];
       const validEstados = ['todos', 'pendiente', 'pagada', 'cancelada'];
       const validOrdenarPor = ['fecha', 'total_venta', 'total_neto_profesional'];
       const validOrden = ['asc', 'desc'];
 
-      if (!validMetodosPago.includes(filters.metodo_pago) ||
+      if (!validTipos.includes(filters.tipo) ||
+          !validMetodosPago.includes(filters.metodo_pago) ||
           !validEstados.includes(filters.estado_comision) ||
           !validOrdenarPor.includes(filters.ordenar_por) ||
           !validOrden.includes(filters.orden) ||
@@ -168,7 +177,7 @@ export class FinanzasController {
       const authUser = (req as any).user;
       if (!authUser) return res.status(401).json({ message: 'No autenticado' });
 
-      const { tipo, id, metodo_pago, metodo_pago_productos } = req.body;
+      const { tipo, id, metodo_pago, metodo_pago_productos, canje_detalle } = req.body;
 
       if (!tipo || !id || !metodo_pago) {
         return res.status(400).json({ message: 'tipo, id y metodo_pago son requeridos' });
@@ -176,14 +185,24 @@ export class FinanzasController {
       if (!['turno', 'turno_solo_servicio', 'venta_turno', 'venta'].includes(tipo)) {
         return res.status(400).json({ message: 'tipo debe ser "turno", "turno_solo_servicio", "venta_turno" o "venta"' });
       }
-      if (!['efectivo', 'transferencia'].includes(metodo_pago)) {
-        return res.status(400).json({ message: 'metodo_pago debe ser "efectivo" o "transferencia"' });
+      // 'tarjeta' solo vale para cobros de productos: el servicio del turno no la admite.
+      // 'canje' vale para servicios y productos (entrega gratis: importes en 0).
+      const esCobroDeProductos = ['venta', 'venta_turno'].includes(tipo);
+      const metodosServicio = ['efectivo', 'transferencia', 'canje'];
+      const metodosProductos = ['efectivo', 'transferencia', 'tarjeta', 'canje'];
+      if (!(esCobroDeProductos ? metodosProductos : metodosServicio).includes(metodo_pago)) {
+        return res.status(400).json({
+          message: esCobroDeProductos
+            ? 'metodo_pago debe ser "efectivo", "transferencia", "tarjeta" o "canje"'
+            : 'metodo_pago debe ser "efectivo", "transferencia" o "canje"',
+        });
       }
-      if (metodo_pago_productos && !['efectivo', 'transferencia'].includes(metodo_pago_productos)) {
-        return res.status(400).json({ message: 'metodo_pago_productos debe ser "efectivo" o "transferencia"' });
+      if (metodo_pago_productos && !metodosProductos.includes(metodo_pago_productos)) {
+        return res.status(400).json({ message: 'metodo_pago_productos debe ser "efectivo", "transferencia", "tarjeta" o "canje"' });
       }
 
-      await cobrarPagoRepo.cobrarPago(tipo, id, authUser.empresaId, metodo_pago, metodo_pago_productos);
+      // canje_detalle: texto libre del canje; el repo lo normaliza y solo lo persiste con método canje
+      await cobrarPagoRepo.cobrarPago(tipo, id, authUser.empresaId, metodo_pago, metodo_pago_productos, canje_detalle);
       res.json({ success: true });
     } catch (error) {
       console.error('Error en cobrarPago:', error);

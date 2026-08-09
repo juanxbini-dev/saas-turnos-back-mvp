@@ -96,7 +96,12 @@ describe('UpdateVentaProductoUseCase', () => {
 
       await useCase.execute('venta-007', 'empresa-XYZ', data);
 
-      expect(ventaProductoRepo.updateById).toHaveBeenCalledWith('venta-007', 'empresa-XYZ', data);
+      // Al mandar un método no-canje, el use case fuerza canje_detalle = null (limpia el detalle)
+      expect(ventaProductoRepo.updateById).toHaveBeenCalledWith(
+        'venta-007',
+        'empresa-XYZ',
+        { ...data, canje_detalle: null }
+      );
     });
 
     it('vendedor_id es editable: se puede reasignar el profesional', async () => {
@@ -147,6 +152,94 @@ describe('UpdateVentaProductoUseCase', () => {
       const dataEnviada = ventaProductoRepo.updateById.mock.calls[0][2];
       expect(dataEnviada.es_venta_costo).toBe(true);
       expect(dataEnviada.costo_unitario_snapshot).toBe(45);
+    });
+
+  });
+
+  // ── CANJE (entrega gratis: todos los importes en 0) ───────────────────────
+
+  describe('cambio a canje', () => {
+
+    it('metodo_pago=canje fuerza precio_unitario, precio_total, comision_monto y neto_vendedor en 0', async () => {
+      const { ventaProductoRepo } = makeMocks();
+      const useCase = new UpdateVentaProductoUseCase(ventaProductoRepo);
+      ventaProductoRepo.updateById.mockResolvedValue(buildVentaActualizada({ metodo_pago: 'canje' }));
+
+      // Aunque el frontend mande precios, el canje los pisa con 0
+      await useCase.execute('venta-001', 'empresa-001', {
+        metodo_pago:     'canje',
+        precio_unitario: 150,
+        precio_total:    300,
+      });
+
+      const dataEnviada = ventaProductoRepo.updateById.mock.calls[0][2];
+      expect(dataEnviada.metodo_pago).toBe('canje');
+      expect(dataEnviada.precio_unitario).toBe(0);
+      expect(dataEnviada.precio_total).toBe(0);
+      expect(dataEnviada.comision_monto).toBe(0);
+      expect(dataEnviada.neto_vendedor).toBe(0);
+    });
+
+    it('cambio DE canje a otro método es pass-through en precios y limpia canje_detalle', async () => {
+      const { ventaProductoRepo } = makeMocks();
+      const useCase = new UpdateVentaProductoUseCase(ventaProductoRepo);
+      ventaProductoRepo.updateById.mockResolvedValue(buildVentaActualizada());
+
+      const data: UpdateVentaProductoData = {
+        metodo_pago:     'efectivo',
+        precio_unitario: 150,
+        precio_total:    300,
+      };
+      await useCase.execute('venta-001', 'empresa-001', data);
+
+      const dataEnviada = ventaProductoRepo.updateById.mock.calls[0][2];
+      // Precios pass-through (los manda el frontend); el detalle del canje vuelve a NULL
+      expect(dataEnviada).toEqual({ ...data, canje_detalle: null });
+      expect(dataEnviada.comision_monto).toBeUndefined();
+      expect(dataEnviada.neto_vendedor).toBeUndefined();
+    });
+
+    it('metodo_pago=canje guarda el canje_detalle normalizado (trim)', async () => {
+      const { ventaProductoRepo } = makeMocks();
+      const useCase = new UpdateVentaProductoUseCase(ventaProductoRepo);
+      ventaProductoRepo.updateById.mockResolvedValue(buildVentaActualizada({ metodo_pago: 'canje' }));
+
+      await useCase.execute('venta-001', 'empresa-001', {
+        metodo_pago:   'canje',
+        canje_detalle: '  a cambio de difusión  ',
+      });
+
+      const dataEnviada = ventaProductoRepo.updateById.mock.calls[0][2];
+      expect(dataEnviada.canje_detalle).toBe('a cambio de difusión');
+    });
+
+    it('metodo_pago=canje sin detalle (o vacío) guarda null', async () => {
+      const { ventaProductoRepo } = makeMocks();
+      const useCase = new UpdateVentaProductoUseCase(ventaProductoRepo);
+      ventaProductoRepo.updateById.mockResolvedValue(buildVentaActualizada({ metodo_pago: 'canje' }));
+
+      await useCase.execute('venta-001', 'empresa-001', {
+        metodo_pago:   'canje',
+        canje_detalle: '   ',
+      });
+
+      const dataEnviada = ventaProductoRepo.updateById.mock.calls[0][2];
+      expect(dataEnviada.canje_detalle).toBeNull();
+    });
+
+    it('sin metodo_pago en la data: canje_detalle no se toca (queda undefined)', async () => {
+      const { ventaProductoRepo } = makeMocks();
+      const useCase = new UpdateVentaProductoUseCase(ventaProductoRepo);
+      ventaProductoRepo.updateById.mockResolvedValue(buildVentaActualizada());
+
+      await useCase.execute('venta-001', 'empresa-001', {
+        cantidad:      3,
+        canje_detalle: 'texto que no debe aplicarse sin método canje',
+      });
+
+      const dataEnviada = ventaProductoRepo.updateById.mock.calls[0][2];
+      expect(dataEnviada.cantidad).toBe(3);
+      expect(dataEnviada.canje_detalle).toBeUndefined();
     });
 
   });

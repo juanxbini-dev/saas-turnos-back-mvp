@@ -9,6 +9,10 @@ export interface IProductoRepository {
   deductStock(id: string, cantidad: number): Promise<Producto>;
   delete(id: string): Promise<void>;
   findByNombre(empresaId: string, nombre: string, excludeId?: string): Promise<Producto | null>;
+  // Limpia los overrides de precio (los vuelve NULL = derivados de la config) de los
+  // productos con costo cargado. Devuelve cuántos se actualizaron.
+  resetPreciosManuales(empresaId: string): Promise<number>;
+  countManualesSinCosto(empresaId: string): Promise<number>;
   findBajoStock(empresaId: string, umbral?: number): Promise<Producto[]>;
   getTopVendidos(empresaId: string, limit?: number): Promise<TopProducto[]>;
   getTopVendedores(empresaId: string, limit?: number): Promise<TopVendedor[]>;

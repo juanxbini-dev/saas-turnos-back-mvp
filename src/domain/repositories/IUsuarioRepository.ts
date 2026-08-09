@@ -31,6 +31,7 @@ export interface IUsuarioRepository {
   updatePassword(id: string, hashedPassword: string): Promise<void>;
   updateRol(id: string, roles: string[]): Promise<UsuarioPublico>;
   delete(id: string): Promise<void>;
+  setActivo(id: string, activo: boolean): Promise<UsuarioPublico>;
   existeUsername(username: string, empresaId: string, excludeId?: string): Promise<boolean>;
   existeEmail(email: string, empresaId: string, excludeId?: string): Promise<boolean>;
   findProfesionalesByEmpresa(empresaId: string, params?: {

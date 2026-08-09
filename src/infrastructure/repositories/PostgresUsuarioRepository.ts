@@ -132,6 +132,18 @@ export class PostgresUsuarioRepository implements IUsuarioRepository {
     await pool.query('DELETE FROM usuarios WHERE id = $1', [id]);
   }
 
+  async setActivo(id: string, activo: boolean): Promise<UsuarioPublico> {
+    const query = `
+      UPDATE usuarios
+      SET activo = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id, email, nombre, username, empresa_id, roles, activo, last_login, created_at, updated_at, comision_turno, comision_producto, avatar_url, telefono
+    `;
+
+    const result = await pool.query(query, [activo, id]);
+    return result.rows[0];
+  }
+
   async existeUsername(username: string, empresaId: string, excludeId?: string): Promise<boolean> {
     let query = `
       SELECT COUNT(*) as count

@@ -12,9 +12,16 @@ const pool = new Pool({
   ssl: isProduction ? { rejectUnauthorized: false } : false,
 });
 
+// Sin este handler, un reset de una conexión idle (mantenimiento/reinicio de la DB
+// en Railway) emite 'error' sin listener y tumba el proceso entero (ECONNRESET).
+pool.on('error', (error) => {
+  console.error('Unexpected error on idle PostgreSQL client:', error);
+});
+
 export const connectDatabase = async (): Promise<void> => {
   try {
-    await pool.connect();
+    const client = await pool.connect();
+    client.release();
     console.log('Database connected');
   } catch (error) {
     console.error('Database connection error:', error);

@@ -364,6 +364,23 @@ describe('FinalizarTurnoUseCase', () => {
       );
     });
 
+    it('la venta de producto se crea con fecha_venta = fecha del turno (nunca NULL)', async () => {
+      const mocks = buildMocks();
+      mocks.turnoRepo.findById.mockResolvedValue(buildTurnoConfirmado({ fecha: '2026-05-08' }));
+      mocks.usuarioRepo.findById.mockResolvedValue(buildProfesional());
+      mocks.turnoRepo.finalizar.mockResolvedValue(buildTurnoFinalizado());
+      mocks.comisionRepo.create.mockResolvedValue(buildComision());
+      mocks.ventaProductoRepo.create.mockResolvedValue({} as any);
+
+      await buildUseCase(mocks).execute(
+        buildInputBase({ productos: [productoConId] })
+      );
+
+      // Con fecha_venta NULL la venta desaparece del tab Ventas (filtra BETWEEN)
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.fecha_venta).toBe('2026-05-08');
+    });
+
     it('sin producto_id: llama deleteByTurno y create pero NO deductStock', async () => {
       const mocks = buildMocks();
       mocks.turnoRepo.findById.mockResolvedValue(buildTurnoConfirmado());

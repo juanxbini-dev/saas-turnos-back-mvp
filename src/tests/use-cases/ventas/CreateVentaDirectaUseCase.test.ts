@@ -18,6 +18,7 @@ import { IProductoRepository } from '../../../domain/repositories/IProductoRepos
 import { VentaProducto } from '../../../domain/entities/Comision';
 import { UsuarioPublico } from '../../../domain/entities/User';
 import { Producto } from '../../../domain/entities/Producto';
+import { DateUtils } from '../../../shared/utils/DateUtils';
 
 // ── Factories ─────────────────────────────────────────────────────────────────
 
@@ -406,7 +407,7 @@ describe('CreateVentaDirectaUseCase', () => {
 
   describe('fecha_venta', () => {
 
-    it('cuando el ítem no tiene fecha_venta, se pasa null al repo', async () => {
+    it('cuando el ítem no tiene fecha_venta, se usa hoy en hora argentina (nunca NULL)', async () => {
       const mocks = makeMocks();
       mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
       mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
@@ -416,8 +417,9 @@ describe('CreateVentaDirectaUseCase', () => {
         items: [{ producto_id: 'prod-001', cantidad: 1, precio_unitario: 100 }],
       }));
 
+      // Con fecha_venta NULL la venta desaparece del tab Ventas (filtra BETWEEN)
       const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
-      expect(argCreado.fecha_venta).toBeNull();
+      expect(argCreado.fecha_venta).toBe(DateUtils.nowAR().fecha);
     });
 
     it('cuando el ítem tiene fecha_venta propia, esa fecha se propaga al repo', async () => {

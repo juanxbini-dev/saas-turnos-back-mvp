@@ -4,6 +4,7 @@ import { IProductoRepository } from '../../../domain/repositories/IProductoRepos
 import { VentaProducto } from '../../../domain/entities/Comision';
 import { MetodoPago } from '../../../domain/entities/Turno';
 import { generarId, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
+import { DateUtils } from '../../../shared/utils/DateUtils';
 import { normalizarCanjeDetalle } from '../../../shared/utils/canje.utils';
 
 export interface CreateVentaDirectaItem {
@@ -99,7 +100,9 @@ export class CreateVentaDirectaUseCase {
         comision_porcentaje: comisionPct,
         comision_monto: comisionMonto,
         neto_vendedor: netoVendedor,
-        fecha_venta: item.fecha_venta ?? null,
+        // Default: hoy en hora argentina (el server corre en UTC; un new Date()
+        // ingenuo pondría la fecha de mañana después de las 21:00 AR)
+        fecha_venta: item.fecha_venta ?? DateUtils.nowAR().fecha,
         es_venta_costo: item.es_venta_costo ?? false,
         costo_unitario_snapshot: costoUnitario,
         canje_detalle: canjeDetalle,

@@ -3,6 +3,16 @@ import { IVentaProductoRepository, VentaProductoFiltros, VentaProductoConVendedo
 import { VentaProducto, CreateVentaProductoData } from '../../domain/entities/Comision';
 import { generarId } from '../../shared/utils/calculos.utils';
 
+// Fecha efectiva de una venta para el tab Ventas: prioriza la fecha_venta cargada
+// explícitamente (ventas retroactivas), después la fecha del turno y por último la
+// fecha de creación en horario argentino. Las ventas históricas tienen fecha_venta
+// NULL (los caminos de creación no la seteaban), así que filtrar por la columna a
+// secas las excluye. Requiere alias `vp` y LEFT JOIN turnos como `trn`.
+// Finanzas y Métricas usan la misma expresión pero SIN vp.fecha_venta: unificar
+// eso movería de mes las ventas retroactivas en esas secciones — decisión aparte.
+const FECHA_VENTA_EFECTIVA =
+  "COALESCE(vp.fecha_venta, trn.fecha, DATE(vp.created_at AT TIME ZONE 'America/Argentina/Buenos_Aires'))";
+
 export class PostgresVentaProductoRepository implements IVentaProductoRepository {
   async create(data: CreateVentaProductoData): Promise<VentaProducto> {
     const query = `
@@ -64,14 +74,16 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
 
   async findByVendedor(vendedorId: string, empresaId: string, fechaDesde: string, fechaHasta: string): Promise<VentaProducto[]> {
     const result = await pool.query(
-      `SELECT vp.*, u.nombre AS vendedor_nombre, c.nombre AS cliente_nombre
+      `SELECT vp.*, u.nombre AS vendedor_nombre, c.nombre AS cliente_nombre,
+              ${FECHA_VENTA_EFECTIVA} AS fecha_venta
        FROM venta_productos vp
        JOIN usuarios u ON u.id = vp.vendedor_id
        LEFT JOIN clientes c ON c.id = vp.cliente_id
+       LEFT JOIN turnos trn ON trn.id = vp.turno_id
        WHERE vp.vendedor_id = $1
          AND vp.empresa_id = $2
-         AND vp.fecha_venta BETWEEN $3 AND $4
-       ORDER BY vp.fecha_venta DESC`,
+         AND ${FECHA_VENTA_EFECTIVA} BETWEEN $3 AND $4
+       ORDER BY ${FECHA_VENTA_EFECTIVA} DESC`,
       [vendedorId, empresaId, fechaDesde, fechaHasta]
     );
     return result.rows;
@@ -91,23 +103,28 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
 
     const dataParams = [...baseParams, limit, offset];
 
+    // El alias fecha_venta al final pisa al de vp.* en el objeto de node-pg:
+    // el registro muestra la fecha efectiva también en las filas con columna NULL.
     const dataQuery = `
-      SELECT vp.*, u.nombre AS vendedor_nombre, c.nombre AS cliente_nombre
+      SELECT vp.*, u.nombre AS vendedor_nombre, c.nombre AS cliente_nombre,
+             ${FECHA_VENTA_EFECTIVA} AS fecha_venta
       FROM venta_productos vp
       JOIN usuarios u ON u.id = vp.vendedor_id
       LEFT JOIN clientes c ON c.id = vp.cliente_id
+      LEFT JOIN turnos trn ON trn.id = vp.turno_id
       WHERE vp.empresa_id = $1
-        AND vp.fecha_venta BETWEEN $2 AND $3
+        AND ${FECHA_VENTA_EFECTIVA} BETWEEN $2 AND $3
         ${vendedorFilter}
-      ORDER BY vp.fecha_venta DESC, vp.created_at DESC
+      ORDER BY ${FECHA_VENTA_EFECTIVA} DESC, vp.created_at DESC
       LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}
     `;
 
     const countQuery = `
       SELECT COUNT(*) AS total
       FROM venta_productos vp
+      LEFT JOIN turnos trn ON trn.id = vp.turno_id
       WHERE vp.empresa_id = $1
-        AND vp.fecha_venta BETWEEN $2 AND $3
+        AND ${FECHA_VENTA_EFECTIVA} BETWEEN $2 AND $3
         ${vendedorFilter}
     `;
 
@@ -186,8 +203,9 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
           COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad AS costo_item
         FROM venta_productos vp
         LEFT JOIN productos p ON p.id = vp.producto_id
+        LEFT JOIN turnos trn ON trn.id = vp.turno_id
         WHERE vp.empresa_id = $1
-          AND vp.fecha_venta BETWEEN $2 AND $3
+          AND ${FECHA_VENTA_EFECTIVA} BETWEEN $2 AND $3
           AND vp.metodo_pago IS DISTINCT FROM 'canje'
           ${vendedorFilter}
       )
@@ -221,8 +239,9 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
         SUM(vp.comision_monto) - SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad) AS ganancia_empresa
       FROM venta_productos vp
       LEFT JOIN productos p ON p.id = vp.producto_id
+      LEFT JOIN turnos trn ON trn.id = vp.turno_id
       WHERE vp.empresa_id = $1
-        AND vp.fecha_venta BETWEEN $2 AND $3
+        AND ${FECHA_VENTA_EFECTIVA} BETWEEN $2 AND $3
         AND vp.metodo_pago IS DISTINCT FROM 'canje'
         ${vendedorFilter}
     `;
@@ -237,8 +256,9 @@ export class PostgresVentaProductoRepository implements IVentaProductoRepository
         SUM(vp.precio_total) - SUM(COALESCE(vp.costo_unitario_snapshot, p.costo, 0) * vp.cantidad) AS ganancia_bruta
       FROM venta_productos vp
       LEFT JOIN productos p ON p.id = vp.producto_id
+      LEFT JOIN turnos trn ON trn.id = vp.turno_id
       WHERE vp.empresa_id = $1
-        AND vp.fecha_venta BETWEEN $2 AND $3
+        AND ${FECHA_VENTA_EFECTIVA} BETWEEN $2 AND $3
         AND vp.metodo_pago IS DISTINCT FROM 'canje'
         ${vendedorFilter}
       GROUP BY vp.producto_id, vp.nombre_producto

@@ -40,3 +40,11 @@ El tab Ventas de la sección Productos no muestra las ventas nuevas: los dos cam
 - **Fase 2 (fix B) hecha**: `FinalizarTurnoUseCase` graba `fecha_venta = DateUtils.normalizeDate(turno.fecha)`; `CreateVentaDirectaUseCase` defaultea a `DateUtils.nowAR().fecha` (hoy en zona AR, seguro en server UTC).
 - **Fase 3 hecha**: test viejo que asertaba el NULL actualizado + test nuevo en FinalizarTurno. Suite: 338/338 verde, `tsc --noEmit` limpio.
 - **Pendiente (fase 4)**: build Railway-like (`npm ci --omit=dev && npm run build`) y prueba manual con DB local (Docker estaba apagado en esta sesión). Ambos quedan para el cierre con `cerrar-feature`.
+
+### 2026-09-06 — revisión con agentes y cierre de huecos
+- **code-reviewer**: veredicto "apto para merge condicionado", sin bloqueantes. Hallazgo importante: `EditarPagoTurnoUseCase` es un TERCER camino de creación (deleteByTurno + create al editar el pago) que seguía sin `fecha_venta` → cada edición de pago volvía a dejar NULL. **Corregido**: ahora graba `DateUtils.normalizeDate(turno.fecha)` + test.
+- **qa**: auditoría de cobertura + 13 tests nuevos (DateUtils con reloj congelado incl. borde 22:30 AR y cruce de año; multi-ítem mixto; canje con default; turno.fecha como Date; update pass-through). Hallazgo: `fecha_venta: ''` (input HTML vacío) se colaba hasta Postgres y reventaba con 500. **Corregido**: `''` cuenta como "sin fecha" en `CreateVentaDirectaUseCase` (aplica default) y se descarta en `UpdateVentaProductoUseCase` (no toca la fecha) + 2 tests.
+- Suite tras todo: **354/354 verde** (era 338). `tsc --noEmit` limpio.
+- **Build Railway-like: PASÓ** (`npm ci --omit=dev && npm run build`; devDeps restauradas con `npm install`).
+- Anotado por los agentes para el futuro (no bloqueante): el truco del alias duplicado de node-pg está documentado en el código; `normalizeDate(Date)` asume server en UTC o al oeste (Railway=UTC ✓); falta validación de formato de fecha en el body (preexistente).
+- **Único pendiente antes del merge**: prueba manual contra DB local con Docker (verificar el SQL real de las 6 queries y que las filas NULL aparezcan).

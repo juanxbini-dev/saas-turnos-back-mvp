@@ -101,8 +101,10 @@ export class CreateVentaDirectaUseCase {
         comision_monto: comisionMonto,
         neto_vendedor: netoVendedor,
         // Default: hoy en hora argentina (el server corre en UTC; un new Date()
-        // ingenuo pondría la fecha de mañana después de las 21:00 AR)
-        fecha_venta: item.fecha_venta ?? DateUtils.nowAR().fecha,
+        // ingenuo pondría la fecha de mañana después de las 21:00 AR).
+        // || y no ??: un input de fecha vacío en HTML llega como '' y debe
+        // contar como "sin fecha" (''::date revienta en Postgres).
+        fecha_venta: item.fecha_venta || DateUtils.nowAR().fecha,
         es_venta_costo: item.es_venta_costo ?? false,
         costo_unitario_snapshot: costoUnitario,
         canje_detalle: canjeDetalle,

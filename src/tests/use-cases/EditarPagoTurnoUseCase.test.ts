@@ -379,6 +379,19 @@ describe('EditarPagoTurnoUseCase', () => {
       expect(productoCreado.comision_monto).toBeCloseTo(150);  // 50% de 300
       expect(productoCreado.comision_porcentaje).toBe(50);
     });
+
+    it('al recrear las ventas conserva fecha_venta = fecha del turno (nunca NULL)', async () => {
+      // La edición de pago hace deleteByTurno + create: sin la fecha, cada edición
+      // volvía a dejar la venta invisible en el tab Ventas aunque FinalizarTurno
+      // la hubiera grabado bien.
+      const mocks = buildMocks();
+      setupHappyPath(mocks);
+
+      await buildUseCase(mocks).execute(buildInputBase({ productos: [unProducto] }));
+
+      const productoCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(productoCreado.fecha_venta).toBe('2026-05-08');
+    });
   });
 
   // ── DETALLE DEL CANJE ─────────────────────────────────────────────────────

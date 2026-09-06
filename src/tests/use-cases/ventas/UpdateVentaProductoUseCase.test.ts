@@ -137,6 +137,37 @@ describe('UpdateVentaProductoUseCase', () => {
       expect(dataEnviada.vendedor_id).toBeUndefined();
     });
 
+    it('editar fecha_venta: la fecha llega tal cual al repo, incluso sin cambiar el método de pago', async () => {
+      // Corregir la fecha de una venta mal cargada es cómo se arregla que aparezca
+      // en el mes equivocado. La rama "sin metodo_pago" del use case destructura la
+      // data para descartar canje_detalle — si por error descartara también
+      // fecha_venta, la corrección se perdería en silencio.
+      const { ventaProductoRepo } = makeMocks();
+      const useCase = new UpdateVentaProductoUseCase(ventaProductoRepo);
+      ventaProductoRepo.updateById.mockResolvedValue(
+        buildVentaActualizada({ fecha_venta: '2026-03-10' })
+      );
+
+      await useCase.execute('venta-001', 'empresa-001', { fecha_venta: '2026-03-10' });
+
+      const dataEnviada = ventaProductoRepo.updateById.mock.calls[0][2];
+      expect(dataEnviada.fecha_venta).toBe('2026-03-10');
+    });
+
+    it("fecha_venta = '' (input de fecha vacío) se descarta: no llega al repo", async () => {
+      // Un <input type=date> limpiado manda '' y ''::date revienta en Postgres.
+      // El use case lo trata como "no tocar la fecha".
+      const { ventaProductoRepo } = makeMocks();
+      const useCase = new UpdateVentaProductoUseCase(ventaProductoRepo);
+      ventaProductoRepo.updateById.mockResolvedValue(buildVentaActualizada());
+
+      await useCase.execute('venta-001', 'empresa-001', { fecha_venta: '', cantidad: 2 });
+
+      const dataEnviada = ventaProductoRepo.updateById.mock.calls[0][2];
+      expect(dataEnviada.fecha_venta).toBeUndefined();
+      expect(dataEnviada.cantidad).toBe(2);
+    });
+
     it('puede actualizar es_venta_costo y costo_unitario_snapshot juntos', async () => {
       const { ventaProductoRepo } = makeMocks();
       const useCase = new UpdateVentaProductoUseCase(ventaProductoRepo);

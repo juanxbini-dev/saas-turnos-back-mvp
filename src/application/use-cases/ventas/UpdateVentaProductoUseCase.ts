@@ -6,6 +6,12 @@ export class UpdateVentaProductoUseCase {
   constructor(private repo: IVentaProductoRepository) {}
 
   async execute(id: string, empresaId: string, data: UpdateVentaProductoData): Promise<VentaProducto> {
+    // Input de fecha vacío en HTML llega como '': se trata como "no tocar la fecha"
+    // (''::date revienta en Postgres; la fecha existente no puede volver a NULL).
+    if (data.fecha_venta === '') {
+      const { fecha_venta: _vacia, ...sinFecha } = data;
+      data = sinFecha;
+    }
     // Canje = entrega gratis: al pasar a canje se fuerzan todos los importes en 0
     // y se guarda el detalle del canje (normalizado).
     // (El cambio DE canje a otro método es pass-through en precios: los manda el frontend;

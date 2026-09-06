@@ -6,6 +6,7 @@ import { IProductoRepository } from '../../../domain/repositories/IProductoRepos
 import { Turno, FinalizarTurnoData, CalculoCompletoTurno } from '../../../domain/entities/Turno';
 import { CreateComisionData } from '../../../domain/entities/Comision';
 import { calcularComisiones, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
+import { DateUtils } from '../../../shared/utils/DateUtils';
 import { normalizarCanjeDetalle } from '../../../shared/utils/canje.utils';
 
 export class FinalizarTurnoUseCase {
@@ -110,6 +111,8 @@ export class FinalizarTurnoUseCase {
           comision_porcentaje: comisionProductoPct,
           comision_monto: comisionMonto,
           neto_vendedor: netoVendedor,
+          // Sin esto la venta queda con fecha_venta NULL y el tab Ventas la filtra afuera
+          fecha_venta: DateUtils.normalizeDate(turno.fecha),
           es_venta_costo: producto.es_venta_costo ?? false,
           costo_unitario_snapshot: costoUnitario,
           canje_detalle: esCanjeProducto ? canjeDetalle : null,

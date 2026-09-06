@@ -18,6 +18,7 @@ import { IProductoRepository } from '../../../domain/repositories/IProductoRepos
 import { VentaProducto } from '../../../domain/entities/Comision';
 import { UsuarioPublico } from '../../../domain/entities/User';
 import { Producto } from '../../../domain/entities/Producto';
+import { DateUtils } from '../../../shared/utils/DateUtils';
 
 // ── Factories ─────────────────────────────────────────────────────────────────
 
@@ -406,7 +407,7 @@ describe('CreateVentaDirectaUseCase', () => {
 
   describe('fecha_venta', () => {
 
-    it('cuando el ítem no tiene fecha_venta, se pasa null al repo', async () => {
+    it('cuando el ítem no tiene fecha_venta, se usa hoy en hora argentina (nunca NULL)', async () => {
       const mocks = makeMocks();
       mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
       mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
@@ -416,8 +417,9 @@ describe('CreateVentaDirectaUseCase', () => {
         items: [{ producto_id: 'prod-001', cantidad: 1, precio_unitario: 100 }],
       }));
 
+      // Con fecha_venta NULL la venta desaparece del tab Ventas (filtra BETWEEN)
       const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
-      expect(argCreado.fecha_venta).toBeNull();
+      expect(argCreado.fecha_venta).toBe(DateUtils.nowAR().fecha);
     });
 
     it('cuando el ítem tiene fecha_venta propia, esa fecha se propaga al repo', async () => {
@@ -439,6 +441,21 @@ describe('CreateVentaDirectaUseCase', () => {
       expect(argCreado.fecha_venta).toBe('2026-04-15');
     });
 
+    it("fecha_venta = '' (input de fecha vacío) cuenta como sin fecha: aplica el default", async () => {
+      // Un <input type=date> limpiado manda '' — y ''::date revienta en Postgres.
+      const mocks = makeMocks();
+      mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
+      mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
+      mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        items: [{ producto_id: 'prod-001', cantidad: 1, precio_unitario: 100, fecha_venta: '' }],
+      }));
+
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.fecha_venta).toBe(DateUtils.nowAR().fecha);
+    });
+
     it('en múltiples ítems, cada uno puede tener su propia fecha_venta independiente', async () => {
       const mocks = makeMocks();
       mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
@@ -456,6 +473,63 @@ describe('CreateVentaDirectaUseCase', () => {
       const fecha1 = mocks.ventaProductoRepo.create.mock.calls[1][0].fecha_venta;
       expect(fecha0).toBe('2026-04-01');
       expect(fecha1).toBe('2026-04-15');
+    });
+
+    it('mezcla en la misma venta: el ítem sin fecha recibe hoy AR y el ítem con fecha conserva la suya', async () => {
+      // Si el default "contagia" al ítem retroactivo (o al revés), una venta
+      // cargada con fecha vieja aparece en el mes equivocado del tab Ventas.
+      const mocks = makeMocks();
+      mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
+      mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
+      mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        items: [
+          { producto_id: 'prod-001', cantidad: 1, precio_unitario: 100 },                            // sin fecha
+          { producto_id: 'prod-002', cantidad: 1, precio_unitario: 200, fecha_venta: '2026-04-15' }, // retroactiva
+        ],
+      }));
+
+      const fecha0 = mocks.ventaProductoRepo.create.mock.calls[0][0].fecha_venta;
+      const fecha1 = mocks.ventaProductoRepo.create.mock.calls[1][0].fecha_venta;
+      expect(fecha0).toBe(DateUtils.nowAR().fecha);
+      expect(fecha1).toBe('2026-04-15');
+    });
+
+    it('venta en canje sin fecha: también recibe el default de hoy AR (nunca NULL)', async () => {
+      // El canje pone los importes en 0, pero la fecha se asigna igual.
+      // Si un refactor saltea la fecha en la rama de canje, el canje desaparece
+      // del tab Ventas (fecha NULL queda fuera del filtro BETWEEN).
+      const mocks = makeMocks();
+      mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
+      mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
+      mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+      await buildUseCase(mocks).execute(buildInputBase({ metodo_pago: 'canje' }));
+
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.fecha_venta).toBe(DateUtils.nowAR().fecha);
+    });
+
+    it('venta cargada de noche (22:30 AR): la fecha default es el día argentino, no el día UTC siguiente', async () => {
+      // El bug original: el server corre en UTC, y después de las 21:00 AR un
+      // new Date() ingenuo fecha la venta "mañana" → el cierre del día queda corto
+      // y la venta aparece en el día siguiente.
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-09-06T01:30:00.000Z')); // 2026-09-05 22:30 en AR
+      try {
+        const mocks = makeMocks();
+        mocks.usuarioRepo.findById.mockResolvedValue(buildVendedor({ comision_producto: 10 }));
+        mocks.catalogoRepo.findById.mockResolvedValue(buildProductoCatalogo());
+        mocks.ventaProductoRepo.create.mockResolvedValue(buildVentaCreada());
+
+        await buildUseCase(mocks).execute(buildInputBase());
+
+        const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+        expect(argCreado.fecha_venta).toBe('2026-09-05'); // esperado fijo: NO se calcula con DateUtils
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
   });

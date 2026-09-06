@@ -364,6 +364,82 @@ describe('FinalizarTurnoUseCase', () => {
       );
     });
 
+    it('la venta de producto se crea con fecha_venta = fecha del turno (nunca NULL)', async () => {
+      const mocks = buildMocks();
+      mocks.turnoRepo.findById.mockResolvedValue(buildTurnoConfirmado({ fecha: '2026-05-08' }));
+      mocks.usuarioRepo.findById.mockResolvedValue(buildProfesional());
+      mocks.turnoRepo.finalizar.mockResolvedValue(buildTurnoFinalizado());
+      mocks.comisionRepo.create.mockResolvedValue(buildComision());
+      mocks.ventaProductoRepo.create.mockResolvedValue({} as any);
+
+      await buildUseCase(mocks).execute(
+        buildInputBase({ productos: [productoConId] })
+      );
+
+      // Con fecha_venta NULL la venta desaparece del tab Ventas (filtra BETWEEN)
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.fecha_venta).toBe('2026-05-08');
+    });
+
+    it('turno.fecha como objeto Date (node-pg devuelve DATE así): fecha_venta igual queda YYYY-MM-DD', async () => {
+      // En producción findById trae la fecha como Date, no como string. Si la
+      // normalización falla, la venta va al repo con un Date u otro formato y
+      // la fecha guardada puede quedar corrida un día o romper el insert.
+      const mocks = buildMocks();
+      mocks.turnoRepo.findById.mockResolvedValue(
+        buildTurnoConfirmado({ fecha: new Date('2026-05-08T00:00:00.000Z') as any })
+      );
+      mocks.usuarioRepo.findById.mockResolvedValue(buildProfesional());
+      mocks.turnoRepo.finalizar.mockResolvedValue(buildTurnoFinalizado());
+      mocks.comisionRepo.create.mockResolvedValue(buildComision());
+      mocks.ventaProductoRepo.create.mockResolvedValue({} as any);
+
+      await buildUseCase(mocks).execute(
+        buildInputBase({ productos: [productoConId] })
+      );
+
+      const argCreado = mocks.ventaProductoRepo.create.mock.calls[0][0];
+      expect(argCreado.fecha_venta).toBe('2026-05-08');
+    });
+
+    it('productos en canje y a precio costo: ambos llevan fecha_venta = fecha del turno (nunca NULL)', async () => {
+      // El canje pone importes en 0 y la venta al costo cambia la base de comisión,
+      // pero la fecha va igual en todos. Si un refactor la condiciona por rama,
+      // esos registros desaparecen del tab Ventas sin que nadie lo note.
+      const mocks = buildMocks();
+      mocks.turnoRepo.findById.mockResolvedValue(buildTurnoConfirmado({ fecha: '2026-05-08' }));
+      mocks.usuarioRepo.findById.mockResolvedValue(buildProfesional());
+      mocks.turnoRepo.finalizar.mockResolvedValue(buildTurnoFinalizado());
+      mocks.comisionRepo.create.mockResolvedValue(buildComision());
+      mocks.ventaProductoRepo.create.mockResolvedValue({} as any);
+
+      await buildUseCase(mocks).execute(buildInputBase({
+        productos: [
+          {
+            id:              'vp-canje',
+            nombre_producto: 'Producto canjeado',
+            cantidad:        1,
+            precio_unitario: 500,
+            precio_total:    500,
+            metodo_pago:     'canje',
+          },
+          {
+            id:              'vp-costo',
+            nombre_producto: 'Producto al costo',
+            cantidad:        1,
+            precio_unitario: 300,
+            precio_total:    300,
+            es_venta_costo:  true,
+          },
+        ],
+      }));
+
+      expect(mocks.ventaProductoRepo.create).toHaveBeenCalledTimes(2);
+      for (const call of mocks.ventaProductoRepo.create.mock.calls) {
+        expect(call[0].fecha_venta).toBe('2026-05-08');
+      }
+    });
+
     it('sin producto_id: llama deleteByTurno y create pero NO deductStock', async () => {
       const mocks = buildMocks();
       mocks.turnoRepo.findById.mockResolvedValue(buildTurnoConfirmado());

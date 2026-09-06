@@ -6,6 +6,7 @@ import { IProductoRepository } from '../../../domain/repositories/IProductoRepos
 import { Turno, EditarPagoData } from '../../../domain/entities/Turno';
 import { calcularComisiones, calcularComisionProducto } from '../../../shared/utils/calculos.utils';
 import { normalizarCanjeDetalle } from '../../../shared/utils/canje.utils';
+import { DateUtils } from '../../../shared/utils/DateUtils';
 
 export class EditarPagoTurnoUseCase {
   constructor(
@@ -106,6 +107,9 @@ export class EditarPagoTurnoUseCase {
             comision_porcentaje: comisionProductoPct,
             comision_monto: comisionMonto,
             neto_vendedor: netoVendedor,
+            // Al recrear las ventas del turno, la fecha se conserva: sin esto la
+            // edición de pago volvía a dejar fecha_venta NULL (invisible en el tab Ventas)
+            fecha_venta: DateUtils.normalizeDate(turno.fecha),
             es_venta_costo: producto.es_venta_costo ?? false,
             costo_unitario_snapshot: costoUnitario,
             canje_detalle: esCanjeProducto ? canjeDetalle : null,
